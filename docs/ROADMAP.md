@@ -68,10 +68,9 @@ v1 with the body extended past s=0, and see whether the ceiling of 14 and the ev
 ### E. Replace overlap with a transfer rate ⬜
 
 Everything currently rests on _placement overlap_, which is a proxy. The sharpest available
-calibration gate is Johnson & Harder 2023 (228 species): <45% removal for solid pollinia against
-
-> 80% for granular monads. A model that reproduces that split has earned the right to call its
-> number a transfer rate.
+calibration gate is Johnson & Harder 2023 (228 species): under 45% removal for solid pollinia
+against over 80% for granular monads. A model that reproduces that split has earned the right to
+call its number a transfer rate.
 
 ### F. Renderer, only where it serves the above ⬜
 
