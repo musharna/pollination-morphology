@@ -49,9 +49,11 @@ Nearest, in order of cheapness:
 - ✅ **carryover between visits** — BUILT 2026-08-01, `sim/carryover.js`. Packaging efficiency rises
   4.6% → 40.5%; last-male advantage emerges from stacking rather than being imposed; carryover
   *raises* coexistence (8→9 separated, 3→5 overlapping), so extra chances beat rival accumulation.
-  [detail](2026-08-01-carryover-result.md). **Not yet inside the evolution loop** — a rare mutant's
-  invasion fitness needs its own foraging bout, so this changes coexistence among given species, not
-  what they evolve into. That is the next step for this item.
+  [detail](2026-08-01-carryover-result.md). ✅ **Now inside the evolution loop too** (v2) — and it
+  changes ecology but **not, demonstrably, evolution**: no effect on evolved species count survives a
+  strict paired measurement, because selection drives overlap to zero under both transfer models and
+  carryover's benefit is worth nothing once nothing overlaps.
+  [detail](2026-08-01-v2-result.md)
 - **reward currency** — pollen-as-lost-gametes vs nectar vs fragrance, which changes the cost of a
   visit and so the whole payoff structure
 - **more body plans as first-class** — check 2 showed the 2-D advantage runs 2.3–3.6× across four
@@ -92,3 +94,8 @@ project's value scales with mechanism classes rather than polish.
   herkogamy asymmetry.
 - **Never compare an evolved outcome to an optimiser's bound at a tolerance the evolutionary
   process does not use.** Cost one wrong headline already (30% vs the true 64%).
+- **A new mechanism needs a limiting case or a deterministic reference with a known right answer,
+  and any effect it reports must survive a stricter measurement before it is believed.** Three
+  measurement artefacts impersonated results on 2026-08-01 alone: a 10× wrong pollen-limitation
+  floor, an 8.0→7.0 "reversal" that was bout noise, and a paired interval that cleared zero by 0.02
+  and then swallowed it when the budget tripled.

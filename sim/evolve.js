@@ -23,6 +23,7 @@
 
 const P = require("./placement.js");
 const K = require("./packing.js");
+const C = require("./carryover.js");
 
 const GENE_BOUNDS = {
   axisLen: [1.8, 3.2],
@@ -113,7 +114,18 @@ const ARMS = {
         part: "stigma",
       });
       if (!a.hits.length || !s.hits.length) return null; // never touches the animal
-      return { A: K.sig2D(a.hits), S: K.sig2D(s.hits) };
+      /* Raw sites as well as histograms: the mean-field evaluator needs the
+       * histograms, the carryover evaluator needs points to sample from. Both
+       * come from ONE placement computation so the two can never disagree
+       * about where this species puts its pollen. */
+      return {
+        A: K.sig2D(a.hits),
+        S: K.sig2D(s.hits),
+        sites: {
+          anther: a.hits.map((h) => ({ s: h.s, phi: h.phi })),
+          stigma: s.hits.map((h) => ({ s: h.s, phi: h.phi })),
+        },
+      };
     },
   },
   /* Placement IS a gene: one coordinate along the body, at precision matched
@@ -131,7 +143,11 @@ const ARMS = {
         seed: ctx.seed + 1,
       });
       if (!hitsA.length || !hitsS.length) return null;
-      return { A: K.sig2D(hitsA), S: K.sig2D(hitsS) };
+      return {
+        A: K.sig2D(hitsA),
+        S: K.sig2D(hitsS),
+        sites: { anther: hitsA, stigma: hitsS },
+      };
     },
   },
   /* No placement at all: every visit is an undifferentiated encounter, so all
@@ -139,7 +155,12 @@ const ARMS = {
    * diversifies here, diversification is not being caused by placement. */
   L0: {
     sig() {
-      return { A: null, S: null };
+      /* Every species deposits and collects at the same single point, so all
+       * pollen reaches all stigmas. Under the mean-field evaluator that is the
+       * allOverlap flag; under carryover it falls out of the geometry, with no
+       * special case anywhere in the bout. */
+      const one = [{ s: 0.5, phi: 0 }];
+      return { A: null, S: null, sites: { anther: one, stigma: one } };
     },
     allOverlap: 1,
   },
@@ -198,6 +219,52 @@ function overlapMatrixOf(sigs, arm) {
 }
 
 /*
+ * ------------------------------------------------------------- evaluators
+ *
+ * How a community's fitnesses are obtained. The loop, the mutation operator
+ * and the demography are identical either way, so a difference between
+ * evaluators can only come from the transfer model itself.
+ *
+ *   MEANFIELD   transfer = overlap of anther placement with stigma placement.
+ *               Assumes a grain gets exactly one chance and is then gone.
+ *   CARRYOVER   transfer is COUNTED over a simulated foraging bout, so pollen
+ *               rides across several flowers before it lands.
+ */
+const MEANFIELD = {
+  community(live, n, arm, params) {
+    const sigs = live.map((x) => x.sig);
+    return fitnesses(sigs, n, overlapMatrixOf(sigs, arm), params.k);
+  },
+  invasion(live, n, i, cs, arm, params) {
+    return invasionFitness(live.map((x) => x.sig), n, i, cs, arm, params.k);
+  },
+};
+
+const CARRYOVER = {
+  bout(live, n, params, sub) {
+    const sites = live.map((x, i) => (sub && sub.i === i ? sub.sig.sites : x.sig.sites));
+    const r = C.runBout(sites, n, {
+      visits: params.visits || 3000,
+      seed: params.boutSeed || 17,
+      groom: params.groom === undefined ? 0.12 : params.groom,
+    });
+    const v = r.visits;
+    return live.map((_, a) => {
+      let own = r.T[a][a] / v,
+        tot = 0;
+      for (let b = 0; b < live.length; b++) tot += r.T[b][a] / v;
+      return own / (tot + (params.kc === undefined ? 0.0002 : params.kc));
+    });
+  },
+  community(live, n, arm, params) {
+    return this.bout(live, n, params);
+  },
+  invasion(live, n, i, cs, arm, params) {
+    return this.bout(live, n, params, { i, sig: cs })[i];
+  },
+};
+
+/*
  * Fitness of a mutant of species i against the current community.
  *
  * Rebuilding the whole overlap matrix per mutant is O(S^3) per generation and
@@ -240,16 +307,16 @@ function step(state, params, rng) {
   const live = state.species.filter((s) => s.alive);
 
   // 1. mutation and trait substitution
+  const ev = params.evaluate || MEANFIELD;
   const sigs = live.map((s) => s.sig);
   const n = live.map((s) => s.n);
-  const O = overlapMatrixOf(sigs, arm);
-  const w = fitnesses(sigs, n, O, k);
+  const w = ev.community(live, n, arm, params);
 
   for (let i = 0; i < live.length; i++) {
     const cand = mutate(live[i].g, rng, mutRate);
     const cs = arm.sig(cand, { ...ctx, seed: ctx.seed + 7 * i });
     if (!cs) continue; // a mutant that never touches the animal cannot invade
-    if (invasionFitness(sigs, n, i, cs, arm, k) > w[i]) {
+    if (ev.invasion(live, n, i, cs, arm, params) > w[i]) {
       live[i].g = cand;
       live[i].sig = cs;
       sigs[i] = cs;
@@ -269,8 +336,7 @@ function step(state, params, rng) {
    * proportion to n * r. Total occupancy is conserved, so a species cannot run
    * away; it can only take share from neighbours it out-reproduces.
    */
-  const Of = overlapMatrixOf(sigs, arm);
-  const wf = fitnesses(sigs, n, Of, k);
+  const wf = ev.community(live, n, arm, params);
 
   let propTot = 0;
   const prop = new Float64Array(live.length);
@@ -338,6 +404,8 @@ function run(params) {
 
 module.exports = {
   ARMS,
+  MEANFIELD,
+  CARRYOVER,
   GENE_BOUNDS,
   HERKOGAMY,
   randomGenome,
