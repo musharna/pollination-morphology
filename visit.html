@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>The visit — pollen loaded, carried, and not delivered</title>
+    <style>
+      :root {
+        --bg: #16181c;
+        --panel: #1e2127;
+        --rule: #2f343d;
+        --ink: #e8e6e1;
+        --ink-2: #9aa0a8;
+        --gold: #e8b23a;
+        --mag: #cc6699;
+        --ok: #6fbf73;
+        --bad: #d9704f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 15px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+        padding: 22px 20px 60px;
+      }
+      header { max-width: 1180px; margin: 0 auto 14px; }
+      h1 { font-size: 1.42rem; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+      header p { margin: 0; color: var(--ink-2); max-width: 78ch; }
+      #wrap { max-width: 1180px; margin: 0 auto; }
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        background: #101216;
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        cursor: grab;
+      }
+      canvas:active { cursor: grabbing; }
+
+      #stage {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 16px;
+        margin-top: 14px;
+      }
+      @media (max-width: 900px) { #stage { grid-template-columns: 1fr; } }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        padding: 14px 16px;
+      }
+      .step {
+        font: 600 0.7rem/1 ui-monospace, Menlo, monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+        margin-bottom: 10px;
+      }
+      #narr { font-size: 1.02rem; min-height: 3.4em; margin-bottom: 14px; }
+      .kv {
+        font: 0.8rem/1.7 ui-monospace, Menlo, monospace;
+        border-top: 1px solid var(--rule);
+        padding-top: 10px;
+      }
+      .kv div { display: flex; justify-content: space-between; gap: 10px; }
+      .kv span:first-child { color: var(--ink-2); }
+      .load { color: var(--gold); }
+      .sweep { color: var(--mag); }
+      #verdict {
+        margin-top: 12px;
+        padding: 9px 11px;
+        border-radius: 3px;
+        font-weight: 600;
+        font-size: 0.92rem;
+        text-align: center;
+        border: 1px solid var(--rule);
+      }
+      #verdict.no { color: var(--bad); border-color: #59332a; background: #251a17; }
+      #verdict.yes { color: var(--ok); border-color: #2f4a32; background: #17231a; }
+      #verdict.wait { color: var(--ink-2); }
+
+      .ctl { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+      .ctl label { flex: 0 0 116px; font-size: 0.82rem; color: var(--ink-2); }
+      input[type="range"] { flex: 1; accent-color: var(--gold); }
+      output {
+        flex: 0 0 92px;
+        font: 0.78rem ui-monospace, Menlo, monospace;
+        color: var(--ink);
+        text-align: right;
+      }
+      button {
+        background: #2a2f38;
+        color: var(--ink);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        padding: 6px 13px;
+        font: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      button:hover { background: #343a45; }
+      button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      footer {
+        max-width: 1180px;
+        margin: 20px auto 0;
+        color: var(--ink-2);
+        font-size: 0.82rem;
+        border-top: 1px solid var(--rule);
+        padding-top: 12px;
+        max-width: 92ch;
+      }
+      b { color: var(--ink); font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>The visit — pollen loaded, carried, and not delivered</h1>
+      <p>
+        Two flowers face each other. One bee shuttles between them. The only difference between
+        the flowers is where the anther and stigma sit on the tube wall. Watch where the pollen
+        goes on the animal, and where the second flower reaches for it. Drag to rotate.
+      </p>
+    </header>
+
+    <div id="wrap">
+      <canvas id="c" width="1180" height="580"></canvas>
+
+      <div id="stage">
+        <div class="panel">
+          <div class="step" id="stepLabel">—</div>
+          <div id="narr"></div>
+          <div class="kv">
+            <div><span>pollen loaded on</span><span class="load" id="kLoad">—</span></div>
+            <div><span>flower B stigma sweeps</span><span class="sweep" id="kSweep">—</span></div>
+            <div><span>site overlap</span><span id="kOv">—</span></div>
+          </div>
+          <div id="verdict" class="wait">—</div>
+        </div>
+
+        <div class="panel">
+          <div class="step">flower B only</div>
+          <div class="ctl">
+            <label for="theta">anther &amp; stigma</label>
+            <input id="theta" type="range" min="0" max="180" value="180" step="1" />
+            <output id="thetaOut"></output>
+          </div>
+          <div class="ctl">
+            <label for="pol">symmetry</label>
+            <input id="pol" type="range" min="5" max="95" value="45" step="1" />
+            <output id="polOut"></output>
+          </div>
+          <div class="ctl" style="margin-top: 16px">
+            <button id="play">Pause</button>
+            <button id="restart">Replay visit</button>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <b>Placement is never an input.</b> Where the pollen lands is computed from tube shape,
+        body shape, and how far the animal can push in — there is no variable anywhere that sets
+        it. Flower A is fixed; the slider moves flower B's anther and stigma together, because a
+        species' own stigma must collect from wherever its own anther deposits.
+        <b>Still not modelled:</b> carryover across many visits, packaging efficiency, last-male
+        advantage, pollinator learning, or any reward at all. The bee's body is drawn rigid while
+        the contact model lets it follow the tube's curve — at these curvatures the two differ by
+        less than a grain's width.
+      </footer>
+    </div>
+
+    <script src="sim/placement.js"></script>
+    <script>
+      const P = window.Placement;
+      const cv = document.getElementById("c");
+      const ctx = cv.getContext("2d");
+      const bee = P.DEFAULT_BEE;
+
+      const flowerA = { ...P.DEFAULT_FLOWER, antherTheta: 0, stigmaTheta: 0, polarity: 0.45 };
+      const flowerB = { ...P.DEFAULT_FLOWER, antherTheta: Math.PI, stigmaTheta: Math.PI, polarity: 0.45 };
+
+      /* --------------------------------------------------------- vector ops */
+      const vAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+      const vSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+      const vMul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+      const vDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const vCrs = (a, b) => [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+      ];
+      const vUnit = (a) => {
+        const n = Math.hypot(a[0], a[1], a[2]) || 1;
+        return [a[0] / n, a[1] / n, a[2] / n];
+      };
+      const lerp = (a, b, k) => a + (b - a) * k;
+      const lerp3 = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
+      const clamp01 = (x) => Math.min(1, Math.max(0, x));
+      const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+
+      /* ----------------------------------------------------- flower placing
+       *
+       * The two flowers FACE EACH OTHER, mouths toward the gap between them, so
+       * the bee shuttles across the screen in profile. The first build had the
+       * tubes pointing into the screen, which meant the animal flew away from
+       * the camera and was never seen side-on — a large part of why it did not
+       * read as an animal at all.
+       *
+       * Each flower gets a basis mapping its LOCAL frame (z = into the tube,
+       * y = dorsal, x = lateral) onto world axes.
+       */
+      function basis(axisDir, origin) {
+        const W = vUnit(axisDir);
+        const V = [0, 1, 0];
+        const U = vCrs(V, W);
+        return { U, V, W, origin };
+      }
+      const SPREAD = 2.72;
+      const baseA = basis([-1, 0, 0], [-SPREAD, 0, 0]); // opens toward +x (the gap)
+      const baseB = basis([1, 0, 0], [SPREAD, 0, 0]); //  opens toward -x (the gap)
+
+      const toWorld = (b, p) =>
+        vAdd(b.origin, [
+          p[0] * b.U[0] + p[1] * b.V[0] + p[2] * b.W[0],
+          p[0] * b.U[1] + p[1] * b.V[1] + p[2] * b.W[1],
+          p[0] * b.U[2] + p[1] * b.V[2] + p[2] * b.W[2],
+        ]);
+      const dirWorld = (b, p) => [
+        p[0] * b.U[0] + p[1] * b.V[0] + p[2] * b.W[0],
+        p[0] * b.U[1] + p[1] * b.V[1] + p[2] * b.W[1],
+        p[0] * b.U[2] + p[1] * b.V[2] + p[2] * b.W[2],
+      ];
+
+      /* ------------------------------------------------------------ camera */
+      let yaw = 0.0,
+        pitch = 0.22;
+      let camTarget = [0, 0, 0],
+        camDist = 10.8;
+
+      function project(p) {
+        const d = vSub(p, camTarget);
+        const cy = Math.cos(yaw),
+          sy = Math.sin(yaw);
+        let x = d[0] * cy + d[2] * sy;
+        let z = -d[0] * sy + d[2] * cy;
+        const cp = Math.cos(pitch),
+          sp = Math.sin(pitch);
+        const y = d[1] * cp - z * sp;
+        z = d[1] * sp + z * cp;
+        const zv = z + camDist;
+        if (zv < 0.05) return null;
+        const scale = 720;
+        return { x: cv.width / 2 + (scale * x) / zv, y: cv.height / 2 - (scale * y) / zv, z: zv, s: scale / zv };
+      }
+      function camForward() {
+        const cy = Math.cos(yaw),
+          sy = Math.sin(yaw),
+          cp = Math.cos(pitch),
+          sp = Math.sin(pitch);
+        return [-cp * sy, sp, cp * cy];
+      }
+
+      /* ------------------------------------------------------- the bee body
+       *
+       * The bee is a RIGID animal in its own frame, posed by a head position
+       * and a heading. In the first build the body was extruded along the
+       * flower's axis, so its shape was dictated by the tube it happened to be
+       * inside — it could not read as a creature because it was not modelled
+       * as one.
+       *
+       * s runs 0 at the face to 1 at the abdomen tip, matching the contact
+       * model's own body coordinate, so a contact at (s, phi) can be drawn
+       * exactly where the model says it landed.
+       */
+      function bodyPoint(pose, s, phi) {
+        const r = P.bodyRadius(bee, s);
+        const lat = vCrs(pose.f, pose.u);
+        return vAdd(
+          vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen)),
+          vAdd(vMul(pose.u, r * Math.cos(phi)), vMul(lat, r * Math.sin(phi))),
+        );
+      }
+      const axisPoint = (pose, s) => vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen));
+
+      /* Pose when the head has pushed to depth t inside a flower. */
+      function poseInFlower(f, b, headT) {
+        const fr = P.axisFrame(f, Math.max(headT, 0));
+        const lift = P.bodyOffset(f, bee, Math.max(headT, 0));
+        const local = vAdd(P.axisAt(f, headT), vMul(fr.dorsal, lift));
+        return { p: toWorld(b, local), f: vUnit(dirWorld(b, fr.fwd)), u: vUnit(dirWorld(b, fr.dorsal)) };
+      }
+
+      /* ---------------------------------------------------- draw primitives */
+      let items = [];
+      const push = (o) => items.push(o);
+
+      function ball(c, r, col, opts = {}) {
+        const q = project(c);
+        if (!q) return;
+        push({ z: q.z, kind: "ball", x: q.x, y: q.y, r: r * q.s, col, ...opts });
+      }
+      function poly(pts, col, opts = {}) {
+        const ps = pts.map(project);
+        if (ps.some((p) => !p)) return;
+        push({ z: ps.reduce((a, p) => a + p.z, 0) / ps.length, kind: "poly", ps, col, ...opts });
+      }
+      function seg(a, b, col, w, opts = {}) {
+        const pa = project(a),
+          pb = project(b);
+        if (!pa || !pb) return;
+        push({ z: (pa.z + pb.z) / 2, kind: "seg", pa, pb, col, w: w * ((pa.s + pb.s) / 2), ...opts });
+      }
+      /* Named `grain`, not `vDot` — `vDot` is already the vector vDot product
+       * above, and two declarations of one name in one scope is a hard
+       * SyntaxError that takes the whole script down. */
+      function grain(c, r, col, opts = {}) {
+        const q = project(c);
+        if (!q) return;
+        push({ z: q.z - 0.02, kind: "grain", x: q.x, y: q.y, r: Math.max(1.1, r * q.s), col, ...opts });
+      }
+
+      function paint() {
+        items.sort((a, b) => b.z - a.z);
+        for (const it of items) {
+          ctx.globalAlpha = it.alpha === undefined ? 1 : it.alpha;
+          if (it.kind === "ball") {
+            const g = ctx.createRadialGradient(
+              it.x - it.r * 0.36, it.y - it.r * 0.4, it.r * 0.12, it.x, it.y, it.r,
+            );
+            g.addColorStop(0, it.hi || shade(it.col, 1.5));
+            g.addColorStop(0.6, it.col);
+            g.addColorStop(1, shade(it.col, 0.5));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(it.x, it.y, it.r, 0, 6.2832);
+            ctx.fill();
+          } else if (it.kind === "poly") {
+            ctx.fillStyle = it.col;
+            ctx.beginPath();
+            ctx.moveTo(it.ps[0].x, it.ps[0].y);
+            for (let i = 1; i < it.ps.length; i++) ctx.lineTo(it.ps[i].x, it.ps[i].y);
+            ctx.closePath();
+            ctx.fill();
+            if (it.stroke) {
+              ctx.strokeStyle = it.stroke;
+              ctx.lineWidth = it.sw || 1;
+              ctx.stroke();
+            }
+          } else if (it.kind === "seg") {
+            ctx.strokeStyle = it.col;
+            ctx.lineWidth = Math.max(0.8, it.w);
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(it.pa.x, it.pa.y);
+            ctx.lineTo(it.pb.x, it.pb.y);
+            ctx.stroke();
+          } else if (it.kind === "grain") {
+            ctx.fillStyle = it.col;
+            ctx.beginPath();
+            ctx.arc(it.x, it.y, it.r, 0, 6.2832);
+            ctx.fill();
+            if (it.ring) {
+              ctx.strokeStyle = it.ring;
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+            }
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+      function shade(hex, k) {
+        const m = hex.match(/\w\w/g).map((h) => parseInt(h, 16));
+        return `rgb(${m.map((v) => Math.max(0, Math.min(255, Math.round(v * k)))).join(",")})`;
+      }
+
+      /* --------------------------------------------------------- the flower */
+      const COROLLA = "#d9cdb0";
+      const COROLLA_IN = "#b9a583";
+      const T_STEPS = 22,
+        TH_STEPS = 30;
+
+      function drawFlower(f, b, label) {
+        const view = camForward();
+        for (let i = 0; i < T_STEPS; i++) {
+          const t0 = i / T_STEPS,
+            t1 = (i + 1) / T_STEPS;
+          for (let j = 0; j < TH_STEPS; j++) {
+            const a0 = (j / TH_STEPS) * 2 * Math.PI,
+              a1 = ((j + 1) / TH_STEPS) * 2 * Math.PI;
+            const am = (a0 + a1) / 2,
+              tm = (t0 + t1) / 2;
+            const fr = P.axisFrame(f, tm);
+            const nLocal = [
+              fr.dorsal[0] * Math.cos(am) + fr.lateral[0] * Math.sin(am),
+              fr.dorsal[1] * Math.cos(am) + fr.lateral[1] * Math.sin(am),
+              fr.dorsal[2] * Math.cos(am) + fr.lateral[2] * Math.sin(am),
+            ];
+            const n = dirWorld(b, nLocal);
+            /* Longitudinal section: throw away the near half so the lumen is
+             * visible. Culling by facing shows the far wall's outside instead. */
+            if (vDot(n, view) < 0.02) continue;
+            const ventral = (1 + Math.cos(am)) / 2;
+            const k = 0.62 + 0.3 * ventral - 0.16 * tm;
+            /* Stroking each quad in its own fill closes the hairline
+             * anti-aliasing gaps between them; without this the throat reads
+             * as wire netting rather than a surface. */
+            const cq = shade(COROLLA_IN, k);
+            poly(
+              [
+                toWorld(b, P.surfacePoint(f, t0, a0)),
+                toWorld(b, P.surfacePoint(f, t1, a0)),
+                toWorld(b, P.surfacePoint(f, t1, a1)),
+                toWorld(b, P.surfacePoint(f, t0, a1)),
+              ],
+              cq,
+              { stroke: cq, sw: 1 },
+            );
+          }
+        }
+        corollaLobes(f, b);
+        platform(f, b);
+        organs(f, b);
+        labelAt(toWorld(b, [0, P.tubeRadius(f, 0, 0) + 1.55, -0.35]), label);
+      }
+
+      /*
+       * Five reflexed lobes at the mouth. The first version built each lobe
+       * from four wide quads that kept most of their width to the tip, which
+       * rendered as flat cardboard slabs jutting off a pipe. A petal needs
+       * three things a slab has not got: it narrows to a rounded tip, it
+       * curls backward, and it is shaded by which way it faces.
+       */
+      const LIGHT = vUnit([-0.35, 0.8, 0.5]);
+      const U_STEPS = 7,
+        V_STEPS = 8;
+
+      function corollaLobes(f, b) {
+        const N = 5;
+        const fr = P.axisFrame(f, 0);
+        const base = P.axisAt(f, 0);
+
+        /* Petal half-width: narrow at the base, widest at mid-length, closing
+         * to a point at the tip. sin() gives the profile; the exponent rounds
+         * the shoulders so it reads as a petal and not a diamond. */
+        const wOf = (v) => Math.pow(Math.sin(Math.PI * (0.16 + 0.84 * v)), 0.62);
+
+        const pt = (ang, v) => {
+          const rr = P.tubeRadius(f, 0, ang);
+          const flare = 1 + 1.55 * v * (0.55 + 0.45 * v);
+          const back = -(0.2 * v + 0.85 * v * v); // reflexed away from the mouth
+          const cup = 0.13 * Math.sin(Math.PI * v); // slight dishing
+          const loc = [0, 0, 0];
+          for (let k = 0; k < 3; k++)
+            loc[k] =
+              base[k] +
+              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) * rr * (flare + cup) +
+              fr.fwd[k] * back;
+          return toWorld(b, loc);
+        };
+
+        for (let i = 0; i < N; i++) {
+          const c = (i / N) * 2 * Math.PI + 0.3;
+          const halfw = Math.PI / N - 0.045;
+          for (let vi = 0; vi < V_STEPS; vi++) {
+            const v0 = vi / V_STEPS,
+              v1 = (vi + 1) / V_STEPS;
+            const w0 = halfw * wOf(v0),
+              w1 = halfw * wOf(v1);
+            for (let ui = 0; ui < U_STEPS; ui++) {
+              const u0 = -1 + (2 * ui) / U_STEPS,
+                u1 = -1 + (2 * (ui + 1)) / U_STEPS;
+              const q = [
+                pt(c + u0 * w0, v0),
+                pt(c + u0 * w1, v1),
+                pt(c + u1 * w1, v1),
+                pt(c + u1 * w0, v0),
+              ];
+              const nrm = vUnit(vCrs(vSub(q[1], q[0]), vSub(q[3], q[0])));
+              const lam = 0.55 + 0.45 * Math.abs(vDot(nrm, LIGHT));
+              const col = shade(COROLLA, lam * (1 - 0.12 * v0));
+              poly(q, col, { stroke: col, sw: 1 });
+            }
+          }
+        }
+      }
+
+      /* The ventral landing lip the animal stands on. */
+      function platform(f, b) {
+        const { platformLen, platformAngle } = P.polarityTraits(f);
+        if (platformLen < 0.03) return;
+        const fr = P.axisFrame(f, 0);
+        const base = P.axisAt(f, 0);
+        const point = (ang, ext) => {
+          const rr = P.tubeRadius(f, 0, ang) * (1 - 0.25 * ext);
+          const loc = [0, 0, 0];
+          for (let k = 0; k < 3; k++)
+            loc[k] =
+              base[k] +
+              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) * rr -
+              fr.dorsal[k] * ext * platformAngle -
+              fr.fwd[k] * ext * platformLen;
+          return toWorld(b, loc);
+        };
+        const N = 12;
+        for (let j = 0; j < N; j++) {
+          const a0 = Math.PI - 1.15 + (2.3 * j) / N,
+            a1 = Math.PI - 1.15 + (2.3 * (j + 1)) / N;
+          poly([point(a0, 0), point(a0, 1), point(a1, 1), point(a1, 0)], "#c3b18e", { stroke: "#c3b18e", sw: 1 });
+        }
+      }
+
+      /* Anther (gold) and stigma (magenta), on filaments into the lumen. */
+      function organs(f, b) {
+        const aLocal = P.antherPoint(f),
+          sLocal = P.stigmaPoint(f);
+        const wallA = P.surfacePoint(f, f.antherT, f.antherTheta);
+        const wallS = P.surfacePoint(f, f.stigmaT, f.stigmaTheta);
+        seg(toWorld(b, wallA), toWorld(b, aLocal), "#8a7a4a", 0.055);
+        seg(toWorld(b, wallS), toWorld(b, sLocal), "#7a5a68", 0.055);
+        ball(toWorld(b, aLocal), 0.115, "#e8b23a");
+        ball(toWorld(b, sLocal), 0.1, "#cc6699");
+      }
+
+      let labels = [];
+      function labelAt(world, text) {
+        const q = project(world);
+        if (q) labels.push({ x: q.x, y: q.y, text });
+      }
+
+      /* ------------------------------------------------------------ the bee */
+      const HEAD = "#26201c",
+        THORAX = "#b8874a",
+        BAND_D = "#221c18",
+        BAND_L = "#dfa843";
+
+      function drawBee(pose, load) {
+        const lat = vCrs(pose.f, pose.u);
+
+        // wings first (they sit above and behind the thorax)
+        for (const sgn of [-1, 1]) {
+          const root = vAdd(axisPoint(pose, 0.3), vMul(pose.u, 0.3));
+          const tip = vAdd(vAdd(root, vMul(pose.f, -1.05)), vAdd(vMul(lat, sgn * 0.62), vMul(pose.u, 0.24)));
+          const mid = vAdd(vAdd(root, vMul(pose.f, -0.5)), vAdd(vMul(lat, sgn * 0.46), vMul(pose.u, 0.2)));
+          const midB = vAdd(vAdd(root, vMul(pose.f, -0.55)), vAdd(vMul(lat, sgn * 0.2), vMul(pose.u, 0.1)));
+          poly([root, mid, tip, midB], "rgba(206,224,235,0.30)", {
+            stroke: "rgba(226,240,248,0.5)", sw: 1,
+          });
+        }
+
+        // body — the model's own radius profile, so the drawing cannot claim a
+        // shape the contact computation does not use
+        for (let s = 0; s <= 1.0001; s += 0.02) {
+          const sc = Math.min(s, 1);
+          const r = P.bodyRadius(bee, sc);
+          const c = axisPoint(pose, sc);
+          let col;
+          if (sc < 0.16) col = HEAD;
+          else if (sc < 0.52) col = THORAX;
+          else {
+            // banded abdomen — the single strongest "this is a bee" cue
+            const band = Math.floor((sc - 0.52) / 0.08);
+            col = band % 2 === 0 ? BAND_L : BAND_D;
+          }
+          ball(c, r, col);
+        }
+
+        // thorax pile — short hairs so it reads as furry, not moulded
+        for (let i = 0; i < 46; i++) {
+          const s = 0.17 + 0.33 * ((i * 7) % 46) / 46;
+          const phi = ((i * 2.39996) % (2 * Math.PI)) - Math.PI;
+          const r = P.bodyRadius(bee, s);
+          const a = bodyPoint(pose, s, phi);
+          const outw = vUnit(vSub(a, axisPoint(pose, s)));
+          seg(a, vAdd(a, vMul(outw, 0.085)), "rgba(226,186,124,0.75)", 0.03);
+        }
+
+        // eyes
+        for (const sgn of [-1, 1]) {
+          ball(bodyPoint(pose, 0.09, sgn * 1.15), 0.105, "#0d0b0a");
+        }
+        // antennae
+        for (const sgn of [-1, 1]) {
+          const root = bodyPoint(pose, 0.05, sgn * 0.8);
+          const el = vAdd(vAdd(root, vMul(pose.f, 0.24)), vMul(lat, sgn * 0.12));
+          const tip = vAdd(vAdd(el, vMul(pose.f, 0.2)), vAdd(vMul(lat, sgn * 0.16), vMul(pose.u, -0.1)));
+          seg(root, el, "#171310", 0.036);
+          seg(el, tip, "#171310", 0.03);
+        }
+        // legs
+        for (let i = 0; i < 3; i++) {
+          const s = 0.2 + i * 0.13;
+          for (const sgn of [-1, 1]) {
+            const hip = bodyPoint(pose, s, sgn * 2.1);
+            const knee = vAdd(vAdd(hip, vMul(lat, sgn * 0.3)), vMul(pose.u, -0.26));
+            const foot = vAdd(vAdd(knee, vMul(lat, sgn * 0.1)), vAdd(vMul(pose.u, -0.3), vMul(pose.f, -0.12)));
+            seg(hip, knee, "#241d18", 0.045);
+            seg(knee, foot, "#241d18", 0.036);
+          }
+        }
+
+        // pollen already carried
+        for (const g of load) {
+          grain(bodyPoint(pose, g.s, g.phi), 0.052, "#f3c650");
+        }
+      }
+
+      /* ------------------------------------------------- the visit timeline */
+      const PHASES = [
+        { k: "approach", d: 1.5, label: "approach", text: "One bee, two flowers. It goes to the first." },
+        { k: "enterA", d: 1.6, label: "inside flower A", text: "It pushes in as far as its body allows. How far is set by the tube, not by the bee." },
+        { k: "loadA", d: 1.7, label: "anther contact", text: "Flower A's anther touches it — here, and nowhere else." },
+        { k: "exitA", d: 1.2, label: "backing out", text: "It leaves carrying pollen on one specific patch of its body." },
+        { k: "cross", d: 1.8, label: "in flight", text: "Same animal. Same pollen. Now the second flower." },
+        { k: "enterB", d: 1.6, label: "inside flower B", text: "It pushes into flower B exactly as it did into A." },
+        { k: "sweepB", d: 2.4, label: "stigma contact", text: "" },
+        { k: "exitB", d: 1.3, label: "backing out", text: "" },
+        { k: "hold", d: 2.0, label: "the result", text: "" },
+      ];
+      const TOTAL = PHASES.reduce((a, p) => a + p.d, 0);
+
+      let clock = 0,
+        playing = true,
+        lastT = 0;
+      let distA = null,
+        distB = null,
+        loadHits = [],
+        overlap = 0,
+        transferred = false;
+
+      function recompute() {
+        distA = P.placementDistribution(flowerA, bee, { seed: 11, n: 200, part: "anther" });
+        distB = P.placementDistribution(flowerB, bee, { seed: 23, n: 200, part: "stigma" });
+        overlap = P.placementOverlap(distA, distB);
+        loadHits = distA.hits.filter((_, i) => i % 4 === 0).slice(0, 46);
+        transferred = overlap > 0.35;
+
+        const sa = P.dominantSite(distA),
+          sb = P.dominantSite(distB);
+        document.getElementById("kLoad").textContent = sa ? sa.label : "no contact";
+        document.getElementById("kSweep").textContent = sb ? sb.label : "no contact";
+        document.getElementById("kOv").textContent = (overlap * 100).toFixed(0) + "%";
+      }
+
+      function phaseAt(tt) {
+        let acc = 0;
+        for (const p of PHASES) {
+          if (tt < acc + p.d) return { p, u: (tt - acc) / p.d };
+          acc += p.d;
+        }
+        const last = PHASES[PHASES.length - 1];
+        return { p: last, u: 1 };
+      }
+
+      /* Where is the bee, and how much of its load has it picked up? */
+      function beeState(tt) {
+        const { p, u } = phaseAt(tt);
+        const depthA = P.entryDepth(flowerA, bee),
+          depthB = P.entryDepth(flowerB, bee);
+        const outA = poseInFlower(flowerA, baseA, -1.55);
+        const outB = poseInFlower(flowerB, baseB, -1.55);
+        const far = { p: [0, 2.4, 2.2], f: vUnit([-0.6, -0.35, -0.7]), u: [0, 1, 0] };
+
+        const blend = (q, r, k) => ({
+          p: lerp3(q.p, r.p, k),
+          f: vUnit(lerp3(q.f, r.f, k)),
+          u: vUnit(lerp3(q.u, r.u, k)),
+        });
+
+        let pose, loaded = 0, sweep = 0;
+        switch (p.k) {
+          case "approach": pose = blend(far, outA, ease(u)); break;
+          case "enterA": pose = poseInFlower(flowerA, baseA, lerp(-1.55, depthA, ease(u))); break;
+          case "loadA":
+            pose = poseInFlower(flowerA, baseA, depthA + 0.02 * Math.sin(u * 12));
+            loaded = clamp01((u - 0.15) / 0.5);
+            break;
+          case "exitA": pose = poseInFlower(flowerA, baseA, lerp(depthA, -1.55, ease(u))); loaded = 1; break;
+          case "cross": {
+            const arc = ease(u);
+            const q = blend(outA, outB, arc);
+            q.p = vAdd(q.p, [0, 1.5 * Math.sin(Math.PI * arc), 0.5 * Math.sin(Math.PI * arc)]);
+            pose = q; loaded = 1; break;
+          }
+          case "enterB": pose = poseInFlower(flowerB, baseB, lerp(-1.55, depthB, ease(u))); loaded = 1; break;
+          case "sweepB":
+            pose = poseInFlower(flowerB, baseB, depthB + 0.02 * Math.sin(u * 10));
+            loaded = 1; sweep = clamp01((u - 0.1) / 0.35);
+            break;
+          case "exitB": pose = poseInFlower(flowerB, baseB, lerp(depthB, -1.55, ease(u))); loaded = 1; sweep = 1; break;
+          default: pose = blend(outB, far, ease(u * 0.5)); loaded = 1; sweep = 1;
+        }
+        return { pose, loaded, sweep, phase: p, u };
+      }
+
+      /* --------------------------------------------------------- the render */
+      function render() {
+        const st = beeState(clock);
+        // follow the action so the animal is never a speck
+        const want =
+          st.phase.k === "cross" || st.phase.k === "approach"
+            ? [0, 0.1, 0]
+            : ["enterA", "loadA", "exitA"].includes(st.phase.k)
+              ? [-SPREAD + 1.2, -0.15, 0]
+              : [SPREAD - 1.2, -0.15, 0];
+        camTarget = lerp3(camTarget, want, 0.07);
+        const wantD = st.phase.k === "cross" || st.phase.k === "approach" ? 10.8 : 7.4;
+        camDist = lerp(camDist, wantD, 0.07);
+
+        ctx.fillStyle = "#101216";
+        ctx.fillRect(0, 0, cv.width, cv.height);
+        items = [];
+        labels = [];
+
+        drawFlower(flowerA, baseA, "FLOWER A");
+        drawFlower(flowerB, baseB, "FLOWER B");
+
+        const carried = loadHits.slice(0, Math.round(loadHits.length * st.loaded));
+        drawBee(st.pose, carried);
+
+        // the stigma's reach, drawn on the body where it actually sweeps
+        if (st.sweep > 0 && distB && distB.hits.length) {
+          const sub2 = distB.hits.filter((_, i) => i % 5 === 0).slice(0, 40);
+          for (const h of sub2) {
+            grain(bodyPoint(st.pose, h.s, h.phi), 0.05, "rgba(204,102,153,0.9)", {
+              ring: "rgba(255,180,215,0.9)",
+              alpha: st.sweep,
+            });
+          }
+        }
+
+        paint();
+
+        ctx.font = "600 12px ui-monospace, Menlo, monospace";
+        ctx.fillStyle = "#aeb6c0";
+        ctx.textAlign = "center";
+        for (const l of labels) ctx.fillText(l.text, l.x, l.y);
+        ctx.textAlign = "left";
+
+        narrate(st);
+      }
+
+      function narrate(st) {
+        document.getElementById("stepLabel").textContent = st.phase.label;
+        const n = document.getElementById("narr");
+        const v = document.getElementById("verdict");
+        const loadSite = P.dominantSite(distA),
+          sweepSite = P.dominantSite(distB);
+
+        if (st.phase.k === "sweepB" || st.phase.k === "exitB" || st.phase.k === "hold") {
+          if (transferred) {
+            n.textContent =
+              "Flower B's stigma reaches the same patch the pollen is sitting on. It is collected.";
+            v.textContent = "POLLEN TRANSFERRED";
+            v.className = "yes";
+          } else {
+            n.innerHTML =
+              `The pollen is on the <b>${loadSite ? loadSite.label : "—"}</b>. Flower B's stigma sweeps the ` +
+              `<b>${sweepSite ? sweepSite.label : "—"}</b>. It reaches past the pollen and touches nothing.`;
+            v.textContent = "NOTHING TRANSFERRED";
+            v.className = "no";
+          }
+        } else {
+          n.textContent = st.phase.text;
+          v.textContent = "—";
+          v.className = "wait";
+        }
+      }
+
+      /* ------------------------------------------------------------- inputs */
+      let drag = null;
+      cv.addEventListener("pointerdown", (e) => {
+        drag = { x: e.clientX, y: e.clientY };
+        cv.setPointerCapture(e.pointerId);
+      });
+      cv.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        yaw += (e.clientX - drag.x) * 0.006;
+        pitch = Math.max(-0.5, Math.min(1.0, pitch + (e.clientY - drag.y) * 0.004));
+        drag = { x: e.clientX, y: e.clientY };
+      });
+      const endDrag = () => (drag = null);
+      cv.addEventListener("pointerup", endDrag);
+      cv.addEventListener("pointercancel", endDrag);
+
+      const th = document.getElementById("theta"),
+        pol = document.getElementById("pol");
+      const thOut = document.getElementById("thetaOut"),
+        polOut = document.getElementById("polOut");
+
+      function sync() {
+        const deg = +th.value;
+        flowerB.antherTheta = (deg * Math.PI) / 180;
+        flowerB.stigmaTheta = flowerB.antherTheta;
+        thOut.textContent = deg > 135 ? "ventral" : deg < 45 ? "dorsal" : deg + "°";
+        flowerB.polarity = +pol.value / 100;
+        polOut.textContent =
+          flowerB.polarity > 0.6 ? "bilateral" : flowerB.polarity < 0.25 ? "radial" : "intermediate";
+        recompute();
+      }
+      th.addEventListener("input", sync);
+      pol.addEventListener("input", sync);
+
+      const playBtn = document.getElementById("play");
+      playBtn.addEventListener("click", () => {
+        playing = !playing;
+        playBtn.textContent = playing ? "Pause" : "Play";
+      });
+      document.getElementById("restart").addEventListener("click", () => {
+        clock = 0;
+        playing = true;
+        playBtn.textContent = "Pause";
+      });
+
+      function frame(t) {
+        const dt = Math.min(0.05, (t - lastT) / 1000 || 0);
+        lastT = t;
+        if (playing) clock = (clock + dt) % TOTAL;
+        render();
+        requestAnimationFrame(frame);
+      }
+
+      sync();
+      requestAnimationFrame(frame);
+    </script>
+  </body>
+</html>
