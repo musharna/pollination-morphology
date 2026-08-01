@@ -57,12 +57,21 @@ Nearest, in order of cheapness:
   strict paired measurement, because selection drives overlap to zero under both transfer models and
   carryover's benefit is worth nothing once nothing overlaps.
   [detail](2026-08-01-v2-result.md)
-- **reward currency** — pollen-as-lost-gametes vs nectar vs fragrance, which changes the cost of a
-  visit and so the whole payoff structure
+- ✅ **reward currency** — BUILT 2026-08-01, `sim/reward.js`. Harder & Thomson's saturating gain
+  curve reproduced (1.75× fall), and ⚠️ the mechanism is **finite stigma capacity, not grooming** —
+  grooming only sets the level. The pollen dilemma quantified: **nectar's best schedule is 4×
+  more gradual and yields 2.2× the male fitness**, because a pollen-rewarding flower must spend
+  gametes to advertise. ⚠️ Castellanos' two-sided prediction reproduces in **3 of 4 cells**;
+  frequent+efficient robustly fails and three of my explanations for it were refuted — the model
+  gives gradual dispensing no cost except stranding. [detail](2026-08-01-reward-result.md)
 - **more body plans as first-class** — check 2 showed the 2-D advantage runs **2.1–3.0×** across
   four animals, clearing 2× on every one; that variation is a result, not noise. ⚠️ The original
   "largest for small compact ones" did **not** survive the head-cap re-run — the default bee now
   leads, not the small slender plan. Only the coarse compact-above-elongated pattern holds.
+- **cost of prolonged presentation** — ⬜ _new, named by the reward work._ Gradual dispensing
+  currently has no downside but stranding, which is why the frequent+efficient cell cannot be
+  reached. Needs a maintenance cost for staying open, or pollen senescence in the anther. This is
+  the concrete missing mechanism, not a vague "more realism".
 - **deception** — no reward at all, already enumerated
 
 ### D. Close the head-tip boundary artefact ✅ _found and closed 2026-08-01_

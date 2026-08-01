@@ -28,7 +28,7 @@ a model that does not need geometry at all.
 | `docs/`            | groundwork, and a write-up per experiment including what went wrong            |
 
 Open `visit.html` in a browser — no build step, no dependencies. Run `node --test tests/` for the
-suite (47 tests). Every experiment is `node experiments/<name>.js`.
+suite (53 tests). Every experiment is `node experiments/<name>.js`.
 
 ## What has been measured
 
@@ -41,6 +41,12 @@ handed the whole body surface and draws its precision from the real pool's own d
 **Blind selection captures about half of that.** An evolving community reaches ~52% of the
 achievable ceiling, and the 2-D advantage survives intact — 3.07× under evolution against the
 optimiser's 2.67×. [detail](docs/2026-08-01-v1-result.md)
+
+**The pollen dilemma has a price, and it is large.** Pollen is reward and gamete at once, so a
+pollen-rewarding flower must spend gametes to advertise. Nectar breaks that coupling: its best
+dispensing schedule is **four times more gradual and yields 2.2× the male fitness**. Harder &
+Thomson's saturating gain curve is reproduced — and the mechanism turns out to be finite stigma
+capacity, not grooming. [detail](docs/2026-08-01-reward-result.md)
 
 **The measurement surface itself had a defect, and closing it moved the numbers.** The front of the
 animal was a coordinate edge that collapsed 38.5% of morphologies onto one along-body coordinate,
