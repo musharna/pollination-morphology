@@ -40,20 +40,31 @@ real symmetry. Floored pairs are now flagged rather than counted. The second was
 outright** — the stigma stops touching the animal at all. Herkogamy has a hard ceiling set by the
 visitor's body, not a smooth trade-off.
 
-## 2. Other pollinator body plans — **holds everywhere, 2.3–3.6×, and small animals gain most**
+## 2. Other pollinator body plans — **holds everywhere, 2.1–3.0×; compact plans gain most**
+
+Re-run 2026-08-01 after the head-cap fix. Each body plan now gets its own cap extent (r0/bodyLen
+differs per animal) and the steelman draws precision pairs from that plan's own pool.
 
 ```
   body plan          pool (rejected)   s sd     L1-free   L2    ratio
-  default bee         309 ( 91)       0.0412        9    30    3.33x
-  small slender       153 (247)       0.0520        7    25    3.57x
-  large robust        219 (181)       0.0275       11    27    2.45x
-  long slender        185 (215)       0.0298       11    25    2.27x
+  default bee         309 ( 91)       0.0436       12    36    3.00x
+  small slender       153 (247)       0.0540       10    26    2.60x
+  large robust        219 (181)       0.0325       18    37    2.06x
+  long slender        185 (215)       0.0307       13    28    2.15x
 ```
 
-The 2-D advantage is not a fact about one bee. But it is **modulated by body plan**, and in a way
-that makes mechanical sense: a long body gives the 1-D arm more room to spread along (L1-free rises
-9 → 11), so the marginal value of the second dimension falls. **The second placement dimension is
-worth most on small, compact pollinators.**
+_As originally run: 3.33 / 3.57 / 2.45 / 2.27, range 2.3–3.6×._
+
+The 2-D advantage is not a fact about one bee — it clears 2× on every plan. It is **modulated by
+body plan** in a way that makes mechanical sense: a long or large body gives the 1-D arm more room
+to spread along (L1-free rises 12 → 18 on the large robust plan), so the marginal value of the
+second dimension falls.
+
+> ⚠️ **One sub-claim did not survive the re-run.** The original read "small animals gain most",
+> on the strength of small slender leading at 3.57×. It no longer leads — the default bee does, at
+> 3.00× against small slender's 2.60×. What survives is the coarser pattern: the two compact plans
+> sit above the two elongated/large ones. The specific ordering that produced the original phrasing
+> was not robust to fixing the coordinate edge, and "small animals gain most" should not be quoted.
 
 Also visible: rejection rates swing from 23% to 62%. Small-bodied visitors are far harder for a
 flower to touch at all, which is a selective pressure the evolution loop will feel.
@@ -83,9 +94,11 @@ plus one modifier, which is a stronger claim than the framework itself makes.
 ## 4. Stigma-side placement — **same machinery, same answer**
 
 ```
-  anther placement    pool 309   L1-free  9   L2  30   3.33x
-  stigma placement    pool 285   L1-free  9   L2  27   3.00x
+  anther placement    pool 309   L1-free 12   L2  36   3.00x
+  stigma placement    pool 285   L1-free 12   L2  32   2.67x
 ```
+
+_As originally run: 3.33× and 3.00×._
 
 No separate treatment needed. One transfer routine serves both organs.
 

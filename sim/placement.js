@@ -159,6 +159,17 @@ const DEFAULT_BEE = {
 };
 
 function bodyRadius(bee, s) {
+  /* Ahead of the spine end lies the head's forward cap, a hemisphere of radius
+   * r0 whose local radius tapers to zero at the front pole. Every call inside
+   * the model passes s >= 0 (the spine sweep, bodyOffset, entryDepth), so this
+   * branch does not touch the contact geometry — it exists so that a cap
+   * coordinate coming back out of contactSite can be drawn, and measured,
+   * on the surface it actually names. */
+  if (s < 0) {
+    const r0 = bee.regions[0].r0;
+    const sinPsi = Math.min(1, (-s * bee.bodyLen) / r0);
+    return r0 * Math.sqrt(Math.max(0, 1 - sinPsi * sinPsi));
+  }
   const c = Math.min(Math.max(s, 0), 1);
   for (const reg of bee.regions) {
     if (c >= reg.s0 && c <= reg.s1) {
@@ -274,6 +285,35 @@ function contactSite(
 
   // Angle around the animal's own body, from its dorsal midline.
   const w = sub(target, bestQ);
+
+  /*
+   * THE FORWARD CAP.
+   *
+   * The spine sweep above stops dead at s=0, so an organ sitting deeper in the
+   * tube than the head could reach pins at s=0 no matter where it actually is,
+   * and every such morphology collapses onto one coordinate. 38.5% of sampled
+   * morphologies touch that boundary, and the s axis is the only axis the L1
+   * arms are allowed to use — so an arbitrary coordinate edge was standing in
+   * for along-body position across a third of the pool.
+   *
+   * The head is a rounded cap, not a coordinate edge. The CONTACT TEST above
+   * already treats it as one: for a capsule whose spine ends in a hemisphere of
+   * radius r0, surface distance is d - r0, which is exactly the clearance
+   * computed above because bodyRadius(bee, 0) is r0. So nothing about whether
+   * the animal is touched changes here. Only the label does.
+   *
+   * A contact in unit direction u from the spine end lands on the cap at axial
+   * offset r0*(u.fwd) ahead of it, which in body lengths is s = -r0*(u.fwd)/L.
+   * A point directly ahead still maps to the front pole — but that is a real
+   * geometric pole with measure-zero degeneracy, like the pole of a globe,
+   * rather than a cutoff pinning a third of the pool.
+   */
+  let outS = bestS;
+  if (bestS <= 0) {
+    const nw = norm(w);
+    const ahead = nw > 0 ? dot(w, bestFrame.fwd) / nw : 0;
+    if (ahead > 0) outS = -(bodyRadius(bee, 0) * ahead) / bee.bodyLen;
+  }
   const perp = sub(w, scale(bestFrame.fwd, dot(w, bestFrame.fwd)));
   const dorsalRolled = add(
     scale(bestFrame.dorsal, Math.cos(roll)),
@@ -283,9 +323,11 @@ function contactSite(
   const phi = Math.atan2(dot(perp, lateralRolled), dot(perp, dorsalRolled));
 
   return {
-    s: bestS,
+    s: outS,
     phi,
-    region: regionAt(bee, bestS),
+    /* regionAt clamps to [0,1], so a cap contact reports "face" — which is
+     * exactly right, the cap IS the front of the face. */
+    region: regionAt(bee, outS),
     face: faceOf(phi),
     clearance,
   };

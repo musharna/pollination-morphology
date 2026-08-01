@@ -3,6 +3,14 @@
 **Date:** 2026-08-01 · **Code:** `sim/packing.js`, `experiments/ablation.js`,
 `experiments/precision-audit.js` · **Predictions:** groundwork §4.4, written before this ran.
 
+> ⚠️ **SUPERSEDED NUMBERS — corrected 2026-08-01 by the head-cap fix.** Every figure in the table
+> below was measured with (a) a coordinate edge at the front of the head that collapsed 38.5% of
+> morphologies onto one along-body coordinate, and (b) synthetic arms built at _median_ precision,
+> which made CTRL-2D-ideal a bound L2 could beat. **The conclusion holds — 2-D out-packs 1-D by
+> about 3× — but the headline is now 3.0×, not 3.3×, and L2 sits at 39% of the ideal ceiling
+> rather than 88%.** Current figures: [head-cap result](2026-08-01-head-cap-result.md). The
+> original run is kept below as the record of what was measured when.
+
 This is the delete-the-grid test for the project. It ran **before** the evolution loop was built,
 because if a 1-D placement gene matches 3-D-derived placement, the geometry is decoration and v1
 should not be written.
@@ -25,6 +33,8 @@ only in the geometry of the placement space, never in how it is scored.
 
 ## Result
 
+**As originally run (superseded — see the banner above):**
+
 ```
 morphologies sampled : 400   rejected (contact < 0.5): 91 (22.8%)   viable pool: 309
 matched precision (median of L2): s sd 0.0412, phi sd 0.4614 rad
@@ -37,6 +47,27 @@ L1-free (1-D gene) [STEELMAN]    200       6       7       9      10      16
 L2 (from morphology)             309      18      22      30      45     100
 CTRL-2D-ideal [CEILING]          560      18      23      34      51     101
 ```
+
+**Current, after the head cap and distribution-matched precision:**
+
+```
+morphologies sampled : 400   rejected (contact < 0.5): 91 (22.8%)   viable pool: 309
+matched precision: (s sd, phi sd) PAIRS drawn from the pool's own distribution
+  s sd    p05 0.0270  med 0.0436  p95 0.0591
+  phi sd  p05 0.1208  med 0.4614  p95 0.8451 rad
+reachable body bins  : 330 of 480 (68.8%), 19 of 24 along the body
+
+arm                             pool  t=0.05   t=0.1   t=0.2   t=0.3   t=0.5
+L0 (no placement)                 60       1       1       1       1       1
+L1-strict (roll discarded)       309       7       7       8       9      14
+L1-free (1-D gene) [STEELMAN]    234       9      10      12      18      35
+L2 (from morphology)             309      24      25      36      54     118
+CTRL-2D-ideal [CEILING]         3760      42      55      93     148     401
+```
+
+The pool is unchanged at 309 because the cap fix relabels contacts without changing whether they
+happen — which is pinned as a regression test. L1-strict gained most in relative terms (6 → 8),
+exactly as it should if the coordinate edge had been costing the 1-D arm resolution.
 
 **L2 out-packs the best 1-D arm by 3.0–4.5× at every threshold.** The §4.4 packing prediction is
 confirmed on its geometric leg, with margin.
@@ -76,6 +107,15 @@ steelman at the **exact selected precision** moves it not at all:
 Roll precision is worth nothing to an arm that has no roll to spend. That is the mechanism, not a
 bias. The steelman is also **saturated, not pool-limited** — 50/100/200/400/800 candidates give
 ceilings 8/8/9/9/9.
+
+> ⚠️ **This audit was too narrow, and later measurement showed it.** It re-ran the steelman at the
+> _selected_ precision — one scalar swapped for another — and correctly found no movement. It never
+> asked what happens when the steelman is given the pool's whole precision **distribution**. That
+> turns out to matter: heterogeneous precision raises L1-free from 9 to 12 at τ=0.2, because a
+> steelman allowed to contain sharp species packs them more tightly along its one axis. The headline
+> ratio still stands at 3.0×, so the confound was real but not fatal. The sharper lesson is that
+> testing a distribution by substituting one summary statistic for another cannot detect an effect
+> that lives in the distribution's _spread_. See [head-cap result](2026-08-01-head-cap-result.md).
 
 ## The genuine surprise
 

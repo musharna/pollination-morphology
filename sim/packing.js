@@ -14,7 +14,24 @@
  * placement space — and never in how it is scored.
  */
 
-const S_BINS = 18;
+/*
+ * Along-body binning runs from the front of the head's cap to the tail.
+ *
+ * S_UNITS is the RESOLUTION — bins per body length — and is what sets how
+ * finely two species must differ to count as separated. S_EXTRA prepends bins
+ * ahead of the spine end for the head's forward cap, where contacts with organs
+ * deeper than the head can reach now land (see the cap note in placement.js).
+ *
+ * The extra bins are prepended AT THE SAME WIDTH deliberately. That makes
+ * binning for s >= 0 a pure index shift, so every species that never touches
+ * the cap keeps a numerically identical histogram and identical overlaps — and
+ * the before/after comparison for the cap fix isolates the cap rather than
+ * silently moving every number in the project. tests/head-cap.test.js pins it.
+ */
+const S_UNITS = 18;
+const S_EXTRA = 6;
+const S_BINS = S_UNITS + S_EXTRA;
+const S_LO = -S_EXTRA / S_UNITS;
 const PHI_BINS = 20;
 
 /* ---------------------------------------------------------------- signatures
@@ -49,7 +66,8 @@ function sig1D(hits) {
   return normalise(h);
 }
 
-const sBin = (s) => Math.min(S_BINS - 1, Math.max(0, Math.floor(s * S_BINS)));
+const sBin = (s) =>
+  Math.min(S_BINS - 1, Math.max(0, Math.floor((s - S_LO) * S_UNITS)));
 const phiBin = (phi) =>
   Math.min(
     PHI_BINS - 1,
@@ -133,7 +151,13 @@ function packingCeiling(mat, tau, { restarts = 200, seed = 1 } = {}) {
  * morphology. A species is a blob of visits centred on (s0, phi0) with a given
  * spread; roll wraps because it is an angle around the body.
  */
-function syntheticHits(s0, phi0, sSd, phiSd, { n = 240, seed = 1 } = {}) {
+function syntheticHits(
+  s0,
+  phi0,
+  sSd,
+  phiSd,
+  { n = 240, seed = 1, sLo = 0 } = {},
+) {
   let rng = seed >>> 0 || 1;
   const next = () => {
     rng ^= rng << 13;
@@ -149,7 +173,11 @@ function syntheticHits(s0, phi0, sSd, phiSd, { n = 240, seed = 1 } = {}) {
   const hits = [];
   for (let i = 0; i < n; i++) {
     let s = s0 + gauss() * sSd;
-    if (s < 0 || s > 1) continue; // off the end of the animal
+    /* Off the end of the animal. sLo defaults to 0 — the spine end — so the
+     * synthetic arms keep the domain they had. The ablation passes the bee's
+     * actual cap extent instead, because a steelman confined to a smaller
+     * surface than the real animal gets would be a rigged comparison. */
+    if (s < sLo || s > 1) continue;
     let phi = phi0 + gauss() * phiSd;
     while (phi > Math.PI) phi -= 2 * Math.PI;
     while (phi < -Math.PI) phi += 2 * Math.PI;
@@ -190,6 +218,10 @@ const median = (xs) => {
 
 const API = {
   S_BINS,
+  S_UNITS,
+  S_EXTRA,
+  S_LO,
+  sBin,
   PHI_BINS,
   sig1D,
   sig2D,

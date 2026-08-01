@@ -37,6 +37,20 @@ const N_MORPH = 400;
 const N_VISITS = 240;
 const MIN_CONTACT = 0.5; // a flower that rarely touches the animal is not a species
 
+/*
+ * The animal's surface now extends ahead of the spine end onto the head's
+ * forward cap (roadmap item D). The synthetic arms must be given THE SAME
+ * DOMAIN, at the same density of species centres — a steelman confined to a
+ * smaller surface than the real morphologies get would lose for a reason that
+ * has nothing to do with dimensionality, which is precisely the rigging this
+ * ablation exists to avoid. So counts scale with the domain rather than staying
+ * fixed.
+ */
+const S_LO = -P.bodyRadius(P.DEFAULT_BEE, 0) / P.DEFAULT_BEE.bodyLen;
+const S_SPAN = 1 - S_LO;
+const scaled = (n) => Math.round(n * S_SPAN);
+const RESTARTS = 600;
+
 function rngFrom(seed) {
   let x = seed >>> 0 || 1;
   return () => {
@@ -100,35 +114,69 @@ function armL0(nSpecies) {
   return Array.from({ length: nSpecies }, () => flat);
 }
 
-function armFree1D(count, sSd, phiSd, seed) {
+/*
+ * MATCHED PRECISION, PROPERLY.
+ *
+ * packing.js states the constraint the synthetic arms exist under: precision
+ * must be matched or the comparison is rigged. The first implementation matched
+ * only the MEDIAN, and that turned out to be an incomplete version of the
+ * project's own rule. Real precision is strongly heterogeneous — phi sd runs
+ * 0.12 at p05 to 0.85 at p95, and 71 of 309 species are tighter than median on
+ * BOTH axes. Handing every synthetic blob the median spread therefore builds a
+ * "ceiling" that a quarter of the real pool is individually sharper than, and
+ * L2 duly exceeded it at two tolerances. A ceiling the measured arm beats is
+ * not a ceiling.
+ *
+ * So the synthetic arms now inherit the pool's precision DISTRIBUTION, drawn as
+ * (s sd, phi sd) PAIRS so any correlation between the two survives. Shuffled
+ * once with a fixed seed so precision does not line up with grid position.
+ */
+function precisionPool(pool, seed) {
+  const pairs = pool.map((p) => [K.sSpread(p.d.hits), K.phiSpread(p.d.hits)]);
+  const rng = rngFrom(seed);
+  for (let i = pairs.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+  }
+  return pairs;
+}
+
+function armFree1D(count, prec, seed) {
   const sigs = [];
   for (let i = 0; i < count; i++) {
-    const s0 = (i + 0.5) / count;
+    const s0 = S_LO + ((i + 0.5) / count) * S_SPAN;
+    const [sSd, phiSd] = prec[i % prec.length];
     sigs.push(
       K.sig2D(
-        K.syntheticHits(s0, 0, sSd, phiSd, { n: N_VISITS, seed: seed + i }),
+        K.syntheticHits(s0, 0, sSd, phiSd, {
+          n: N_VISITS,
+          seed: seed + i,
+          sLo: S_LO,
+        }),
       ),
     );
   }
   return sigs;
 }
 
-function armFree2D(nS, nPhi, sSd, phiSd, seed) {
+function armFree2D(nS, nPhi, prec, seed) {
   const sigs = [];
   let k = 0;
   for (let i = 0; i < nS; i++)
-    for (let j = 0; j < nPhi; j++)
+    for (let j = 0; j < nPhi; j++) {
+      const [sSd, phiSd] = prec[k % prec.length];
       sigs.push(
         K.sig2D(
           K.syntheticHits(
-            (i + 0.5) / nS,
+            S_LO + ((i + 0.5) / nS) * S_SPAN,
             -Math.PI + (j / nPhi) * 2 * Math.PI,
             sSd,
             phiSd,
-            { n: N_VISITS, seed: seed + k++ },
+            { n: N_VISITS, seed: seed + k++, sLo: S_LO },
           ),
         ),
       );
+    }
   return sigs;
 }
 
@@ -137,11 +185,20 @@ function armFree2D(nS, nPhi, sSd, phiSd, seed) {
 function ceilings(sigs, label) {
   const mat = K.overlapMatrix(sigs);
   const row = { arm: label, pool: sigs.length };
-  for (const tau of TAUS)
-    row[`tau${tau}`] = K.packingCeiling(mat, tau, {
-      restarts: 200,
-      seed: 99,
-    }).size;
+  /* The packer is randomised greedy over an NP-hard problem, so it UNDERCOUNTS
+   * and the shortfall shrinks with restarts. At 200 restarts L2 at tau=0.05
+   * returned 21 while 2000 restarts returned 21-23 across seeds — the old
+   * setting sat at the bottom of the range. Raised, and every reported figure
+   * is the best of several seeds so all arms are undercounted equally little. */
+  for (const tau of TAUS) {
+    let best = 0;
+    for (const seed of [99, 7, 4242])
+      best = Math.max(
+        best,
+        K.packingCeiling(mat, tau, { restarts: RESTARTS, seed }).size,
+      );
+    row[`tau${tau}`] = best;
+  }
   return row;
 }
 
@@ -158,10 +215,15 @@ function main() {
   /* Precision, measured off the real arm so the synthetic arms inherit it
    * instead of being handed a number chosen by me. A steelman given tighter
    * blobs than the geometry produces would win for the wrong reason. */
-  const sSd = K.median(pool.map((p) => K.sSpread(p.d.hits)));
-  const phiSd = K.median(pool.map((p) => K.phiSpread(p.d.hits)));
+  const prec = precisionPool(pool, 31337);
+  const sQ = pool.map((p) => K.sSpread(p.d.hits)).sort((a, b) => a - b);
+  const pQ = pool.map((p) => K.phiSpread(p.d.hits)).sort((a, b) => a - b);
+  const at = (a, f) => a[Math.floor(f * (a.length - 1))];
   console.log(
-    `\nmatched precision (median of L2): s sd ${sSd.toFixed(4)}, phi sd ${phiSd.toFixed(4)} rad`,
+    `\nmatched precision: the synthetic arms draw (s sd, phi sd) PAIRS from the\n` +
+      `real pool's own distribution, not its median.\n` +
+      `  s sd    p05 ${at(sQ, 0.05).toFixed(4)}  med ${at(sQ, 0.5).toFixed(4)}  p95 ${at(sQ, 0.95).toFixed(4)}\n` +
+      `  phi sd  p05 ${at(pQ, 0.05).toFixed(4)}  med ${at(pQ, 0.5).toFixed(4)}  p95 ${at(pQ, 0.95).toFixed(4)} rad`,
   );
 
   /* How much of the animal can the morphology space actually reach? If this
@@ -170,7 +232,7 @@ function main() {
   const occupiedS = new Set();
   for (const p of pool)
     for (const h of p.d.hits) {
-      const sb = Math.min(17, Math.floor(h.s * 18));
+      const sb = K.sBin(h.s);
       const pb = Math.min(
         19,
         Math.floor(((h.phi + Math.PI) / (2 * Math.PI)) * 20),
@@ -178,8 +240,9 @@ function main() {
       occupied.add(`${sb},${pb}`);
       occupiedS.add(sb);
     }
+  const TOTAL_BINS = K.S_BINS * K.PHI_BINS;
   console.log(
-    `reachable body bins  : ${occupied.size} of ${18 * 20} 2-D bins (${((100 * occupied.size) / 360).toFixed(1)}%), ${occupiedS.size} of 18 along the body`,
+    `reachable body bins  : ${occupied.size} of ${TOTAL_BINS} 2-D bins (${((100 * occupied.size) / TOTAL_BINS).toFixed(1)}%), ${occupiedS.size} of ${K.S_BINS} along the body`,
   );
 
   const sigs2D = pool.map((p) => K.sig2D(p.d.hits));
@@ -189,11 +252,11 @@ function main() {
     ceilings(armL0(60), "L0 (no placement)"),
     ceilings(sigs1D, "L1-strict (roll discarded)"),
     ceilings(
-      armFree1D(200, sSd, phiSd, 20000),
+      armFree1D(scaled(200), prec, 20000),
       "L1-free (1-D gene) [STEELMAN]",
     ),
     ceilings(sigs2D, "L2 (from morphology)"),
-    ceilings(armFree2D(40, 14, sSd, phiSd, 40000), "CTRL-2D-ideal [CEILING]"),
+    ceilings(armFree2D(scaled(80), 40, prec, 40000), "CTRL-2D-ideal [CEILING]"),
   ];
 
   console.log("\nspecies packing ceiling, by isolation threshold tau:\n");
@@ -220,4 +283,14 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { main, sampleMorphologies };
+module.exports = {
+  main,
+  sampleMorphologies,
+  precisionPool,
+  armFree1D,
+  armFree2D,
+  S_LO,
+  S_SPAN,
+  scaled,
+  RESTARTS,
+};

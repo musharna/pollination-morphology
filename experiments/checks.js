@@ -103,10 +103,17 @@ function check1() {
    * theta keeps both directions off the floor, and any pair that still
    * bottoms out is flagged rather than counted.
    */
-  console.log("\n  asymmetry vs anther-stigma separation, probed off the floor:");
+  console.log(
+    "\n  asymmetry vs anther-stigma separation, probed off the floor:",
+  );
   console.log("    theta  separation    A->B     B->A     asym");
   for (const deg of [30, 45, 60]) {
-    for (const [at, st] of [[0.575, 0.575], [0.55, 0.6], [0.5, 0.65], [0.45, 0.72]]) {
+    for (const [at, st] of [
+      [0.575, 0.575],
+      [0.55, 0.6],
+      [0.5, 0.65],
+      [0.45, 0.72],
+    ]) {
       const Ah = species(0, { antherT: at, stigmaT: st });
       const Bh = species((deg * Math.PI) / 180, { antherT: at, stigmaT: st });
       const ab = dirOverlap(Ah, Bh),
@@ -127,11 +134,25 @@ function check1() {
    * independent seeds: if the sign flips, it is noise and there is no
    * directional isolation to model.
    */
-  console.log("\n  is the sign systematic? (B->A minus A->B, independent seeds)");
+  console.log(
+    "\n  is the sign systematic? (B->A minus A->B, independent seeds)",
+  );
   const dirOverlapSeed = (donor, recipient, sd) =>
     K.overlap(
-      K.sig2D(P.placementDistribution(donor, bee, { n: N_VISITS, seed: sd, part: "anther" }).hits),
-      K.sig2D(P.placementDistribution(recipient, bee, { n: N_VISITS, seed: sd, part: "stigma" }).hits),
+      K.sig2D(
+        P.placementDistribution(donor, bee, {
+          n: N_VISITS,
+          seed: sd,
+          part: "anther",
+        }).hits,
+      ),
+      K.sig2D(
+        P.placementDistribution(recipient, bee, {
+          n: N_VISITS,
+          seed: sd,
+          part: "stigma",
+        }).hits,
+      ),
     );
   for (const deg of [30, 45, 60]) {
     const A2 = species(0);
@@ -146,7 +167,9 @@ function check1() {
       `    ${String(deg).padStart(3)}deg  mean ${mean >= 0 ? "+" : ""}${mean.toFixed(4)}  ` +
         `range [${Math.min(...ds).toFixed(3)}, ${Math.max(...ds).toFixed(3)}]  ` +
         `${pos}/${ds.length} seeds positive` +
-        (pos === ds.length || pos === 0 ? "   <- consistent" : "   <- SIGN FLIPS, noise"),
+        (pos === ds.length || pos === 0
+          ? "   <- consistent"
+          : "   <- SIGN FLIPS, noise"),
     );
   }
 }
@@ -196,17 +219,31 @@ function poolFor(bee, part, seed = 7, n = 400) {
   return { pool, rejected };
 }
 
-function armFree1D(count, sSd, phiSd, seed) {
+/*
+ * The steelman spans THIS bee's whole surface, cap included, and draws (s sd,
+ * phi sd) PAIRS from the pool's own precision distribution.
+ *
+ * Both corrections come from the head-cap work. Each body plan has its own cap
+ * extent, r0/bodyLen, so the domain is per-bee rather than a shared constant —
+ * a small compact animal has proportionally more head in front of its spine end
+ * than a long slender one, and giving them all the default bee's domain would
+ * quietly compare different surfaces.
+ */
+function armFree1D(count, prec, sLo, seed) {
+  const span = 1 - sLo;
   const out = [];
-  for (let i = 0; i < count; i++)
+  for (let i = 0; i < count; i++) {
+    const [sSd, phiSd] = prec[i % prec.length];
     out.push(
       K.sig2D(
-        K.syntheticHits((i + 0.5) / count, 0, sSd, phiSd, {
+        K.syntheticHits(sLo + ((i + 0.5) / count) * span, 0, sSd, phiSd, {
           n: N_VISITS,
           seed: seed + i,
+          sLo,
         }),
       ),
     );
+  }
   return out;
 }
 
@@ -219,13 +256,23 @@ function ablate(bee, part, label) {
     return null;
   }
   const sSd = K.median(pool.map((d) => K.sSpread(d.hits)));
-  const phiSd = K.median(pool.map((d) => K.phiSpread(d.hits)));
+  const prec = pool.map((d) => [K.sSpread(d.hits), K.phiSpread(d.hits)]);
+  const sLo = -P.bodyRadius(bee, 0) / bee.bodyLen;
+  const span = 1 - sLo;
   const l2 = K.overlapMatrix(pool.map((d) => K.sig2D(d.hits)));
-  const l1 = K.overlapMatrix(armFree1D(200, sSd, phiSd, 20000));
+  const l1 = K.overlapMatrix(
+    armFree1D(Math.round(200 * span), prec, sLo, 20000),
+  );
 
   const tau = 0.2;
-  const a = K.packingCeiling(l1, tau, { restarts: 200, seed: 99 }).size;
-  const b = K.packingCeiling(l2, tau, { restarts: 200, seed: 99 }).size;
+  const best = (m) => {
+    let v = 0;
+    for (const seed of [99, 7, 4242])
+      v = Math.max(v, K.packingCeiling(m, tau, { restarts: 600, seed }).size);
+    return v;
+  };
+  const a = best(l1);
+  const b = best(l2);
   console.log(
     `  ${label.padEnd(22)} pool ${String(pool.length).padStart(3)} (rej ${String(rejected).padStart(3)})  ` +
       `s sd ${sSd.toFixed(4)}  L1-free ${String(a).padStart(3)}   L2 ${String(b).padStart(3)}   ` +
