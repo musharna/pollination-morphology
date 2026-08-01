@@ -54,7 +54,18 @@ Nearest, in order of cheapness:
   animals and is largest for small compact ones; that variation is a result, not noise
 - **deception** — no reward at all, already enumerated
 
-### D. Replace overlap with a transfer rate ⬜
+### D. Close the head-tip boundary artefact ⬜ *new, found 2026-08-01*
+
+`contactSite` finds the point on the body **closest** to an organ. When an organ sits deeper than
+the animal's head can reach, that argmin saturates at s=0 — the very front of the face — so many
+different morphologies map to one coordinate. **Four of the nine species in the evolved L2
+community sit exactly on that boundary**, separated from one another only in roll.
+
+Their separation in roll is real, but the body's length is doing no work for them, and the count
+cannot be fully trusted until the head is a rounded cap rather than a coordinate edge. Check: re-run
+v1 with the body extended past s=0, and see whether the ceiling of 14 and the evolved 9 survive.
+
+### E. Replace overlap with a transfer rate ⬜
 
 Everything currently rests on _placement overlap_, which is a proxy. The sharpest available
 calibration gate is Johnson & Harder 2023 (228 species): <45% removal for solid pollinia against
@@ -62,7 +73,7 @@ calibration gate is Johnson & Harder 2023 (228 species): <45% removal for solid 
 > 80% for granular monads. A model that reproduces that split has earned the right to call its
 > number a transfer rate.
 
-### E. Renderer, only where it serves the above ⬜
+### F. Renderer, only where it serves the above ⬜
 
 Known defects: flowers read as long trumpets rather than compact blooms (that is the model's own
 aspect ratio, so it is a biology change); near petals occlude the mouth at some rotations; the
