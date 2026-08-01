@@ -40,14 +40,18 @@ frequency-dependent and converges, so what breaks that symmetry in the first pla
 individual-based model with real inheritance and hybrid formation. **This is the biggest open
 scientific question in the project.**
 
-### C. Widen the table, which is where value scales ⬜
+### C. Widen the table, which is where value scales — 🟡 first class shipped
 
 Groundwork §4.6: rows are mechanism classes, columns are pollinator body plans. v1 implements
 **one cell**. Value scales with how many classes are implemented, not with render quality.
 Nearest, in order of cheapness:
 
-- **carryover between visits** — pollen persists on the body across several flowers, which is where
-  last-male advantage and packaging efficiency become measurable rather than deferred
+- ✅ **carryover between visits** — BUILT 2026-08-01, `sim/carryover.js`. Packaging efficiency rises
+  4.6% → 40.5%; last-male advantage emerges from stacking rather than being imposed; carryover
+  *raises* coexistence (8→9 separated, 3→5 overlapping), so extra chances beat rival accumulation.
+  [detail](2026-08-01-carryover-result.md). **Not yet inside the evolution loop** — a rare mutant's
+  invasion fitness needs its own foraging bout, so this changes coexistence among given species, not
+  what they evolve into. That is the next step for this item.
 - **reward currency** — pollen-as-lost-gametes vs nectar vs fragrance, which changes the cost of a
   visit and so the whole payoff structure
 - **more body plans as first-class** — check 2 showed the 2-D advantage runs 2.3–3.6× across four
