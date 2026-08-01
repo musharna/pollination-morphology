@@ -28,20 +28,26 @@ a model that does not need geometry at all.
 | `docs/`            | groundwork, and a write-up per experiment including what went wrong            |
 
 Open `visit.html` in a browser — no build step, no dependencies. Run `node --test tests/` for the
-suite (30 tests). Every experiment is `node experiments/<name>.js`.
+suite (47 tests). Every experiment is `node experiments/<name>.js`.
 
 ## What has been measured
 
 **The 3-D contact model earns its place.** A free 1-D placement gene — the cheap version of this
-project — supports 9 coexisting species on one pollinator where morphology-derived 2-D placement
-supports 30, at matched precision, with both pools saturated. Confound-audited: the packer does
-select roll-tight species, but re-running the 1-D arm at that exact precision does not move it,
-because roll precision is worth nothing to an arm with no roll to spend.
+project — supports 12 coexisting species on one pollinator where morphology-derived 2-D placement
+supports 36, at matched precision, with both pools saturated. The 1-D arm is a steelman: it is
+handed the whole body surface and draws its precision from the real pool's own distribution.
 [detail](docs/2026-08-01-ablation-result.md)
 
-**Blind selection captures most of that.** An evolving community reaches ~64% of the achievable
-ceiling, and the 2-D advantage survives almost intact — 2.7× under evolution against the
-optimiser's 2.8×. [detail](docs/2026-08-01-v1-result.md)
+**Blind selection captures about half of that.** An evolving community reaches ~52% of the
+achievable ceiling, and the 2-D advantage survives intact — 3.07× under evolution against the
+optimiser's 2.67×. [detail](docs/2026-08-01-v1-result.md)
+
+**The measurement surface itself had a defect, and closing it moved the numbers.** The front of the
+animal was a coordinate edge that collapsed 38.5% of morphologies onto one along-body coordinate,
+and the "ideal" ceiling arm was built at median precision — which made it a bound the measured arm
+could beat. Both are fixed; the ~3× headline survived, but the claim that morphology reaches 88% of
+the ideal placement surface did not, and is now 39%.
+[detail](docs/2026-08-01-head-cap-result.md)
 
 **Precision is a modifier, not a niche axis.** Species differing only in how repeatable their
 placement is cannot coexist at any realistic threshold — a tight distribution nests inside a broad

@@ -6,8 +6,15 @@
  * can only take a step that helps it against the community it is in right now.
  * The gap between those two numbers is the finding, whichever way it falls.
  *
- * Reference ceilings at tau=0.2 from docs/2026-08-01-ablation-result.md:
- *   L0  1     L1-free  9     L2  30     free-2-D ideal  34
+ * THE DENOMINATOR IS THE tau->0 CEILING, NOT tau=0.2. Evolved communities show
+ * max pairwise overlap 0.000 — selection does not tolerate overlap, it
+ * eliminates it — so scoring evolution against a ceiling computed at a
+ * tolerance it never uses compares two different things. That mistake produced
+ * one wrong headline already (30% against the true 64%).
+ *
+ * Ceilings from experiments/tau-zero-ceiling.js, re-run 2026-08-01 after the
+ * head-cap fix and the switch to distribution-matched precision:
+ *   L0  1     L1-free  6     L2  16
  */
 
 const P = require("../sim/placement.js");
@@ -89,7 +96,7 @@ function main() {
     sSd: prec.sSd,
     phiSd: prec.phiSd,
   };
-  const CEIL = { L2: 30, L1: 9, L0: 1 };
+  const CEIL = { L2: 16, L1: 6, L0: 1 };
 
   console.log(
     "arm   ceiling   surviving species (per replicate)      mean    reached",
