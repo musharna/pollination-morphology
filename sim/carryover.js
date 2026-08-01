@@ -79,6 +79,16 @@ const DEFAULTS = {
   groom: 0.18, // per-grain probability of being lost per visit
   radius: 1.15, // stigma contact radius, in body-metric units
   cap: 140, // how much pollen the animal can carry at once
+
+  /* ---- reward currency (sim/reward.js). Defaults reproduce the pre-reward
+   * bout EXACTLY: an unlimited anther, everything offered at once, and no
+   * active collection. The carryover tests are the regression guard for that,
+   * including the groom=1 limiting case the whole model is checked against. */
+  pollenPerFlower: Infinity, // finite lifetime pollen pool per flower
+  presentRate: 1, // fraction of that pool offered per visit (dispensing schedule)
+  visitsPerFlower: Infinity, // visits a flower gets before it dies with its pollen
+  visitJitter: false, // if set, that count is a MEAN and each flower's life is geometric
+  harvest: 0, // fraction of the load ACTIVELY packed away by the animal
 };
 
 /*
@@ -96,10 +106,28 @@ function runBout(sites, abundance, opts = {}) {
     groom,
     radius,
     cap,
+    pollenPerFlower,
+    presentRate,
+    visitsPerFlower,
+    visitJitter,
+    harvest,
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
   const rng = makeRng(seed);
   const S = sites.length;
+
+  /* Pollen remaining in the flower of species i that the animal is currently
+   * working. A flower with a finite pool dispenses part of it per visit and is
+   * replaced when spent — which is what makes a DISPENSING SCHEDULE meaningful
+   * rather than a rescaling of `deposit`. */
+  const finite = Number.isFinite(pollenPerFlower);
+  const remaining = new Float64Array(S).fill(finite ? pollenPerFlower : 0);
+  const released = new Float64Array(S);
+  const unreleased = new Float64Array(S);
+  const flowersUsed = new Float64Array(S).fill(finite ? 1 : 0);
+  const flowerVisits = new Float64Array(S);
+  const dosePerVisit = Math.max(1, Math.round(presentRate * pollenPerFlower));
+  let harvested = 0;
 
   const cum = [];
   let acc = 0;
@@ -137,10 +165,11 @@ function runBout(sites, abundance, opts = {}) {
        * stigma takes the most recent grains — last-male advantage is not
        * imposed here, it falls out of the stacking. */
       if (lastMale) near.sort((x, y) => load[y].t - load[x].t);
-      else for (let q = near.length - 1; q > 0; q--) {
-        const r = (rng() * (q + 1)) | 0;
-        [near[q], near[r]] = [near[r], near[q]];
-      }
+      else
+        for (let q = near.length - 1; q > 0; q--) {
+          const r = (rng() * (q + 1)) | 0;
+          [near[q], near[r]] = [near[r], near[q]];
+        }
       const take = near.slice(0, pickup);
       for (const gi of take) {
         const g = load[gi];
@@ -168,12 +197,76 @@ function runBout(sites, abundance, opts = {}) {
     }
     load = kept;
 
-    // --- then the anther loads it up
-    for (let d = 0; d < deposit; d++) {
+    /*
+     * --- then the anther loads it up.
+     *
+     * With an unlimited pool this is the original fixed `deposit`. With a
+     * finite pool the flower hands over its scheduled dose and is replaced once
+     * spent, so `presentRate` controls the DOSE while the pool controls the
+     * TOTAL — the two quantities pollen presentation theory separates.
+     */
+    let dose = deposit;
+    if (finite) {
+      /*
+       * A flower gets a bounded number of visits and then dies, and whatever it
+       * has not yet dispensed dies with it. That waste is the entire reason
+       * pollen presentation theory is TWO-SIDED: gradual dispensing spreads
+       * pollen across many visitors when visitors are plentiful, but strands it
+       * in the anther when they are scarce (Castellanos et al. 2006,
+       * 10.1086/498854). Replacing flowers only once they are spent would
+       * quietly guarantee every flower drains, and the model could then only
+       * ever return "dispense gradually".
+       */
+      /* With jitter the flower's life is geometric with the same mean, so a
+       * gradual disperser is sometimes stranded with pollen still in the anther
+       * even when visitors are plentiful on average. Deterministic lifetimes
+       * remove that risk entirely, and removing it is what makes gradual
+       * dispensing unbeatable whenever the mean clears the dispensal
+       * requirement. */
+      const dead = visitJitter
+        ? Number.isFinite(visitsPerFlower) && rng() < 1 / visitsPerFlower
+        : flowerVisits[j] >= visitsPerFlower;
+      if (dead) {
+        unreleased[j] += remaining[j];
+        remaining[j] = pollenPerFlower;
+        flowerVisits[j] = 0;
+        flowersUsed[j] += 1;
+      } else if (remaining[j] <= 0) {
+        remaining[j] = pollenPerFlower; // spent, so on to the next flower
+        flowerVisits[j] = 0;
+        flowersUsed[j] += 1;
+      }
+      flowerVisits[j] += 1;
+      dose = Math.min(dosePerVisit, remaining[j]);
+      remaining[j] -= dose;
+      released[j] += dose;
+    }
+    for (let d = 0; d < dose; d++) {
       const aSite = site.anther[(rng() * site.anther.length) | 0];
       load.push({ s: aSite.s, phi: aSite.phi, sp: j, t: v });
       produced++;
     }
+
+    /*
+     * --- and the animal packs some of it away for itself.
+     *
+     * THE POLLEN DILEMMA: pollen is simultaneously the reward and the male
+     * gamete, so a grain eaten is a grain never delivered (Oliveira et al. 2020,
+     * 10.3390/plants9121685). This is ACTIVE collection into the corbiculae and
+     * is distinct from the passive grooming loss above — a nectar-rewarding
+     * flower has grooming but no harvest, which is exactly the contrast
+     * sim/reward.js measures. It comes AFTER the fresh load because that is
+     * when a bee packs: it works over the pollen it has just picked up.
+     */
+    if (harvest > 0) {
+      const keep = [];
+      for (const g of load) {
+        if (rng() < harvest) harvested++;
+        else keep.push(g);
+      }
+      load = keep;
+    }
+
     if (load.length > cap) {
       load.sort((a, b) => a.t - b.t);
       groomedOff += load.length - cap;
@@ -187,6 +280,10 @@ function runBout(sites, abundance, opts = {}) {
     landedRight,
     landedWrong,
     groomedOff,
+    harvested,
+    released,
+    unreleased,
+    flowersUsed,
     retained: load.length,
     ageOnDeposit,
     visits,
