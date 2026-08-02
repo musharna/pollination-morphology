@@ -127,11 +127,66 @@ Both routes agree in direction and neither pins the number:
 **The 3× headline does not survive steelmanning the control.** What the true figure is cannot be
 stated at current resolution.
 
+## Part 3 — a continuous metric, and what it actually says
+
+Finer bins would have been a band-aid: discretisation still imposes a floor, just lower, and the next
+arm with finer placement re-trips it silently. The correct model is that these are continuous
+distributions whose overlap has a continuous value, and the histogram was an implementation shortcut.
+
+`sim/packing.js` now also provides a **non-parametric continuous overlap** — a KDE estimate of the
+overlapping coefficient ∫min(f_A,f_B), bandwidth from each cloud's own spread, distances in
+bin-width units so τ stays commensurate. Non-parametric is required rather than a Gaussian closed
+form, because L2's placements are empirical hit clouds and are not Gaussian.
+
+**It is validated against the old metric where the old metric worked**, and only diverges where the
+old one was saturated:
+
+```
+  sSd       histogram   KDE
+  0.0900        5         6
+  0.0556        8         8      <- agree where bins were adequate
+  0.0300       12        14
+  0.0109       21        34
+  0.0054       21        64      <- histogram stuck; KDE nearly doubles, as geometry demands
+```
+
+### The headline, measured continuously (τ = 0.2)
+
+```
+  L1-free, drawn precision      17     L2 advantage 2.71x
+  L1-free, EVOLVED precision    66     L2 advantage 0.70x
+  L2 (from morphology)          46
+```
+
+**Two different questions, two different answers.**
+
+- Against a **precision-matched** 1-D control — the comparison the ablation was designed to make —
+  the advantage is **2.6–2.9× across all τ**. The ~3× headline **survives** the metric fix.
+- Against a 1-D control granted the **best precision found anywhere in the pool**, L2 **loses**
+  (0.55–1.13× across τ).
+
+### ⚠️ But the second comparison is not yet fair, and I could not make it fair
+
+The evolved arm grants **every** candidate a precision that exactly one real morphology achieves,
+while L2 keeps its natural spread. If precision is heritable enough for L1 to reach its best,
+selection should also push L2's pool toward its tight morphologies.
+
+Testing that is confounded: restricting L2 to its tightest morphologies shrinks the pool
+(301 → 151 → 75 → 30) and the ceiling falls with it (48 → 44 → 37 → 21) — because fewer candidates
+means less to pack, regardless of precision. Separating precision quality from pool size needs a much
+larger draw, taking the tightest N from a pool many times bigger, and that was not run.
+
+**So the honest state is:** the headline survives against a precision-matched control, does not
+survive against a best-precision control, and no comparison yet separates precision quality from pool
+size. That last one is the experiment that would settle it.
+
 ## Next
 
-1. **Re-baseline the packing metric at finer resolution.** This is now the blocking job. It moves
-   every packing number in the project and breaks the pinned golden tests (`tests/head-cap.test.js`
-   pins an overlap of `0.170000` and the histogram resolution), so it is a deliberate re-baseline
-   with test updates, not a tweak.
-2. Recompute L1's τ→0 ceiling on that grid, so v1's "reached %" column means something again.
-3. Only then restate the headline, in every place it appears.
+1. **Sample a much larger morphology pool** and take the tightest N, so L2's precision quality can be
+   raised at constant pool size. This is the comparison that decides the headline.
+2. **Switch the ablation's default metric to the continuous one** — a deliberate re-baseline that
+   moves every packing number and re-pins the golden tests (`tests/head-cap.test.js` pins overlap
+   `0.170000` and the histogram resolution). The KDE functions are in place and validated; only the
+   switch-over and re-pinning remain.
+3. Recompute L1's τ→0 ceiling on that metric so v1's "reached %" column means something again.
+4. Only then restate the headline, in every place it appears.
