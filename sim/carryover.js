@@ -143,6 +143,20 @@ const DEFAULTS = {
    * chance anyway, while a rare one would not. 0 = free sampling = every
    * earlier result, with no rng draw consumed. */
   constancy: 0,
+
+  /* ---- spatial structure (roadmap B). Plants sit at positions on a RING (a
+   * ring rather than a line so there are no edge artefacts), and a bee forages
+   * LOCALLY: its next visit is drawn from a Gaussian kernel around the plant it
+   * is standing on. Limited dispersal then means a rare morph's offspring land
+   * near it, so it can be locally common while globally rare — which is the one
+   * thing neither a second pollinator nor flower constancy provided, and both
+   * of those failed for exactly that reason.
+   *
+   * `positions` is one coordinate in [0,1) per ENTRY; null = well-mixed, the
+   * behaviour of every earlier result, with no rng draw consumed differently.
+   * `forageRange` is the kernel width in ring units; Infinity = global. */
+  positions: null,
+  forageRange: Infinity,
 };
 
 /*
@@ -169,6 +183,8 @@ function runBout(sites, abundance, opts = {}) {
     dispersalUnit,
     viscidium,
     constancy,
+    positions,
+    forageRange,
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
   const pollinium = dispersalUnit === "pollinium";
@@ -207,12 +223,40 @@ function runBout(sites, abundance, opts = {}) {
     acc += abundance[i];
     cum.push(acc);
   }
-  /* Last species visited, for flower constancy. -1 until the first visit. */
+  /* Last entry visited — for flower constancy and for local foraging. */
   let lastSp = -1;
+  const local =
+    Array.isArray(positions) &&
+    positions.length === S &&
+    Number.isFinite(forageRange);
+  /* Arc distance on the ring, so the two ends of the coordinate are adjacent
+   * and no plant is disadvantaged by sitting at an edge. */
+  const ringDist = (a, b) => {
+    const d = Math.abs(a - b) % 1;
+    return d > 0.5 ? 1 - d : d;
+  };
+  const localW = new Float64Array(S);
   const pick = () => {
     /* The rng is only touched when constancy is actually in play, so the
      * default model's stream — and every result built on it — is untouched. */
     if (constancy > 0 && lastSp >= 0 && rng() < constancy) return lastSp;
+    if (local && lastSp >= 0) {
+      let tot = 0;
+      for (let i = 0; i < S; i++) {
+        const d = ringDist(positions[i], positions[lastSp]);
+        const w = abundance[i] * Math.exp(-(d * d) / (2 * forageRange * forageRange));
+        localW[i] = w;
+        tot += w;
+      }
+      if (tot > 0) {
+        let r = rng() * tot;
+        for (let i = 0; i < S; i++) {
+          r -= localW[i];
+          if (r <= 0) return i;
+        }
+        return S - 1;
+      }
+    }
     const r = rng() * acc;
     for (let i = 0; i < S; i++) if (r <= cum[i]) return i;
     return S - 1;
