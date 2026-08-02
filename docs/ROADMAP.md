@@ -100,7 +100,23 @@ there — so it **reinforces the majority**, which is the documented minority di
 constancy. Only the BASELINE penalty eases with population size (0.471 → 0.550), and that part is
 partner availability. [detail](2026-08-02-constancy.md)
 
-⬜ **Next for B — spatial structure, now clearly favoured.** It is the only remaining candidate that
+✅ **Spatial structure BUILT 2026-08-02 — the first mechanism in five that helps.** Plants on a ring,
+bee foraging from a Gaussian kernel. ⚠️ It is a genuine INTERACTION, which was the test: only
+clustered+local pays (0.360) against scattered+global 0.148, clustered+global 0.142 and
+scattered+local **0.048** — each factor alone is worse than neither. Tightening the kernel lifts
+`rare/common` **0.247 → 0.950**, a fourfold relief tracking the patch width as predicted.
+⚠️ **Parity is not an advantage** — 0.950 is ~0.876 once corrected for a real +8.4% bias the
+calibration control shows in exactly that cell (it survived seed-averaging). The penalty is
+RELIEVED, not reversed. ⚠️ The patch-growing arm (corrected 0.889, 0.800, 1.220) is non-monotone and
+single-draw; the crossing it hints at is **not claimed**. [detail](2026-08-02-spatial.md)
+
+⬜ **Next for B, and it is now a sharp question rather than a search:** does a LARGER PATCH push
+`rare/common` past 1.0? The mechanism argues yes — more un-emptied partners, the separate
+partner-availability effect already measured in the constancy work (0.471 → 0.550 at fixed
+frequency) — and the under-powered arm hints yes. Needs many more draws. After that: clustering that
+EMERGES from limited dispersal rather than being imposed, and temporal assortment by flowering time.
+
+⬜ _Superseded framing, kept for the record:_ **spatial structure, favoured.** It is the only remaining candidate that
 gives a rare morph *neighbours of its own kind* rather than merely more visits: a new morph's
 offspring land near it, so it is locally common while globally rare. That attacks the measured
 barrier in the one way neither a second pollinator nor constancy does. Temporal assortment by
