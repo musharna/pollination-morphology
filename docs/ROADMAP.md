@@ -68,10 +68,23 @@ and the clonal-population control matters, because hybrids are also slightly wor
 and that accounted for 6 of the 25 raw points. So selection against hybrids is real without any
 genetic incompatibility. [detail](2026-08-02-hybrid-placement.md)
 
-⬜ **Next for B: assortative mating.** The two results name it precisely — blending will erode
-divergence, but a measured 19% hybrid cost is exactly what pays for reinforcement. Assortment by
-flowering time or by placement itself, then hybrid zones across generations (the current test is F1
-only, no backcrossing).
+✅ **Pollinator heterogeneity tested 2026-08-02 — it is NOT the symmetry-breaker.** Assortment by
+placement is already present (the transfer matrix _is_ placement matching) and is conformist, so a
+rare placement must first be worth something. Two pollinators with different geometry do not make it
+so: frequency dependence stays strongly positive, `rare/common` = **0.325 at distance ~10 under two
+animals against 0.258 under one** — a real 26% relief, nowhere near the 1.0 a rare morph needs.
+Pushing the body plans further apart does not help (9%, 5%, 0%, 0% rare-advantage morphs).
+⚠️ **The first version of this experiment was structurally incapable of answering it** and returned a
+uniform 0% null that only the positive control exposed — see the doc, it is the most instructive part.
+[detail](2026-08-02-two-pollinators.md)
+
+⬜ **Next for B, and the measurement now names it:** `rare/common ≈ 0.26` is the **rare-morph
+mate-finding problem** — a novel placement is penalised because there is nobody to exchange pollen
+with, not because it is badly built. So the mechanisms to try are the ones that let a rare morph
+**meet itself**: spatial structure / limited dispersal, **pollinator constancy** (real bee behaviour,
+and it converts the rare morph's penalty directly into an advantage), or temporal assortment by
+flowering time — an assortment axis genuinely independent of placement. Then hybrid zones across
+generations (the F1 test has no backcrossing).
 
 ### C. Widen the table, which is where value scales — 🟡 first class shipped
 
