@@ -32,8 +32,21 @@ The packing prediction has two halves and only the geometric one is closed. Need
 per _shared_ euglossine pollinator**, to compare against the 1-D ceiling. The figure in the
 enumeration doc — fifteen sympatric _Euglossa_ — is **bee** richness and must not be reused.
 Named source: Ackerman, Phillips, Tremblay, Karremans & Reiter 2023, `10.1093/botlinnean/boac082` —
-global orchid reproductive-biology database, >2900 species, pollinator identity tabulated, closed
-access. Two OpenAlex sweeps came back thin; that is a qualified null over one registry.
+global orchid reproductive-biology database, >2900 species, pollinator identity tabulated.
+
+⚠️ **Re-probed 2026-08-02 and it IS genuinely closed** — verified against the OpenAlex API
+(`is_oa: false`, `oa_status: closed`, no OA URL), not assumed. Worth having checked: the same roadmap
+recorded Johnson & Harder 2023 as a gate to work toward and that one turned out to be open access.
+Three further searches for orchid-species-per-shared-euglossine found no open source carrying the
+number.
+
+Two things the probe did yield. The abstract gives **median 1 pollinator species per orchid** — the
+extreme specificity mechanical isolation predicts, though it is the orchid→pollinator direction and
+not the richness figure needed here. And an alternative empirical route exists that is open access
+and tests the MECHANISM rather than the ceiling: Esposito, Merckx & Tyteca 2017
+(`10.15517/lank.v17i3.31576`, diamond OA) identify which moth species carried pollinaria and of which
+orchid species, for sympatric _Platanthera bifolia_ and _P. chlorantha_ — the textbook
+pollinaria-on-proboscis vs pollinaria-on-eyes pair.
 
 Until this lands the claim is _"2-D out-packs 1-D in this model"_, **not** _"real richness exceeds
 what 1-D placement supports."_ Only the second is about the world.
@@ -78,7 +91,22 @@ Pushing the body plans further apart does not help (9%, 5%, 0%, 0% rare-advantag
 uniform 0% null that only the positive control exposed — see the doc, it is the most instructive part.
 [detail](2026-08-02-two-pollinators.md)
 
-⬜ **Next for B, and the measurement now names it:** `rare/common ≈ 0.26` is the **rare-morph
+✅ **Flower constancy tested 2026-08-02 — it makes things WORSE.** The obvious candidate, and the
+hypothesis was backwards. `rare/common` falls **0.296 → 0.198** as constancy rises; no morph gains a
+rare advantage at any level. ⚠️ My explanation for the refutation was also wrong: it is not partner
+exhaustion, because the penalty is **scale-invariant** (−0.211 → −0.183 while the rare morph triples
+at fixed frequency). Constancy amplifies the encounter rate — a bee that lands on the majority stays
+there — so it **reinforces the majority**, which is the documented minority disadvantage of flower
+constancy. Only the BASELINE penalty eases with population size (0.471 → 0.550), and that part is
+partner availability. [detail](2026-08-02-constancy.md)
+
+⬜ **Next for B — spatial structure, now clearly favoured.** It is the only remaining candidate that
+gives a rare morph *neighbours of its own kind* rather than merely more visits: a new morph's
+offspring land near it, so it is locally common while globally rare. That attacks the measured
+barrier in the one way neither a second pollinator nor constancy does. Temporal assortment by
+flowering time is the other, and is genuinely independent of placement.
+
+⬜ _Superseded framing, kept for the record:_ `rare/common ≈ 0.26` is the **rare-morph
 mate-finding problem** — a novel placement is penalised because there is nobody to exchange pollen
 with, not because it is badly built. So the mechanisms to try are the ones that let a rare morph
 **meet itself**: spatial structure / limited dispersal, **pollinator constancy** (real bee behaviour,
