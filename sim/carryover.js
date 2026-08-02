@@ -89,6 +89,15 @@ const DEFAULTS = {
   visitsPerFlower: Infinity, // visits a flower gets before it dies with its pollen
   visitJitter: false, // if set, that count is a MEAN and each flower's life is geometric
   harvest: 0, // fraction of the load ACTIVELY packed away by the animal
+
+  /* ---- cost of prolonged presentation.
+   * Pollen held back is pollen ageing: viability decays after anthesis on a
+   * clock, over hours to days depending on species (Dafni & Firmage 2000,
+   * 10.1007/bf00984098). A gradual disperser therefore ships progressively
+   * deader gametes, which is the one penalty gradual dispensing bore nowhere
+   * else in this model. Measured in BOUT TICKS, because pollen dies on a clock
+   * rather than per visitor. Infinity = no senescence = the previous model. */
+  pollenLife: Infinity,
 };
 
 /*
@@ -111,6 +120,7 @@ function runBout(sites, abundance, opts = {}) {
     visitsPerFlower,
     visitJitter,
     harvest,
+    pollenLife,
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
   const rng = makeRng(seed);
@@ -128,6 +138,15 @@ function runBout(sites, abundance, opts = {}) {
   const flowerVisits = new Float64Array(S);
   const dosePerVisit = Math.max(1, Math.round(presentRate * pollenPerFlower));
   let harvested = 0;
+
+  /* Bout tick at which the flower currently being worked opened. A grain's
+   * anther residence is (now - that), which is what senescence acts on. */
+  const senesce = Number.isFinite(pollenLife) && finite;
+  const flowerOpenedAt = new Float64Array(S);
+  const visitsTo = new Float64Array(S);
+  let senesced = 0,
+    deadDelivered = 0,
+    capTruncated = 0;
 
   const cum = [];
   let acc = 0;
@@ -153,6 +172,7 @@ function runBout(sites, abundance, opts = {}) {
     const j = pick();
     const site = sites[j];
     if (!site.anther.length || !site.stigma.length) continue;
+    visitsTo[j] += 1;
 
     // --- the stigma sweeps first: a flower cannot pollinate itself with the
     // --- pollen it is about to hand over on the same visit
@@ -173,6 +193,14 @@ function runBout(sites, abundance, opts = {}) {
       const take = near.slice(0, pickup);
       for (const gi of take) {
         const g = load[gi];
+        /* An inviable grain still LANDS. It occupies one of the stigma's
+         * limited slots and simply fails to sire, which is why senescence is
+         * not merely a discount on the delivered count — dead pollen crowds
+         * out live pollen. The grain is dropped from the load either way. */
+        if (g.ok === false) {
+          deadDelivered++;
+          continue;
+        }
         T[g.sp][j] += 1;
         ageOnDeposit.push(v - g.t);
         if (g.sp === j) landedRight++;
@@ -236,14 +264,34 @@ function runBout(sites, abundance, opts = {}) {
         flowerVisits[j] = 0;
         flowersUsed[j] += 1;
       }
+      /* A flower opens when it is first VISITED, not when the bout starts.
+       * Anchoring the clock to tick zero instead would age the first flower of
+       * every species by however long the bout took to reach it — and because
+       * senescence draws an rng per grain, that silently moves every downstream
+       * number even in runs where nothing actually senesces. */
+      if (flowerVisits[j] === 0) flowerOpenedAt[j] = v;
       flowerVisits[j] += 1;
       dose = Math.min(dosePerVisit, remaining[j]);
       remaining[j] -= dose;
       released[j] += dose;
     }
+    /* Viability at the moment of release, set by how long this grain has sat in
+     * the anther. A simultaneous presenter empties on the visit its flower
+     * opens, so its residence is zero and senescence costs it nothing; a
+     * gradual presenter ships its last dose after the whole flower lifetime.
+     * That asymmetry is the entire mechanism — the cost is SCHEDULE-SELECTIVE
+     * by construction, not a flat handicap on dispensing slowly. */
+    const viability = senesce
+      ? Math.exp(-(v - flowerOpenedAt[j]) / pollenLife)
+      : 1;
     for (let d = 0; d < dose; d++) {
       const aSite = site.anther[(rng() * site.anther.length) | 0];
-      load.push({ s: aSite.s, phi: aSite.phi, sp: j, t: v });
+      /* Short-circuit when fully viable so the rng stream is untouched in the
+       * default (pollenLife = Infinity) model — every earlier result, and the
+       * groom = 1 mean-field regression, must stay bit-identical. */
+      const ok = viability >= 1 || rng() < viability;
+      if (!ok) senesced++;
+      load.push({ s: aSite.s, phi: aSite.phi, sp: j, t: v, ok });
       produced++;
     }
 
@@ -267,9 +315,15 @@ function runBout(sites, abundance, opts = {}) {
       load = keep;
     }
 
+    /* The carry cap discards the OLDEST grains, which are exactly the ones that
+     * have not yet found a stigma. Its losses are counted SEPARATELY from
+     * grooming on purpose: folded into groomedOff they are indistinguishable
+     * from ordinary passive loss, and a cap that binds hard under one
+     * dispensing schedule and not another then silently decides experiments
+     * about dispensing schedules. It did. See docs/2026-08-02. */
     if (load.length > cap) {
       load.sort((a, b) => a.t - b.t);
-      groomedOff += load.length - cap;
+      capTruncated += load.length - cap;
       load = load.slice(load.length - cap);
     }
   }
@@ -281,9 +335,13 @@ function runBout(sites, abundance, opts = {}) {
     landedWrong,
     groomedOff,
     harvested,
+    senesced,
+    deadDelivered,
+    capTruncated,
     released,
     unreleased,
     flowersUsed,
+    visitsTo,
     retained: load.length,
     ageOnDeposit,
     visits,

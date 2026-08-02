@@ -3,6 +3,14 @@
 **Date:** 2026-08-01 · **Code:** `sim/carryover.js`, `experiments/carryover.js`,
 `tests/carryover.test.js` · Roadmap item C, first mechanism class added to the table.
 
+> ⚠️ **Numbers corrected 2026-08-02.** Every figure here was measured before the head-tip cap fix
+> ([detail](2026-08-01-head-cap-result.md)), which changed the contact model and therefore moved
+> everything downstream. The tables below are the post-fix re-run. **One conclusion did not
+> survive**: carryover no longer raises coexistence in the already-separated community — see §B/C.
+> The correction was found while building the presentation-cost experiment, not by a re-run of this
+> one, which is the failure worth naming: fixing the contact model did not trigger a re-run of the
+> experiments built on it.
+
 Everything before this was **mean-field**: transfer from species i to j was the overlap of i's
 anther placement with j's stigma placement, which silently assumes a grain gets exactly one chance
 and is then gone. Real pollen rides. A grain picked up at flower 1 may still be aboard at flower 5,
@@ -27,22 +35,23 @@ Two quantities the mean-field model could not express at all:
 
 ```
   groom   median carry   delivered/produced   conspecific share   last-male gain
-   1.00              1                0.046               0.982              0.0
-   0.50              2                0.094               0.985              0.0
-   0.25              3                0.170               0.986              0.0
-   0.12              4                0.276               0.985              1.0
-   0.05              6                0.405               0.984              2.0
+   1.00              1                0.041               0.967              0.0
+   0.50              1                0.080               0.966              1.0
+   0.25              2                0.142               0.960              1.0
+   0.12              4                0.235               0.962              0.0
+   0.05              6                0.357               0.963              2.0
 ```
 
-**Packaging efficiency rises nearly tenfold**, from 4.6% to 40.5% of pollen ever reaching a stigma.
+**Packaging efficiency rises nearly ninefold**, from 4.1% to 35.7% of pollen ever reaching a stigma.
 Under the one-chance assumption almost everything a flower makes is wasted; with pollen riding for
-a median of six visits, two fifths of it arrives.
+a median of six visits, over a third of it arrives.
 
 **Last-male advantage emerges rather than being imposed.** Fresh grains lie on top of older ones, so
 a stigma takes the most recent first — delivered pollen is up to 2 visits younger than under random
 removal from the same patch. The A/B against random removal is the control: the effect vanishes
 when stacking is switched off, which is what makes it a consequence of the mechanism rather than an
-artefact of the bookkeeping.
+artefact of the bookkeeping. ⚠️ The column is **not monotone** in grooming (0, 1, 1, 0, 2) and is
+quantised to whole visits, so read it as "the effect exists and is small", not as a dose-response.
 
 ## B and C. Does carryover change how many species coexist?
 
@@ -50,23 +59,34 @@ Two plausible opposite answers were in play. Carryover gives a grain **many chan
 right stigma, which should help; it also lets **rival pollen accumulate** on the body, which should
 hurt. Which dominates is the question.
 
-| grooming | evolved community (overlap 0.000) | unevolved community (overlap 0.055) |
-| -------- | --------------------------------- | ----------------------------------- |
-| 1.00     | 8 ← one-chance limit              | 3                                   |
-| 0.50     | 8                                 | 5                                   |
-| 0.25     | 9                                 | 5                                   |
-| 0.12     | 9                                 | 5                                   |
-| 0.05     | 9                                 | 5                                   |
+| grooming | evolved community (8 species, overlap 0.000) | unevolved community (12 species, overlap 0.055) |
+| -------- | -------------------------------------------- | ----------------------------------------------- |
+| 1.00     | 7 ← one-chance limit                         | 4                                               |
+| 0.50     | 7                                            | 4                                               |
+| 0.25     | 7                                            | 5                                               |
+| 0.12     | 7                                            | 5                                               |
+| 0.05     | 7                                            | 5                                               |
 
-**The extra-chances mechanism wins, and wins hardest exactly where accumulation was supposed to
-bite.** In a community already evolved to zero pairwise overlap, carryover adds one species
-(8 → 9, +12%). In a community that has _not_ separated, it adds two (3 → 5, +67%).
+⚠️ **This is where the pre-head-cap version was wrong, and it was wrong in its headline.** It read
+"the extra-chances mechanism wins, and wins hardest exactly where accumulation was supposed to
+bite", on 8 → 9 in the evolved community and 3 → 5 in the unevolved one. Re-run:
 
-The mechanism is visible in the conspecific-share column above: it holds near 98% at every grooming
-rate. Rival pollen is not in fact piling up enough to matter, because a grain that misses one
-stigma is still riding when a conspecific one comes along.
+- the evolved community is **flat at 7** across the whole grooming range. Carryover adds **nothing**
+  where species have already separated;
+- the unevolved community goes **4 → 5** (+25%, not +67%).
 
-The one-chance limit recovers **8 of the mean-field's 9**. The missing species sat at abundance
+So the honest statement is narrower: **extra chances beat rival accumulation only where species
+still overlap.** Once overlap is zero there are no rivals to accumulate and no misses to rescue, so
+carryover has nothing left to do — which is the same reason v2 later found carryover changes ecology
+but not evolution ([detail](2026-08-01-v2-result.md)). That agreement is reassuring, but it is worth
+being blunt that the earlier, stronger claim was an artefact of a contact model that has since been
+fixed.
+
+The mechanism is still visible in the conspecific-share column above: it holds near 96% at every
+grooming rate. Rival pollen is not in fact piling up enough to matter, because a grain that misses
+one stigma is still riding when a conspecific one comes along.
+
+The one-chance limit recovers **7 of the mean-field's 8**. The missing species sat at abundance
 0.004 against an extinction floor of 0.002 — marginal in the deterministic model, and lost once
 transfer is counted rather than assumed.
 
@@ -84,6 +104,11 @@ fixes a free parameter against a known answer, and the thing under test — what
 
 Without a limit that had a known right answer, a wrong constant would have been reported as a
 finding about biology.
+
+⚠️ The specific figures in this section (target 9, plateau 5/6/8/8/8/8) are **pre-head-cap** and have
+not been re-swept; the limit target is now 8. The argument — calibrate against the limiting case,
+where the two models are provably the same process — is unaffected, but the numbers are stale and
+should not be quoted.
 
 ## Limits
 
