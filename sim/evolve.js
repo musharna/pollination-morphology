@@ -119,8 +119,8 @@ const ARMS = {
        * come from ONE placement computation so the two can never disagree
        * about where this species puts its pollen. */
       return {
-        A: K.sig2D(a.hits),
-        S: K.sig2D(s.hits),
+        A: K.kdeSig(a.hits, { m: ctx.kdeM }),
+        S: K.kdeSig(s.hits, { m: ctx.kdeM }),
         sites: {
           anther: a.hits.map((h) => ({ s: h.s, phi: h.phi })),
           stigma: s.hits.map((h) => ({ s: h.s, phi: h.phi })),
@@ -168,8 +168,8 @@ const ARMS = {
       });
       if (!hitsA.length || !hitsS.length) return null;
       return {
-        A: K.sig2D(hitsA),
-        S: K.sig2D(hitsS),
+        A: K.kdeSig(hitsA, { m: ctx.kdeM }),
+        S: K.kdeSig(hitsS, { m: ctx.kdeM }),
         sites: { anther: hitsA, stigma: hitsS },
       };
     },
@@ -236,7 +236,7 @@ function overlapMatrixOf(sigs, arm) {
       O[i][j] =
         arm.allOverlap !== undefined
           ? arm.allOverlap
-          : K.overlap(sigs[i].A, sigs[j].S);
+          : K.kdeOverlap(sigs[i].A, sigs[j].S);
     }
   }
   return O;
@@ -306,11 +306,11 @@ function invasionFitness(sigs, n, i, cs, arm, k) {
     }
     return own / (own + het + k);
   }
-  const own = n[i] * K.overlap(cs.A, cs.S);
+  const own = n[i] * K.kdeOverlap(cs.A, cs.S);
   let het = 0;
   for (let j = 0; j < n.length; j++) {
     if (j === i || !sigs[j]) continue;
-    het += n[j] * K.overlap(sigs[j].A, cs.S);
+    het += n[j] * K.kdeOverlap(sigs[j].A, cs.S);
   }
   return own / (own + het + k);
 }
