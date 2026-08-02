@@ -102,6 +102,127 @@ function overlapMatrix(sigs) {
   return m;
 }
 
+/* ------------------------------------------------------- continuous overlap
+ *
+ * ⚠️ WHY THIS EXISTS. The histogram overlap above discretises placement into
+ * S_BINS x PHI_BINS cells. When a placement is TIGHTER THAN ONE CELL it
+ * collapses to a single-cell spike, and overlap degenerates to a binary
+ * same-cell/different-cell test: distance information is gone, and so is the
+ * meaning of tau (a threshold cannot matter if overlaps are only ever 0 or 1).
+ * The packing ceiling then reports "how many cells are usable" instead of a
+ * fact about geometry. Measured: at sSd 0.0109 the ceiling was 21 at EVERY
+ * tau, and halving the precision to 0.0054 left it at 21.
+ *
+ * Raising the bin count would only move that floor, not remove it — the next
+ * arm with finer placement re-trips it silently. The correct model is that
+ * these are continuous distributions whose overlap has a continuous value, and
+ * the histogram was an implementation shortcut for estimating it.
+ *
+ * So: a non-parametric estimate of the overlapping coefficient
+ * OVL = integral of min(fA, fB). NON-parametric is required rather than a
+ * Gaussian closed form, because L2's placements are empirical hit clouds from
+ * real geometry and are not Gaussian — they have a distinct head-cap region.
+ *
+ * Bandwidth comes from each cloud's OWN spread (Silverman), so there is no
+ * fixed resolution floor at any precision. Distances are in BIN-WIDTH UNITS so
+ * the aspect ratio, and therefore tau, stays commensurate with the histogram
+ * metric it replaces.
+ */
+const S_UNIT_W = (1 - S_LO) / S_BINS;
+const PHI_UNIT_W = (2 * Math.PI) / PHI_BINS;
+const KDE_M = 48; // samples retained per cloud; pairwise cost is 2*M^2
+
+function angDelta(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  return d;
+}
+
+/* Deterministic even subsample — no rng, so a signature is reproducible. */
+function subsample(hits, m) {
+  if (hits.length <= m) return hits;
+  const out = [];
+  for (let i = 0; i < m; i++) out.push(hits[Math.floor((i * hits.length) / m)]);
+  return out;
+}
+
+function stdev(xs) {
+  if (xs.length < 2) return 0;
+  const m = xs.reduce((a, b) => a + b, 0) / xs.length;
+  return Math.sqrt(
+    xs.reduce((a, x) => a + (x - m) * (x - m), 0) / (xs.length - 1),
+  );
+}
+
+/*
+ * A continuous signature: the retained points, per-axis bandwidths in bin-width
+ * units, and the self-density at each point (precomputed so the pairwise cost
+ * stays at 2*M^2 rather than 4*M^2).
+ */
+function kdeSig(hits) {
+  const pts = subsample(hits, KDE_M);
+  const n = pts.length;
+  if (!n) return null;
+  const sS = stdev(pts.map((p) => p.s)) / S_UNIT_W;
+  /* Circular spread, via the resultant length, so a cloud straddling +/-pi is
+   * not reported as maximally wide. */
+  let cs = 0,
+    sn = 0;
+  for (const p of pts) {
+    cs += Math.cos(p.phi);
+    sn += Math.sin(p.phi);
+  }
+  const R = Math.sqrt(cs * cs + sn * sn) / n;
+  const sP = Math.sqrt(Math.max(0, -2 * Math.log(Math.max(1e-12, R)))) / PHI_UNIT_W;
+  const rule = (sd) => Math.max(1e-4, 1.06 * sd * Math.pow(n, -0.2));
+  const sig = { pts, hs: rule(sS), hp: rule(sP), n };
+  sig.self = pts.map((q) => density(sig, q));
+  return sig;
+}
+
+/* Gaussian product kernel, distances in bin-width units. */
+function density(sig, q) {
+  const { pts, hs, hp, n } = sig;
+  let acc = 0;
+  for (const p of pts) {
+    const ds = (q.s - p.s) / S_UNIT_W / hs;
+    const dp = angDelta(q.phi, p.phi) / PHI_UNIT_W / hp;
+    acc += Math.exp(-0.5 * (ds * ds + dp * dp));
+  }
+  return acc / (n * hs * hp);
+}
+
+/*
+ * Symmetric estimator of the overlapping coefficient, bounded in [0, 1]:
+ * identical clouds give 1, disjoint clouds give 0, and it varies CONTINUOUSLY
+ * with separation at any precision.
+ */
+function kdeOverlap(A, B) {
+  if (!A || !B) return 0;
+  let a = 0;
+  for (let i = 0; i < A.pts.length; i++)
+    a += Math.min(1, density(B, A.pts[i]) / Math.max(1e-300, A.self[i]));
+  let b = 0;
+  for (let i = 0; i < B.pts.length; i++)
+    b += Math.min(1, density(A, B.pts[i]) / Math.max(1e-300, B.self[i]));
+  return 0.5 * (a / A.pts.length + b / B.pts.length);
+}
+
+function kdeOverlapMatrix(sigs) {
+  const n = sigs.length;
+  const m = Array.from({ length: n }, () => new Float64Array(n));
+  for (let i = 0; i < n; i++) {
+    m[i][i] = 1;
+    for (let j = i + 1; j < n; j++) {
+      const o = kdeOverlap(sigs[i], sigs[j]);
+      m[i][j] = o;
+      m[j][i] = o;
+    }
+  }
+  return m;
+}
+
 /* ------------------------------------------------------------------ packing
  *
  * Largest set of species that are pairwise compatible (overlap <= tau) — a
@@ -217,6 +338,10 @@ const median = (xs) => {
 };
 
 const API = {
+  kdeSig,
+  kdeOverlap,
+  kdeOverlapMatrix,
+  KDE_M,
   S_BINS,
   S_UNITS,
   S_EXTRA,
