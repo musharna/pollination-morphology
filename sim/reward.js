@@ -113,6 +113,29 @@ function maleFitness(result, i) {
   return { delivered, released: rel, rate: delivered / rel };
 }
 
+/*
+ * NET male fitness — gross siring minus the cost of having stayed open.
+ *
+ * A flower is not free to keep. Floral longevity is itself an optimised trait
+ * balancing the maintenance cost of an open flower against the pollination it
+ * buys (Ashman & Schoen 1994, 10.1038/371788a0, Nature), so a gradual
+ * disperser that needs twenty visits to shed its pollen pays twenty times the
+ * upkeep of one that sheds in a single visit.
+ *
+ * `maintenance` is that upkeep per visit-open, quoted in GRAIN EQUIVALENTS so
+ * it can be subtracted from siring directly. That is a currency conversion and
+ * it is an assumption, not a measurement — its only job here is to be the
+ * SECOND, non-selective cost, against which senescence can be told apart. A
+ * cost that acts the same way in every regime cannot repair one cell of a 2x2
+ * without disturbing the others, and this is the arm that demonstrates it.
+ */
+function netMaleFitness(result, i, { pool, maintenance = 0 } = {}) {
+  const committed = result.flowersUsed[i] * pool;
+  if (!committed) return 0;
+  const upkeep = maintenance * result.visitsTo[i];
+  return (result.T[i][i] - upkeep) / committed;
+}
+
 /* Summed over species, for a whole-community readout. */
 function deliveryRate(result) {
   let del = 0,
@@ -129,5 +152,6 @@ module.exports = {
   visitWeights,
   runRewardBout,
   maleFitness,
+  netMaleFitness,
   deliveryRate,
 };

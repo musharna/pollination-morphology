@@ -19,6 +19,10 @@ Four things are built and measured, in this order, each gating the next:
 5. **The head cap** (item D below) — the coordinate edge is gone, and fixing it exposed a broken
    control. Both headline figures above are post-correction.
    [detail](2026-08-01-head-cap-result.md)
+6. **Three mechanism classes** on the item-C table — carryover, reward currency, and the cost of
+   prolonged presentation. Castellanos et al. 2006 now reproduces **4 of 4**, though the last cell
+   turned out to be half missing biology and half my own carry-cap artefact.
+   [detail](2026-08-02-presentation-cost-result.md)
 
 ## Next
 
@@ -50,9 +54,12 @@ Groundwork §4.6: rows are mechanism classes, columns are pollinator body plans.
 Nearest, in order of cheapness:
 
 - ✅ **carryover between visits** — BUILT 2026-08-01, `sim/carryover.js`. Packaging efficiency rises
-  4.6% → 40.5%; last-male advantage emerges from stacking rather than being imposed; carryover
-  _raises_ coexistence (8→9 separated, 3→5 overlapping), so extra chances beat rival accumulation.
-  [detail](2026-08-01-carryover-result.md). ✅ **Now inside the evolution loop too** (v2) — and it
+  4.1% → 35.7%; last-male advantage emerges from stacking rather than being imposed. ⚠️ **Numbers
+  corrected 2026-08-02 and one conclusion retracted**: re-run after the head-cap fix, carryover
+  raises coexistence **only where species still overlap** (4→5), and is **flat at 7** in the
+  already-separated community — the earlier "8→9 separated, 3→5 overlapping" was an artefact of the
+  old contact model. [detail](2026-08-01-carryover-result.md). ✅ **Now inside the evolution loop
+  too** (v2) — and it
   changes ecology but **not, demonstrably, evolution**: no effect on evolved species count survives a
   strict paired measurement, because selection drives overlap to zero under both transfer models and
   carryover's benefit is worth nothing once nothing overlaps.
@@ -64,14 +71,21 @@ Nearest, in order of cheapness:
   gametes to advertise. ⚠️ Castellanos' two-sided prediction reproduces in **3 of 4 cells**;
   frequent+efficient robustly fails and three of my explanations for it were refuted — the model
   gives gradual dispensing no cost except stranding. [detail](2026-08-01-reward-result.md)
+  ✅ **Now 4 of 4** — see the next item.
 - **more body plans as first-class** — check 2 showed the 2-D advantage runs **2.1–3.0×** across
   four animals, clearing 2× on every one; that variation is a result, not noise. ⚠️ The original
   "largest for small compact ones" did **not** survive the head-cap re-run — the default bee now
   leads, not the small slender plan. Only the coarse compact-above-elongated pattern holds.
-- **cost of prolonged presentation** — ⬜ _new, named by the reward work._ Gradual dispensing
-  currently has no downside but stranding, which is why the frequent+efficient cell cannot be
-  reached. Needs a maintenance cost for staying open, or pollen senescence in the anther. This is
-  the concrete missing mechanism, not a vague "more realism".
+- ✅ **cost of prolonged presentation** — BUILT 2026-08-02. Pollen senescence in the anther and
+  floral upkeep while open, both schedule-selective (a simultaneous presenter's anther residence is
+  zero, so senescence costs it exactly nothing). **Castellanos now reproduces 4 of 4** across a wide
+  plateau — but ⚠️ **not for the reason the roadmap predicted**. A cost alone provably cannot repair
+  the table: gradual's margin was _larger_ in the cell meant to reverse, so any regime-independent
+  cost breaks frequent+wasteful (m = 0.593) before it fixes frequent+efficient (m = 0.559), and
+  neither cost exceeded 3/4 alone. The rest was **my own artefact** — the carry cap bound in exactly
+  one cell of the four, suppressing simultaneous presentation by 44%, because `cap = 140` was
+  calibrated for an 8-grain deposit and then reused across a sweep running to 60.
+  [detail](2026-08-02-presentation-cost-result.md)
 - **deception** — no reward at all, already enumerated
 
 ### D. Close the head-tip boundary artefact ✅ _found and closed 2026-08-01_
@@ -129,6 +143,18 @@ project's value scales with mechanism classes rather than polish.
   is written.** CTRL-2D-ideal read as a valid ceiling for as long as L2 happened to sit under it,
   and only announced itself as broken when a _different_ fix pushed L2 past it. If the measured arm
   can beat the bound, the bound is a lower bound wearing the wrong label.
+- **A constant calibrated under one regime must be re-checked by any sweep that varies that
+  regime.** `cap = 140` was chosen when a visit deposited 8 grains, then reused across a dispensing
+  sweep running to 60, where it bound on the first visit and decided a published cell. The sweep
+  varied exactly the quantity the constant had been sized against.
+- **Two loss mechanisms sharing one counter hide whichever binds.** Cap truncation was added to
+  `groomedOff`, so a mechanism destroying 451,299 grains was indistinguishable from ordinary
+  grooming. Give each loss its own counter; a mechanism that cannot be seen separately cannot be
+  ruled out.
+- **Fixing a shared model obliges a re-run of everything built on it.** The head-cap fix moved every
+  downstream number, but only the two experiments re-run at the time were annotated. The carryover
+  result kept its pre-fix figures — and one of its conclusions — for a day, and was caught only
+  incidentally. A superseded contact model supersedes every result that used it.
 - **Matching a distribution by its median is not matching it.** The synthetic arms were built at
   median precision under a rule that said precision must be matched; a quarter of the real pool was
   sharper than any blob they contained. Match the distribution, or state plainly that you matched
