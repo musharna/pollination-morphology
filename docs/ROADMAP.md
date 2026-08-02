@@ -12,10 +12,13 @@ Four things are built and measured, in this order, each gating the next:
 2. **The reveal** (`visit.html`) — one bee, two flowers, pollen loaded and not delivered. The first
    attempt failed on a user's read (_"feels more like the number on a chart changing"_); rebuilt as
    an event in time with a rigid animal, and it now lands.
-3. **The ablation** — 2-D placement supports **3.0×** the species a 1-D gene does, at matched
+⚠️⚠️ **SUPERSEDED / IN QUESTION 2026-08-02.** The L1 control was handicapped: it was handed a FIXED MEDIAN precision while L2 inherits precision from morphology. With L1's precision made heritable and bounded by real morphologies, the EVOLVED advantage falls **3.07× → 1.24×**, and the same objection applies to the static 3.0× below, which has NOT yet been re-measured. [detail](2026-08-02-l1-precision-decision.md)
+
+3. **The ablation** — ⚠️ **3.0× IS IN QUESTION, see the banner above** — 2-D placement supports **3.0×** the species a 1-D gene does, at matched
    precision. This was the delete-the-grid test and it passed, which is the only reason v1 exists.
 4. **v1, the evolution loop** — blind selection reaches **~52%** of the achievable ceiling and
-   preserves the 2-D advantage at **3.07×**.
+   ⚠️ **preserved the 2-D advantage at 3.07× — NOW 1.24×** once L1's precision is made heritable
+   rather than fixed at the median. [detail](2026-08-02-l1-precision-decision.md)
 5. **The head cap** (item D below) — the coordinate edge is gone, and fixing it exposed a broken
    control. Both headline figures above are post-correction.
    [detail](2026-08-01-head-cap-result.md)
@@ -207,10 +210,18 @@ My own leading hypothesis — that φ was numerically degenerate for pinned cont
 the probe**: `|perp|/|w|` measures 0.87–0.99, not the vanishing value I predicted.
 [detail](2026-08-01-head-cap-result.md)
 
-⬜ **Left open, deliberately:** v1's L1 arm still gives every species the median precision while L2
-inherits heterogeneous precision from morphology. Inside the evolution loop that is a modelling
-choice (is precision heritable in a placement-gene world?), not a bug, and it should be decided
-rather than defaulted.
+✅ **DECIDED 2026-08-02: precision is a second heritable gene in L1, bounded by what real
+morphologies achieve** (s sd 0.0077–0.0670, phi sd 0.0788–0.9655 rad). Granting direct genetic
+control of WHERE pollen goes while withholding control of HOW TIGHTLY is an arbitrary handicap, and
+the whole claim rests on L1 being a steelman. The bound is load-bearing: unbounded precision packs
+unlimited species, which is not a fact about dimensionality.
+
+⚠️⚠️ **It costs most of the result.** The evolved 2-D advantage falls **3.07× → 1.24×** (L1 2.7 → 6.7;
+L2 unchanged at 8.3). Two consequences that must not be buried: **L1's ceiling constant is now stale**
+(it reports 111% of a bound computed under the old assumption — the "ceiling must be re-checked every
+time" constraint firing again), and **the static ablation's 3.0× is subject to the same objection**
+and has not been re-measured. Implemented on two loci that were previously INERT for L1, so L2's
+numbers provably cannot move — verified by the suite. [detail](2026-08-02-l1-precision-decision.md)
 
 ### E. Replace overlap with a transfer rate — 🟡 three of four targets met
 

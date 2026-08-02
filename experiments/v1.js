@@ -42,7 +42,18 @@ function measurePrecision() {
     sS.push(K.sSpread(d.hits));
     sP.push(K.phiSpread(d.hits));
   }
-  return { sSd: K.median(sS), phiSd: K.median(sP) };
+  const lo = (xs) => Math.min(...xs);
+  const hi = (xs) => Math.max(...xs);
+  /* The RANGE the real pool actually spans. L1 may evolve anywhere inside it —
+   * as precise as the best real flower, never better. */
+  return {
+    sSd: K.median(sS),
+    phiSd: K.median(sP),
+    sMin: lo(sS),
+    sMax: hi(sS),
+    pMin: lo(sP),
+    pMax: hi(sP),
+  };
 }
 
 function survivorStats(state, arm) {
@@ -84,7 +95,9 @@ function runArm(name, arm, ctx, seed) {
 function main() {
   const prec = measurePrecision();
   console.log(
-    `matched precision handed to L1: s sd ${prec.sSd.toFixed(4)}, phi sd ${prec.phiSd.toFixed(4)} rad`,
+    `L1 precision is HERITABLE, bounded by the real pool: s sd ${prec.sMin.toFixed(4)}-${prec.sMax.toFixed(4)}, ` +
+      `phi sd ${prec.pMin.toFixed(4)}-${prec.pMax.toFixed(4)} rad\n` +
+      `  (was a fixed median of ${prec.sSd.toFixed(4)} / ${prec.phiSd.toFixed(4)} — the deferred modelling choice, now decided)`,
   );
   console.log(
     `${N_START} species seeded at random, ${GENERATIONS} generations, ${SEEDS.length} replicate runs\n`,
@@ -95,7 +108,19 @@ function main() {
     nSamp: N_SAMP,
     sSd: prec.sSd,
     phiSd: prec.phiSd,
+    sMin: prec.sMin,
+    sMax: prec.sMax,
+    pMin: prec.pMin,
+    pMax: prec.pMax,
   };
+  /* ⚠️ L1's CEILING IS NOW STALE and its "reached %" column is not meaningful.
+   * 6 was computed when L1's precision was DRAWN from the pool's distribution;
+   * with precision heritable, evolution drives it to the tight end, and tighter
+   * placements pack more. L1 exceeding this bound is the bound being wrong, not
+   * L1 beating a real limit — which is exactly the standing constraint that a
+   * ceiling arm must be re-checked against the measured arm every time it is
+   * used. The ADVANTAGE RATIO below is unaffected: it is measured/measured and
+   * does not touch these constants. */
   const CEIL = { L2: 16, L1: 6, L0: 1 };
 
   console.log(
