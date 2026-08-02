@@ -131,6 +131,18 @@ const DEFAULTS = {
    * granular monads, while transfer efficiency runs 27.0% against 2.4%. */
   dispersalUnit: "granular",
   viscidium: 0.6,
+
+  /* ---- flower constancy (roadmap B). A foraging bee tends to keep visiting
+   * the kind of flower it last visited rather than sampling freely — one of the
+   * best-documented facts in pollinator behaviour (Waser 1986; Chittka, Thomson
+   * & Waser 1999). It is included here because the frequency-dependence
+   * measurement in experiments/two-pollinators.js named the barrier precisely:
+   * a rare placement is penalised because there is nobody to exchange pollen
+   * with (rare/common ~ 0.26). Constancy attacks that directly, and it should
+   * help a RARE morph disproportionately — a common morph would be revisited by
+   * chance anyway, while a rare one would not. 0 = free sampling = every
+   * earlier result, with no rng draw consumed. */
+  constancy: 0,
 };
 
 /*
@@ -156,6 +168,7 @@ function runBout(sites, abundance, opts = {}) {
     pollenLife,
     dispersalUnit,
     viscidium,
+    constancy,
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
   const pollinium = dispersalUnit === "pollinium";
@@ -194,7 +207,12 @@ function runBout(sites, abundance, opts = {}) {
     acc += abundance[i];
     cum.push(acc);
   }
+  /* Last species visited, for flower constancy. -1 until the first visit. */
+  let lastSp = -1;
   const pick = () => {
+    /* The rng is only touched when constancy is actually in play, so the
+     * default model's stream — and every result built on it — is untouched. */
+    if (constancy > 0 && lastSp >= 0 && rng() < constancy) return lastSp;
     const r = rng() * acc;
     for (let i = 0; i < S; i++) if (r <= cum[i]) return i;
     return S - 1;
@@ -213,6 +231,7 @@ function runBout(sites, abundance, opts = {}) {
     const site = sites[j];
     if (!site.anther.length || !site.stigma.length) continue;
     visitsTo[j] += 1;
+    lastSp = j;
 
     // --- the stigma sweeps first: a flower cannot pollinate itself with the
     // --- pollen it is about to hand over on the same visit
