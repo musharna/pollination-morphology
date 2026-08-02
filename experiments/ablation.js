@@ -105,7 +105,7 @@ function armL0(nSpecies) {
   /* No placement model: every visit is an undifferentiated encounter, so every
    * species deposits over the whole animal identically. Implemented rather
    * than asserted, so the "L0 cannot isolate" prediction is measured. */
-  const flat = K.sig2D(
+  const flat = K.kdeSig(
     Array.from({ length: 2000 }, (_, i) => ({
       s: (i % 50) / 50 + 0.01,
       phi: -Math.PI + ((i % 37) / 37) * 2 * Math.PI,
@@ -147,7 +147,7 @@ function armFree1D(count, prec, seed) {
     const s0 = S_LO + ((i + 0.5) / count) * S_SPAN;
     const [sSd, phiSd] = prec[i % prec.length];
     sigs.push(
-      K.sig2D(
+      K.kdeSig(
         K.syntheticHits(s0, 0, sSd, phiSd, {
           n: N_VISITS,
           seed: seed + i,
@@ -181,7 +181,7 @@ function armFree1DEvolved(count, prec, seed) {
   for (let i = 0; i < count; i++) {
     const s0 = S_LO + ((i + 0.5) / count) * S_SPAN;
     sigs.push(
-      K.sig2D(
+      K.kdeSig(
         K.syntheticHits(s0, 0, sMin, pMin, {
           n: N_VISITS,
           seed: seed + i,
@@ -200,7 +200,7 @@ function armFree2D(nS, nPhi, prec, seed) {
     for (let j = 0; j < nPhi; j++) {
       const [sSd, phiSd] = prec[k % prec.length];
       sigs.push(
-        K.sig2D(
+        K.kdeSig(
           K.syntheticHits(
             S_LO + ((i + 0.5) / nS) * S_SPAN,
             -Math.PI + (j / nPhi) * 2 * Math.PI,
@@ -217,7 +217,7 @@ function armFree2D(nS, nPhi, prec, seed) {
 /* ------------------------------------------------------------------ report */
 
 function ceilings(sigs, label) {
-  const mat = K.overlapMatrix(sigs);
+  const mat = K.kdeOverlapMatrix(sigs);
   const row = { arm: label, pool: sigs.length };
   /* The packer is randomised greedy over an NP-hard problem, so it UNDERCOUNTS
    * and the shortfall shrinks with restarts. At 200 restarts L2 at tau=0.05
@@ -279,48 +279,57 @@ function main() {
     `reachable body bins  : ${occupied.size} of ${TOTAL_BINS} 2-D bins (${((100 * occupied.size) / TOTAL_BINS).toFixed(1)}%), ${occupiedS.size} of ${K.S_BINS} along the body`,
   );
 
-  const sigs2D = pool.map((p) => K.sig2D(p.d.hits));
-  const sigs1D = pool.map((p) => K.sig1D(p.d.hits));
+  const sigs2D = pool.map((p) => K.kdeSig(p.d.hits));
+  const sigs1D = pool.map((p) => K.kdeSig(p.d.hits, { dims: 1 }));
 
   const rows = [
     ceilings(armL0(60), "L0 (no placement)"),
     ceilings(sigs1D, "L1-strict (roll discarded)"),
-    ceilings(
-      armFree1D(scaled(200), prec, 20000),
-      "L1-free, drawn precision",
-    ),
+    ceilings(armFree1D(scaled(200), prec, 20000), "L1-free, drawn precision"),
     ceilings(
       armFree1DEvolved(scaled(200), prec, 21000),
-      "L1-free, EVOLVED prec [⚠️SATURATED]",
+      "L1-free, EVOLVED precision",
     ),
     ceilings(sigs2D, "L2 (from morphology)"),
     ceilings(armFree2D(scaled(80), 40, prec, 40000), "CTRL-2D-ideal [CEILING]"),
   ];
 
-  /* ⚠️ RESOLUTION CHECK — printed BEFORE the table, because without it the
-   * evolved-precision row reads as a measurement and it is not one. */
+  /* ⚠️ RESOLUTION CHECK — kept, INVERTED, and still printed BEFORE the table.
+   *
+   * On the histogram this existed to WARN: overlap was a 24-bin grid, the
+   * evolved precision was five times finer than one bin, and the evolved row
+   * was a floor imposed by binning rather than a ceiling imposed by geometry.
+   *
+   * The continuous metric is supposed to remove that mechanism, and a claim of
+   * removal needs a POSITIVE CONTROL rather than an assurance. So the same
+   * probe now runs as a test the new metric can fail: halve the precision and
+   * the ceiling MUST rise. If it does not, the replacement saturates too and
+   * every number below is again a binning artefact — which is precisely the
+   * thing that would otherwise be invisible, because a saturated metric
+   * produces a perfectly plausible table. */
   {
     const binW = (1 - K.S_LO) / K.S_BINS;
     const sMin = Math.min(...prec.map((q) => q[0]));
-    console.log(
-      `\n⚠️  METRIC RESOLUTION: overlap is a ${K.S_BINS}-bin histogram, bin width ` +
-        `${binW.toFixed(4)} in s units,\n    while the evolved precision is sSd ${sMin.toFixed(4)} — ` +
-        `${(binW / sMin).toFixed(1)}x FINER than one bin.`,
-    );
     const probe = (sSd) => {
       const sg = [];
       const count = scaled(200);
       for (let i = 0; i < count; i++)
         sg.push(
-          K.sig2D(
-            K.syntheticHits(S_LO + ((i + 0.5) / count) * S_SPAN, 0, sSd, 0.0788, {
-              n: 900,
-              seed: 31000 + i,
-              sLo: S_LO,
-            }),
+          K.kdeSig(
+            K.syntheticHits(
+              S_LO + ((i + 0.5) / count) * S_SPAN,
+              0,
+              sSd,
+              0.0788,
+              {
+                n: 900,
+                seed: 31000 + i,
+                sLo: S_LO,
+              },
+            ),
           ),
         );
-      return K.packingCeiling(K.overlapMatrix(sg), 0.2, {
+      return K.packingCeiling(K.kdeOverlapMatrix(sg), 0.2, {
         restarts: RESTARTS,
         seed: 7,
       }).size;
@@ -332,13 +341,15 @@ function main() {
     const a = probe(sMin),
       b = probe(sMin / 2);
     console.log(
-      `    ceiling at sSd ${sMin.toFixed(4)} = ${a}; at HALF that (${(sMin / 2).toFixed(4)}, finer) = ${b}.` +
-        (a === b
-          ? "\n    IDENTICAL -> the metric is SATURATED and the evolved row below is a\n" +
-            "    FLOOR imposed by binning, not a ceiling imposed by geometry. Any\n" +
-            "    L2/L1-evolved ratio computed from it is an UPPER BOUND on the true\n" +
-            "    advantage, and the bias flatters L2."
-          : "\n    Finer precision still buys more species -> the metric resolves it here."),
+      `\nMETRIC RESOLUTION CONTROL: the evolved precision is sSd ${sMin.toFixed(4)}, ` +
+        `${(binW / sMin).toFixed(1)}x finer\n    than the ${binW.toFixed(4)} bin the old histogram metric used.\n` +
+        `    ceiling at sSd ${sMin.toFixed(4)} = ${a}; at HALF that (${(sMin / 2).toFixed(4)}, finer) = ${b}.` +
+        (b > a
+          ? `\n    PASS -> finer placement still buys more species (${a} -> ${b}), so the\n` +
+            "    continuous metric resolves this regime and the table below is a\n" +
+            "    measurement rather than a floor."
+          : "\n    ⚠️ FAIL -> the CONTINUOUS metric is saturated here too. Every figure\n" +
+            "    below is again a resolution floor, not geometry. Do not quote them."),
     );
   }
 

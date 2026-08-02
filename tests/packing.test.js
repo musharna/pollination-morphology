@@ -167,3 +167,197 @@ test("measured spread recovers the spread it was generated with", () => {
     `phi spread ${K.phiSpread(h).toFixed(4)} should recover 0.4`,
   );
 });
+
+// --------------------------------------------------------------------------
+// THE CONTINUOUS METRIC.
+//
+// Everything above tests the histogram, which is no longer what any headline
+// is measured on — sim/ is entirely on kdeOverlap now. Structural properties
+// tested only on a retired code path are inert: they would keep passing while
+// the live metric broke in exactly the way the histogram already did.
+// --------------------------------------------------------------------------
+
+test("SATURATION: overlap keeps resolving below one histogram bin width", () => {
+  /* The defect that forced this metric. Two clouds a fixed distance apart,
+   * getting tighter: overlap must keep FALLING. The histogram cannot do this —
+   * once both clouds fit inside one bin it returns the same number forever, and
+   * the packing ceiling it feeds becomes a count of bins rather than a fact
+   * about geometry.
+   *
+   * The histogram is asserted to FAIL here on purpose. A test never seen
+   * failing is not known to be able to fail, and this one would otherwise pass
+   * on a metric with any resolution floor at all — including a finer-binned
+   * histogram, which was the band-aid this replaced. */
+  const binW = (1 - K.S_LO) / K.S_BINS;
+  const offset = binW / 2;
+  /* The ladder stops at binW/8 because that is where the EXPERIMENTS live —
+   * evolved precision runs sSd 0.0077-0.0109 against a 0.0556 bin, i.e. binW/5
+   * to binW/7. Going further only measures floating-point underflow: at binW/64
+   * the clouds are 32 sd apart and the true overlap is ~1e-60, so both metrics
+   * return a hard zero and the comparison stops meaning anything. */
+  const sds = [binW, binW / 2, binW / 4, binW / 8];
+
+  const kde = sds.map((sd) =>
+    K.kdeOverlap(
+      K.kdeSig(blob(0.5, 0, sd, 0.3, 11)),
+      K.kdeSig(blob(0.5 + offset, 0, sd, 0.3, 12)),
+    ),
+  );
+  for (let i = 1; i < kde.length; i++)
+    assert.ok(
+      kde[i] < kde[i - 1] - 1e-6,
+      `continuous overlap stopped resolving: ${kde.map((v) => v.toFixed(4))}`,
+    );
+  /* Threshold from theory, not from this output. Two equal-sd gaussians whose
+   * centres are d apart have OVL = 2*Phi(-d/2sigma); at binW/8 the separation
+   * is 4 sd, giving 0.046. Both clouds share one roll distribution, so the
+   * product kernel leaves that unchanged. Asserting < 0.10 is that value with
+   * margin — a number calibrated from the measurement it is checking would
+   * encode whatever bias the measurement has. */
+  assert.ok(
+    kde[kde.length - 1] < 0.1,
+    `clouds 4 sd apart should overlap ~0.046, got ${kde[kde.length - 1].toFixed(4)}`,
+  );
+
+  const hist = sds.map((sd) =>
+    K.overlap(
+      K.sig2D(blob(0.5, 0, sd, 0.3, 11)),
+      K.sig2D(blob(0.5 + offset, 0, sd, 0.3, 12)),
+    ),
+  );
+  assert.ok(
+    hist[hist.length - 1] > 0.2,
+    `the histogram is supposed to SATURATE here — if it now resolves, this test no longer proves the continuous metric is needed: ${hist.map((v) => v.toFixed(4))}`,
+  );
+});
+
+test("2-D out-packs 1-D at matched precision ON THE LIVE METRIC", () => {
+  const sSd = 0.03,
+    phiSd = 0.35,
+    tau = 0.2;
+  const line = [];
+  for (let i = 0; i < 40; i++)
+    line.push(K.kdeSig(blob(0.02 + i * 0.024, 0, sSd, phiSd, 200 + i)));
+  const surface = [];
+  let k = 0;
+  for (let i = 0; i < 20; i++)
+    for (let j = 0; j < 10; j++)
+      surface.push(
+        K.kdeSig(
+          blob(
+            0.02 + i * 0.049,
+            -Math.PI + j * ((2 * Math.PI) / 10),
+            sSd,
+            phiSd,
+            300 + k++,
+          ),
+        ),
+      );
+  const a = K.packingCeiling(K.kdeOverlapMatrix(line), tau, { seed: 5 }).size;
+  const b = K.packingCeiling(K.kdeOverlapMatrix(surface), tau, {
+    seed: 5,
+  }).size;
+  assert.ok(
+    b > a * 1.5,
+    `2-D should pack substantially more: 1-D ${a} vs 2-D ${b}`,
+  );
+});
+
+test("PROJECTION still holds continuously: dropping roll cannot lower overlap", () => {
+  /* Asserted in kdeSig's own comment, so it needs a measurement. The estimator
+   * is a finite-sample approximation of the integral inequality, so single
+   * pairs may jitter; the direction is checked in aggregate and no pair may
+   * violate it by more than estimator noise. */
+  let sum1 = 0,
+    sum2 = 0;
+  for (let i = 0; i < 30; i++) {
+    const h1 = blob(
+      0.3 + (i % 5) * 0.08,
+      -1 + (i % 7) * 0.4,
+      0.05,
+      0.4,
+      500 + i,
+    );
+    const h2 = blob(
+      0.3 + (i % 3) * 0.1,
+      -1 + (i % 4) * 0.5,
+      0.05,
+      0.4,
+      900 + i,
+    );
+    const o2 = K.kdeOverlap(K.kdeSig(h1), K.kdeSig(h2));
+    const o1 = K.kdeOverlap(
+      K.kdeSig(h1, { dims: 1 }),
+      K.kdeSig(h2, { dims: 1 }),
+    );
+    assert.ok(
+      o1 >= o2 - 0.05,
+      `marginal ${o1.toFixed(4)} well below joint ${o2.toFixed(4)} at i=${i}`,
+    );
+    sum1 += o1;
+    sum2 += o2;
+  }
+  assert.ok(
+    sum1 > sum2,
+    `marginalising should raise mean overlap: 1-D ${sum1.toFixed(3)} vs 2-D ${sum2.toFixed(3)}`,
+  );
+});
+
+test("a 1-D signature cannot be silently compared against a 2-D one", () => {
+  const a = K.kdeSig(blob(0.4, 0, 0.04, 0.3, 21));
+  const b = K.kdeSig(blob(0.4, 0, 0.04, 0.3, 22), { dims: 1 });
+  assert.throws(() => K.kdeOverlap(a, b), /dimension mismatch/);
+  assert.ok(
+    K.kdeOverlap(a, K.kdeSig(blob(0.4, 0, 0.04, 0.3, 22))) > 0.5,
+    "matched dims must still work",
+  );
+});
+
+test("the histogram metric refuses a continuous signature instead of returning 0", () => {
+  /* Feeding a kdeSig to overlap() used to skip the loop and return 0 — "these
+   * species do not overlap" — which silently inflates every ceiling downstream
+   * and produces a table that looks entirely normal. */
+  const k = K.kdeSig(blob(0.4, 0, 0.04, 0.3, 31));
+  assert.throws(() => K.overlap(k, k), /continuous/);
+  assert.ok(
+    K.overlap(
+      K.sig2D(blob(0.4, 0, 0.04, 0.3, 31)),
+      K.sig2D(blob(0.4, 0, 0.04, 0.3, 31)),
+    ) > 0.9,
+  );
+});
+
+test("the estimator's ASYMMETRIC error shrinks with retained sample size", () => {
+  /* KDE_M is the one estimator constant that biases the two arms in OPPOSITE
+   * directions — too few points over-state overlap for an irregular cloud and
+   * under-state it for a clean gaussian one — so it can decide an L1-vs-L2
+   * comparison on its own. Guard the convergence rather than a magic tolerance:
+   * a fixed threshold calibrated from these very clouds would encode whatever
+   * bias they happen to have. */
+  const irregular = (seed) => [
+    ...blob(0.35, 0, 0.03, 0.25, seed),
+    ...blob(0.55, 1.6, 0.03, 0.25, seed + 1),
+  ];
+  const gauss = (seed) => blob(0.45, 0.8, 0.06, 0.5, seed);
+
+  const diff = (mk, m) => {
+    let d = 0;
+    for (let i = 0; i < 6; i++) {
+      const a = mk(600 + i * 2),
+        b = mk(700 + i * 2);
+      d += Math.abs(
+        K.kdeOverlap(K.kdeSig(a, { m }), K.kdeSig(b, { m })) -
+          K.kdeOverlap(K.kdeSig(a, { m: 384 }), K.kdeSig(b, { m: 384 })),
+      );
+    }
+    return d / 6;
+  };
+  for (const mk of [irregular, gauss]) {
+    const lo = diff(mk, 24),
+      hi = diff(mk, 192);
+    assert.ok(
+      hi < lo,
+      `error should fall with M: M=24 ${lo.toFixed(4)} vs M=192 ${hi.toFixed(4)}`,
+    );
+  }
+});

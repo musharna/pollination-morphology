@@ -138,8 +138,8 @@ test("a symmetric community does not sit frozen on its unstable equilibrium", ()
 
 test("heterospecific pollen on a stigma lowers fitness", () => {
   const sig = (s0, phi0) => ({
-    A: K.sig2D(K.syntheticHits(s0, phi0, 0.04, 0.3, { n: 200, seed: 4 })),
-    S: K.sig2D(K.syntheticHits(s0, phi0, 0.04, 0.3, { n: 200, seed: 4 })),
+    A: K.kdeSig(K.syntheticHits(s0, phi0, 0.04, 0.3, { n: 200, seed: 4 })),
+    S: K.kdeSig(K.syntheticHits(s0, phi0, 0.04, 0.3, { n: 200, seed: 4 })),
   });
   // species 0 is alone in its placement; species 1 and 2 sit on top of each other
   const sigs = [sig(0.2, 0), sig(0.7, 0), sig(0.7, 0)];
@@ -154,8 +154,8 @@ test("heterospecific pollen on a stigma lowers fitness", () => {
 
 test("identical species receive identical fitness", () => {
   const one = {
-    A: K.sig2D(K.syntheticHits(0.5, 0, 0.04, 0.3, { n: 200, seed: 8 })),
-    S: K.sig2D(K.syntheticHits(0.5, 0, 0.04, 0.3, { n: 200, seed: 8 })),
+    A: K.kdeSig(K.syntheticHits(0.5, 0, 0.04, 0.3, { n: 200, seed: 8 })),
+    S: K.kdeSig(K.syntheticHits(0.5, 0, 0.04, 0.3, { n: 200, seed: 8 })),
   };
   const sigs = [one, one, one];
   const n = [1 / 3, 1 / 3, 1 / 3];
