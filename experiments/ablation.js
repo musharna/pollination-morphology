@@ -159,6 +159,40 @@ function armFree1D(count, prec, seed) {
   return sigs;
 }
 
+/*
+ * ⚠️ THE STEELMAN THE FIRST VERSION WITHHELD.
+ *
+ * armFree1D draws precision from the pool's DISTRIBUTION — a mix, mostly near
+ * median. But if placement is a gene, precision is a gene too (that decision is
+ * taken in sim/evolve.js), and an optimiser free to choose candidates would
+ * choose the tightest ones: tighter placement means less overlap means more
+ * species packed. Withholding that while granting free choice of PLACEMENT is
+ * an arbitrary handicap on the control arm.
+ *
+ * So every candidate gets the pool's BEST precision on each axis independently
+ * — as precise as the tightest real flower, and no more, because unbounded
+ * precision packs unlimited species and that is not a fact about placement
+ * dimensionality.
+ */
+function armFree1DEvolved(count, prec, seed) {
+  const sMin = Math.min(...prec.map((p) => p[0]));
+  const pMin = Math.min(...prec.map((p) => p[1]));
+  const sigs = [];
+  for (let i = 0; i < count; i++) {
+    const s0 = S_LO + ((i + 0.5) / count) * S_SPAN;
+    sigs.push(
+      K.sig2D(
+        K.syntheticHits(s0, 0, sMin, pMin, {
+          n: N_VISITS,
+          seed: seed + i,
+          sLo: S_LO,
+        }),
+      ),
+    );
+  }
+  return sigs;
+}
+
 function armFree2D(nS, nPhi, prec, seed) {
   const sigs = [];
   let k = 0;
@@ -253,15 +287,64 @@ function main() {
     ceilings(sigs1D, "L1-strict (roll discarded)"),
     ceilings(
       armFree1D(scaled(200), prec, 20000),
-      "L1-free (1-D gene) [STEELMAN]",
+      "L1-free, drawn precision",
+    ),
+    ceilings(
+      armFree1DEvolved(scaled(200), prec, 21000),
+      "L1-free, EVOLVED prec [⚠️SATURATED]",
     ),
     ceilings(sigs2D, "L2 (from morphology)"),
     ceilings(armFree2D(scaled(80), 40, prec, 40000), "CTRL-2D-ideal [CEILING]"),
   ];
 
+  /* ⚠️ RESOLUTION CHECK — printed BEFORE the table, because without it the
+   * evolved-precision row reads as a measurement and it is not one. */
+  {
+    const binW = (1 - K.S_LO) / K.S_BINS;
+    const sMin = Math.min(...prec.map((q) => q[0]));
+    console.log(
+      `\n⚠️  METRIC RESOLUTION: overlap is a ${K.S_BINS}-bin histogram, bin width ` +
+        `${binW.toFixed(4)} in s units,\n    while the evolved precision is sSd ${sMin.toFixed(4)} — ` +
+        `${(binW / sMin).toFixed(1)}x FINER than one bin.`,
+    );
+    const probe = (sSd) => {
+      const sg = [];
+      const count = scaled(200);
+      for (let i = 0; i < count; i++)
+        sg.push(
+          K.sig2D(
+            K.syntheticHits(S_LO + ((i + 0.5) / count) * S_SPAN, 0, sSd, 0.0788, {
+              n: 900,
+              seed: 31000 + i,
+              sLo: S_LO,
+            }),
+          ),
+        );
+      return K.packingCeiling(K.overlapMatrix(sg), 0.2, {
+        restarts: RESTARTS,
+        seed: 7,
+      }).size;
+    };
+    /* ⚠️ Probe FINER, not coarser. The first version of this check doubled sSd
+     * and reported "resolves" — but doubling moves OUT of the saturated zone,
+     * so it can only ever pass. Saturation means making precision finer buys
+     * nothing, so halving is the test. */
+    const a = probe(sMin),
+      b = probe(sMin / 2);
+    console.log(
+      `    ceiling at sSd ${sMin.toFixed(4)} = ${a}; at HALF that (${(sMin / 2).toFixed(4)}, finer) = ${b}.` +
+        (a === b
+          ? "\n    IDENTICAL -> the metric is SATURATED and the evolved row below is a\n" +
+            "    FLOOR imposed by binning, not a ceiling imposed by geometry. Any\n" +
+            "    L2/L1-evolved ratio computed from it is an UPPER BOUND on the true\n" +
+            "    advantage, and the bias flatters L2."
+          : "\n    Finer precision still buys more species -> the metric resolves it here."),
+    );
+  }
+
   console.log("\nspecies packing ceiling, by isolation threshold tau:\n");
   const head = [
-    "arm".padEnd(30),
+    "arm".padEnd(38),
     "pool".padStart(5),
     ...TAUS.map((t) => `t=${t}`.padStart(7)),
   ];
@@ -270,7 +353,7 @@ function main() {
   for (const r of rows) {
     console.log(
       [
-        r.arm.padEnd(30),
+        r.arm.padEnd(38),
         String(r.pool).padStart(5),
         ...TAUS.map((t) => String(r[`tau${t}`]).padStart(7)),
       ].join(" "),
@@ -288,6 +371,7 @@ module.exports = {
   sampleMorphologies,
   precisionPool,
   armFree1D,
+  armFree1DEvolved,
   armFree2D,
   S_LO,
   S_SPAN,

@@ -75,10 +75,63 @@ currency, presentation cost, dispersal unit) do not depend on the L1/L2 contrast
 And the decision is the right one regardless of which way the number moved. A control that can be
 beaten only because it was handicapped tells you nothing; this one can now lose honestly.
 
+## Part 2 — the ablation, re-run: the metric cannot answer the question
+
+Following the recommendation above, the static ablation gained an `L1-free, EVOLVED precision` arm:
+every candidate at the pool's tightest precision on each axis, since an optimiser free to pick
+candidates would pick the tightest ones.
+
+```
+  arm                                 pool   t=0.05  t=0.1  t=0.2  t=0.3  t=0.5
+  L1-free, drawn precision             234      9     10     12     18     35
+  L1-free, EVOLVED prec [SATURATED]    234     21     21     21     21     21
+  L2 (from morphology)                 309     24     25     36     54    118
+```
+
+At τ=0.2 that is 36/21 = **1.71×**, down from 3.00×. **But it is not a measurement.**
+
+⚠️ **The evolved row is flat at 21 across every τ**, which no real geometric limit produces. The
+packing metric is a **24-bin histogram** over the body, bin width **0.0556** in s units, while the
+evolved precision is **0.0109** — five times finer than one bin. The built-in check now probes it
+directly, and the test has to go in the *fine* direction:
+
+```
+  ceiling at sSd 0.0109 = 21; at HALF that (0.0054, finer) = 21.   IDENTICAL
+```
+
+Making the placement twice as precise buys **nothing**. The metric has bottomed out, so 21 is a
+**floor imposed by binning, not a ceiling imposed by geometry.** The true L1-evolved ceiling is ≥21
+and unknown.
+
+**Therefore 1.71× is an upper bound on the advantage, not its value** — the true advantage is ≤1.71×
+and could be far less, and the bias runs in the direction that flatters L2.
+
+_(The first version of this check doubled `sSd` rather than halving it and reported "resolves".
+Doubling moves out of the saturated zone, so that test could only ever pass.)_
+
+## The root cause is one this project has already named
+
+The bin width was implicitly calibrated to the *median* precision (0.044, comparable to the 0.056
+bin). Change the precision assumption and the metric is no longer fit for the quantity it is
+measuring. That is exactly the standing constraint adopted after the carry-cap artefact: **a constant
+calibrated under one regime must be re-checked by any sweep that varies that regime.** It has now
+fired twice.
+
+## Where this leaves the headline
+
+Both routes agree in direction and neither pins the number:
+
+- **evolution loop:** 3.07× → **1.24×** (measured, ceiling-independent, trustworthy)
+- **static ablation:** 3.00× → **≤1.71×** (upper bound only; metric saturated)
+
+**The 3× headline does not survive steelmanning the control.** What the true figure is cannot be
+stated at current resolution.
+
 ## Next
 
-1. **Recompute L1's τ→0 ceiling** with precision free to evolve to the tightest real value, so the
-   "reached %" column means something again.
-2. **Re-run the ablation with an evolvable-precision L1 arm** and see whether 3.0× survives. This is
-   the load-bearing one — the README, the ROADMAP and every summary quote that figure.
-3. Only then update the headline, in every place it is stated.
+1. **Re-baseline the packing metric at finer resolution.** This is now the blocking job. It moves
+   every packing number in the project and breaks the pinned golden tests (`tests/head-cap.test.js`
+   pins an overlap of `0.170000` and the histogram resolution), so it is a deliberate re-baseline
+   with test updates, not a tweak.
+2. Recompute L1's τ→0 ceiling on that grid, so v1's "reached %" column means something again.
+3. Only then restate the headline, in every place it appears.

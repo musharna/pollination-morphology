@@ -34,7 +34,7 @@ suite (65 tests). Every experiment is `node experiments/<name>.js`.
 
 **⚠️ The headline below is in question as of 2026-08-02** — the 1-D control's precision was fixed
 rather than evolvable, and correcting that inside the evolution loop cut the advantage from 3.07× to
-1.24×. The static figure here has not yet been re-measured under the same correction.
+1.24×. Re-measured, the static figure falls to **≤1.71×** — an upper bound only, since the metric saturates.
 [detail](docs/2026-08-02-l1-precision-decision.md)
 
 **The 3-D contact model earns its place.** A free 1-D placement gene — the cheap version of this
@@ -47,7 +47,9 @@ handed the whole body surface and draws its precision from the real pool's own d
 achievable ceiling. ⚠️ **The 2-D advantage under evolution was 3.07× and is now 1.24×**: the L1
 control had been handed a fixed median precision while L2 inherits precision from morphology, and
 making L1's precision heritable — bounded by real flowers — very nearly closes the gap. The same
-objection applies to the ablation figure above, which has not yet been re-measured.
+objection applies to the ablation figure above: re-measured, it falls to **≤1.71×**, and that is only
+an upper bound because the packing metric saturates at the precision a steelmanned control evolves
+to. The 3× headline does not survive; the true figure needs a finer metric.
 [detail](docs/2026-08-02-l1-precision-decision.md) [detail](docs/2026-08-01-v1-result.md)
 
 **The pollen dilemma has a price, and it is large.** Pollen is reward and gamete at once, so a
