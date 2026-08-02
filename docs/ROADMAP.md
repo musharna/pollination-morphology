@@ -38,7 +38,7 @@ access. Two OpenAlex sweeps came back thin; that is a qualified null over one re
 Until this lands the claim is _"2-D out-packs 1-D in this model"_, **not** _"real richness exceeds
 what 1-D placement supports."_ Only the second is about the world.
 
-### B. Speciation, which v1 explicitly cannot address ⬜
+### B. Speciation, which v1 explicitly cannot address — 🟡 premise verified, model not built
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
@@ -46,6 +46,21 @@ question sits exactly there: placement selection in one panmictic population is 
 frequency-dependent and converges, so what breaks that symmetry in the first place? Needs an
 individual-based model with real inheritance and hybrid formation. **This is the biggest open
 scientific question in the project.**
+
+✅ **The premise is now measured rather than asserted** (2026-08-02). It had lived only in a comment
+at the top of `sim/evolve.js`, and it justifies both B's framing and why the evolution loop starts
+with many species. Measured in a panmictic population with per-plant mating success: the selection
+gradient is stabilising at **−48.9% ± 16.2pp across 7 independent populations** (all seven negative),
+and with mutation off the placement spread **collapses 12.6×** while mating success rises 2.5×.
+⚠️ The disruptive-detection control **failed on the first run** and caught a real bug — the shape
+test was written for a trait axis, but on a |deviation| axis disruptive selection rises rather than
+forming an interior U. Without that control, a harness that could only say "stabilising" would have
+returned the expected answer. **B is asking the right question**, and this is what licenses building
+the individual-based model. [detail](2026-08-02-panmictic-premise.md)
+
+⬜ Next for B, in order: **recombination** (the current run mutates clones, and frequency-dependent
+selection with recombination need not behave like the asexual case), then assortative mating by
+flowering time or by placement itself, then hybrids.
 
 ### C. Widen the table, which is where value scales — 🟡 first class shipped
 
