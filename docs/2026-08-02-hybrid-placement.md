@@ -1,0 +1,101 @@
+# Is placement inheritance blending? — and what a hybrid actually pays
+
+**Date:** 2026-08-02 · **Code:** `experiments/hybrid-placement.js` · Roadmap item B, second step.
+
+Blending inheritance is the classic enemy of speciation: if a hybrid sits halfway between its
+parents, gene flow drags diverging morphs back together and divergence cannot persist without
+assortative mating. That argument assumes the trait under selection is inherited additively.
+
+**Here it might not have been.** Genes are shape; placement is _computed_ from shape by the contact
+model, and that map is geometric and nonlinear. A hybrid inheriting intermediate shape need not have
+intermediate placement — it could land outside both parents, where nothing matches it. If so,
+geometry-derived placement would generate stronger isolation than a placement gene ever could, and
+the ablation's ecological result (L2 out-packs L1) would have a genetic counterpart.
+
+That was the hypothesis. It is **mostly wrong**, and the part that survives is more interesting than
+the part that doesn't.
+
+## The statistics, and the control that licenses them
+
+On the body metric that actually decides whether two plants exchange pollen:
+
+- **detour** = (d(h,p₁) + d(h,p₂)) / d(p₁,p₂) — 1.0 means the hybrid sits exactly on the segment
+  between its parents; >1 means it is off-axis.
+- **nearest** = min(d(h,p₁), d(h,p₂)) / d(p₁,p₂) — 0.5 is a true midpoint, ~0 means it snaps onto
+  one parent.
+- **outside** — fraction further from _both_ parents than they are from each other.
+
+⚠️ The **L1 arm is the control, not a comparison**: where placement itself is the gene, an additive
+hybrid is the arithmetic midpoint and _must_ score 1.00 / 0.50 / 0%. It does. A statistic that
+cannot report blending where blending is guaranteed could not be trusted to report its absence.
+
+## A. Placement inheritance is approximately blending
+
+```
+  cross                          detour   nearest   outside
+  L1 additive (control)            1.00      0.50        0%     n=188
+  L1 free recombination            1.02      0.02        0%     n=188
+  ---
+  free recombination               1.17      0.26        2%     n=123
+  additive blending                1.01      0.45        0%     n=140
+```
+
+**Additive inheritance of shape produces almost perfectly blending placement** (detour 1.01, nearest
+0.45) — indistinguishable from the L1 control. The nonlinearity of the shape→placement map does
+_not_ rescue divergence from blending. Free recombination does somewhat better (detour 1.17, and
+nearest 0.26 rather than 0.45, so whole-gene inheritance pulls hybrids toward one parent), but
+transgressive hybrids are **rare at 2%**.
+
+The hypothesis that geometry-derived placement is strongly non-blending is refuted. The classic
+problem applies to this model with full force.
+
+## ⚠️ C. But hybrids still pay — and the control took a quarter of the effect away
+
+A hybrid mating badly among its parents is not yet evidence of a matching cost: it may simply be a
+worse flower. So every hybrid is measured twice — rare among the two parental morphs, and common
+among clones of itself, where mismatch is impossible by construction. Only the ratio is a matching
+effect.
+
+```
+  hybrid / parent mating success        median    mean +/- 95% CI
+  rare among both parent morphs          0.812    0.751 +/- 0.091
+  among clones of itself (control)       0.949    0.960 +/- 0.040
+  NET matching effect (ratio)            0.879    0.809 +/- 0.101      n=58
+```
+
+Hybrids **are** slightly worse flowers — the clonal arm sits at 0.960, so about 6 of the 25 raw
+percentage points were intrinsic quality rather than placement. Removing it, the net cost is
+**19.1%, interval [0.708, 0.910], excluding 1.0**.
+
+**Geometry alone imposes a hybrid mating cost, with no genetic incompatibility of any kind.** The
+isolation comes from where the pollen lands: an intermediate placement matches neither parental
+morph well, which is underdominance arising from frequency dependence rather than from transgression.
+
+## What this means for roadmap B
+
+The two results pull in opposite directions and together they name the next mechanism precisely:
+
+- placement inheritance **blends**, so gene flow will erode divergence — geometry does not solve
+  speciation on its own;
+- but hybrids **pay ~19%**, so selection against them is real and reinforcement has something to act
+  on.
+
+That is the textbook setup for **assortative mating to be favoured**, and it is the next thing to
+build: without it, blending wins; with it, the hybrid cost measured here is what pays for it. Roadmap
+B's order (recombination → assortative mating → hybrids) is unchanged, but it now rests on a measured
+hybrid disadvantage rather than an assumed one.
+
+## Limits
+
+Hybrids are F1 only — no backcrossing, no segregation across generations, so this measures the
+immediate cost of one cross rather than the fate of a hybrid zone. The genome is haploid-style
+parameters, so "additive blending" is a stand-in for many small additive loci rather than a diploid
+model with dominance.
+
+Parent pairs are required to be ≥ 2.0 body units apart, which is a substantial separation; hybrids
+between nearer parents will pay less, and the 19% figure should not be read as a constant. n = 58
+pairs in part C, and the clonal control's own interval (0.960 ± 0.040) only just excludes 1.0, so the
+split between intrinsic quality and matching is the weakest number here.
+
+Populations are 21 plants and one bout per measurement. Mating success is summed over both sex roles
+with selfing excluded.
