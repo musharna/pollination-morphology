@@ -12,15 +12,17 @@ Four things are built and measured, in this order, each gating the next:
 2. **The reveal** (`visit.html`) — one bee, two flowers, pollen loaded and not delivered. The first
    attempt failed on a user's read (_"feels more like the number on a chart changing"_); rebuilt as
    an event in time with a rigid animal, and it now lands.
-⚠️⚠️ **RESTATED 2026-08-02 — the advantage is CONDITIONAL ON PRECISION.** The L1 control was handicapped: it was handed a FIXED MEDIAN precision while L2 inherits precision from morphology. With L1's precision made heritable and bounded by real morphologies, the EVOLVED advantage falls **3.07× → 1.24×**, and the static 3.0× was re-measured on a CONTINUOUS metric (the 24-bin histogram SATURATES at fine precision). TWO symmetric comparisons: **2.7× with neither arm precision-selected, 1.05× (a TIE) with both**. The 2-D advantage is a fact about PRECISION as much as dimensionality — a second axis multiplies slots only while placement is imprecise. [detail](2026-08-02-l1-precision-decision.md)
+   ⚠️⚠️ **RESTATED 2026-08-02 — the advantage is CONDITIONAL ON PRECISION, and the whole project is now measured on a CONTINUOUS metric.** The L1 control had been handicapped with a FIXED MEDIAN precision while L2 inherits precision from morphology; making L1's precision heritable and bounded by real morphologies collapsed the evolved advantage. The 24-bin histogram that scored placement SATURATES below one bin width, so it was replaced throughout `sim/` — in the evolution loop as well as the ablation, since L1 evolves to a precision 7× finer than a bin. TWO symmetric comparisons: **2.5× with neither arm precision-selected, and a TIE (0.92×, converged) with both**. The 2-D advantage is a fact about PRECISION as much as dimensionality — a second axis multiplies slots only while placement is imprecise. [detail](2026-08-02-continuous-metric-rebaseline.md) [decision](2026-08-02-l1-precision-decision.md)
 
-3. **The ablation** — 2-D placement out-packs a 1-D gene **2.7× when neither arm is
-   precision-selected, 1.05× (a tie) when both are** (see the banner above). This was the
-   delete-the-grid test; it passed, which is the only reason v1 exists, and it now carries its
-   condition.
-4. **v1, the evolution loop** — blind selection reaches **~52%** of the achievable ceiling and
-   ⚠️ **preserved the 2-D advantage at 3.07× — NOW 1.24×** once L1's precision is made heritable
-   rather than fixed at the median. [detail](2026-08-02-l1-precision-decision.md)
+3. **The ablation** — 2-D placement out-packs a precision-matched 1-D gene **2.5×** (40 vs 16 at
+   τ=0.2, and 2.4–2.9× across every tolerance). This was the delete-the-grid test; it passed, which
+   is the only reason v1 exists, and it now carries its condition.
+   [detail](2026-08-02-continuous-metric-rebaseline.md)
+4. **v1, the evolution loop** — blind selection reaches **40%** of the achievable ceiling, and with
+   both arms precision-selected the 2-D advantage is **0.92× — a tie**, stable from KDE_M 96 to 192.
+   ⚠️ At the estimator's old resolution this read 0.84×, i.e. the 1-D control WINNING; that was an
+   artefact of retained sample size, which biases irregular and gaussian clouds in OPPOSITE
+   directions. [detail](2026-08-02-continuous-metric-rebaseline.md)
 5. **The head cap** (item D below) — the coordinate edge is gone, and fixing it exposed a broken
    control. Both headline figures above are post-correction.
    [detail](2026-08-01-head-cap-result.md)
@@ -140,7 +142,7 @@ frequency) — and the under-powered arm hints yes. Needs many more draws. After
 EMERGES from limited dispersal rather than being imposed, and temporal assortment by flowering time.
 
 ⬜ _Superseded framing, kept for the record:_ **spatial structure, favoured.** It is the only remaining candidate that
-gives a rare morph *neighbours of its own kind* rather than merely more visits: a new morph's
+gives a rare morph _neighbours of its own kind_ rather than merely more visits: a new morph's
 offspring land near it, so it is locally common while globally rare. That attacks the measured
 barrier in the one way neither a second pollinator nor constancy does. Temporal assortment by
 flowering time is the other, and is genuinely independent of placement.
@@ -226,6 +228,12 @@ L2 unchanged at 8.3). Two consequences that must not be buried: **L1's ceiling c
 time" constraint firing again), and **the static ablation's 3.0× is subject to the same objection**
 and has not been re-measured. Implemented on two loci that were previously INERT for L1, so L2's
 numbers provably cannot move — verified by the suite. [detail](2026-08-02-l1-precision-decision.md)
+
+**⚠️ SUPERSEDED — all three figures in the paragraph above are pre-re-baseline.** Both numbers were
+measured on the saturating histogram, which the loop was still using. On the continuous metric the
+evolved advantage is **0.92× (a tie)**, the stale ceiling constant is **recomputed and now asserted**
+rather than commented, and the static ablation **has** been re-measured at 2.5×.
+[detail](2026-08-02-continuous-metric-rebaseline.md)
 
 ### E. Replace overlap with a transfer rate — 🟡 three of four targets met
 

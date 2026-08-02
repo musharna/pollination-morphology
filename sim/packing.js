@@ -81,8 +81,18 @@ function normalise(h) {
   return h;
 }
 
-/* Shared-area overlap of two normalised signatures, 0 to 1. */
+/* Shared-area overlap of two normalised signatures, 0 to 1.
+ *
+ * ⚠️ The type guard is load-bearing. A continuous signature is an OBJECT with
+ * no .length, so handing one to this function skips the loop entirely and
+ * returns 0 — "these species do not overlap at all" — with no error raised. A
+ * silent zero here inflates every packing ceiling that consumes it, and the
+ * resulting table looks completely ordinary. Refuse instead. */
 function overlap(a, b) {
+  if (!a || !b || a.length === undefined || b.length === undefined)
+    throw new Error(
+      "overlap: expected histogram signatures; got a continuous one (use kdeOverlap)",
+    );
   let o = 0;
   for (let i = 0; i < a.length; i++) o += Math.min(a[i], b[i]);
   return o;
@@ -130,7 +140,30 @@ function overlapMatrix(sigs) {
  */
 const S_UNIT_W = (1 - S_LO) / S_BINS;
 const PHI_UNIT_W = (2 * Math.PI) / PHI_BINS;
-const KDE_M = 48; // samples retained per cloud; pairwise cost is 2*M^2
+/*
+ * Samples retained per cloud; pairwise cost is 2*M^2.
+ *
+ * ⚠️ THIS CONSTANT CARRIES THE ONLY ASYMMETRIC ERROR IN THE ESTIMATOR, so it
+ * is the one that can decide an arm comparison on its own. Measured against a
+ * 400-point reference at identical bandwidth, retaining M points biases mean
+ * pairwise overlap by:
+ *
+ *     M     real irregular clouds    synthetic gaussian blobs
+ *     48          +0.0036                    -0.0050
+ *     96          +0.0014                    -0.0024
+ *    192          +0.0002                    -0.0011
+ *
+ * Note the OPPOSITE SIGNS. Too few points over-states overlap for an irregular
+ * cloud and under-states it for a clean gaussian one, so the error does not
+ * cancel between L2 and the synthetic 1-D control — it adds, and it favours the
+ * control. The differential is 0.0086 at M=48 against a mean overlap near 0.06,
+ * and shrinks to 0.0013 by M=192.
+ *
+ * Any result comparing a morphology-derived arm against a synthetic one must
+ * therefore be shown to be STABLE IN M rather than quoted at one setting.
+ * kdeSig takes an m override for exactly that check.
+ */
+const KDE_M = 96;
 
 function angDelta(a, b) {
   let d = a - b;
@@ -147,6 +180,14 @@ function subsample(hits, m) {
   return out;
 }
 
+/* Interquartile range — the robust spread the bandwidth rule falls back to. */
+function iqr(xs) {
+  if (xs.length < 4) return Infinity;
+  const a = [...xs].sort((x, y) => x - y);
+  const q = (f) => a[Math.min(a.length - 1, Math.floor(f * a.length))];
+  return Math.max(0, q(0.75) - q(0.25));
+}
+
 function stdev(xs) {
   if (xs.length < 2) return 0;
   const m = xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -160,8 +201,22 @@ function stdev(xs) {
  * units, and the self-density at each point (precomputed so the pairwise cost
  * stays at 2*M^2 rather than 4*M^2).
  */
-function kdeSig(hits) {
-  const pts = subsample(hits, KDE_M);
+/*
+ * dims: 2 is the full body surface. dims: 1 is the SAME hits with roll thrown
+ * away — the continuous counterpart of sig1D, for the L1-strict arm. It is a
+ * marginalisation, not a separate model: the points are unchanged and the roll
+ * axis simply stops contributing distance.
+ *
+ * The projection theorem survives the move to a continuous metric.
+ * min(integral f, integral g) >= integral min(f, g), so marginalising can only
+ * RAISE the overlapping coefficient, exactly as it could only raise min-sum
+ * overlap on the histogram. L2 >= L1-strict therefore remains forced rather
+ * than measured. (This estimator is a finite-sample approximation of that
+ * integral, so individual pairs can jitter a little either way; the direction
+ * holds in aggregate and tests/packing.test.js checks it on the real pool.)
+ */
+function kdeSig(hits, { dims = 2, m = KDE_M } = {}) {
+  const pts = subsample(hits, m);
   const n = pts.length;
   if (!n) return null;
   const sS = stdev(pts.map((p) => p.s)) / S_UNIT_W;
@@ -174,21 +229,50 @@ function kdeSig(hits) {
     sn += Math.sin(p.phi);
   }
   const R = Math.sqrt(cs * cs + sn * sn) / n;
-  const sP = Math.sqrt(Math.max(0, -2 * Math.log(Math.max(1e-12, R)))) / PHI_UNIT_W;
+  const sP =
+    Math.sqrt(Math.max(0, -2 * Math.log(Math.max(1e-12, R)))) / PHI_UNIT_W;
+  /*
+   * ⚠️ THE BANDWIDTH RULE WAS INVESTIGATED AND LEFT ALONE — recorded because
+   * the obvious-looking change here is wrong.
+   *
+   * L2's clouds are irregular and often multimodal while the synthetic control's
+   * blobs are exactly gaussian, so the gaussian-optimal rule looked like it must
+   * be over-smoothing L2 and inflating its overlap — a bias pointing straight at
+   * the comparison this project exists to make. Silverman's robust variant
+   * (0.9 * min(sd, IQR/1.34)) was the natural fix.
+   *
+   * Measured, by decomposing the estimator's error into a sample-size part and a
+   * bandwidth part, that story is false. The BANDWIDTH bias is SYMMETRIC across
+   * the two cloud types (+0.0108 real vs +0.0106 synthetic), so it very largely
+   * cancels in any ratio between arms; and the robust rule made the residual
+   * difference slightly WORSE, not better. The whole asymmetry lives in KDE_M
+   * instead — see the note there. A change justified by a mechanism that turned
+   * out not to exist does not get to stay just because it sounds more careful.
+   */
   const rule = (sd) => Math.max(1e-4, 1.06 * sd * Math.pow(n, -0.2));
-  const sig = { pts, hs: rule(sS), hp: rule(sP), n };
+  const sig = {
+    pts,
+    hs: rule(sS),
+    hp: dims === 1 ? 1 : rule(sP),
+    dims,
+    n,
+  };
   sig.self = pts.map((q) => density(sig, q));
   return sig;
 }
 
 /* Gaussian product kernel, distances in bin-width units. */
 function density(sig, q) {
-  const { pts, hs, hp, n } = sig;
+  const { pts, hs, hp, dims, n } = sig;
   let acc = 0;
   for (const p of pts) {
     const ds = (q.s - p.s) / S_UNIT_W / hs;
-    const dp = angDelta(q.phi, p.phi) / PHI_UNIT_W / hp;
-    acc += Math.exp(-0.5 * (ds * ds + dp * dp));
+    if (dims === 1) {
+      acc += Math.exp(-0.5 * ds * ds);
+    } else {
+      const dp = angDelta(q.phi, p.phi) / PHI_UNIT_W / hp;
+      acc += Math.exp(-0.5 * (ds * ds + dp * dp));
+    }
   }
   return acc / (n * hs * hp);
 }
@@ -200,6 +284,13 @@ function density(sig, q) {
  */
 function kdeOverlap(A, B) {
   if (!A || !B) return 0;
+  /* Guard the CLASS, not the instance. Comparing a 1-D signature against a 2-D
+   * one silently measures nothing coherent — the roll axis contributes distance
+   * for one side and not the other — and the result would still be a plausible
+   * number in [0, 1]. That is exactly the failure a bounded output hides, so it
+   * has to be refused rather than returned. */
+  if (A.dims !== B.dims)
+    throw new Error(`kdeOverlap: dimension mismatch ${A.dims} vs ${B.dims}`);
   let a = 0;
   for (let i = 0; i < A.pts.length; i++)
     a += Math.min(1, density(B, A.pts[i]) / Math.max(1e-300, A.self[i]));
