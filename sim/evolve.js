@@ -128,17 +128,41 @@ const ARMS = {
       };
     },
   },
-  /* Placement IS a gene: one coordinate along the body, at precision matched
-   * to what the morphology arm actually produces. The cheap version of the
-   * whole project, and the arm that has to be beaten. */
+  /* Placement IS a gene: one coordinate along the body, at a precision that is
+   * ALSO a gene. The cheap version of the whole project, and the arm that has
+   * to be beaten.
+   *
+   * ⚠️ PRECISION IS HERITABLE HERE, and that is a deliberate modelling choice
+   * rather than a default. In L2 precision is free: it falls out of geometry,
+   * so a mutated shape inherits a new precision automatically. Granting L1
+   * direct genetic control of WHERE pollen goes while withholding control of
+   * HOW TIGHTLY would be an arbitrary handicap on the control arm, and this
+   * project's claim rests on L1 being a steelman.
+   *
+   * It is BOUNDED by what real morphologies achieve — L1 may be as precise as
+   * the tightest real flower and no more. Unbounded precision would let it
+   * shrink its footprint to nothing and pack unlimited species, which is not a
+   * fact about placement dimensionality.
+   *
+   * The two loci used were previously INERT for this arm (L1 reads only
+   * antherT), so nothing about genome construction or mutation changes and L2's
+   * results are untouched — verified by the regression tests. */
   L1: {
     sig(g, ctx) {
       const s0 = (g.antherT - 0.35) / 0.5; // reuse a bounded gene as the site
-      const hitsA = K.syntheticHits(s0, 0, ctx.sSd, ctx.phiSd, {
+      const lerp = (v, [lo, hi], min, max) =>
+        min + ((v - lo) / (hi - lo)) * (max - min);
+      const sSd = ctx.sMin
+        ? lerp(g.throatR, GENE_BOUNDS.throatR, ctx.sMin, ctx.sMax)
+        : ctx.sSd;
+      const phiSd = ctx.pMin
+        ? lerp(g.curve, GENE_BOUNDS.curve, ctx.pMin, ctx.pMax)
+        : ctx.phiSd;
+      const hitsA = K.syntheticHits(s0, 0, sSd, phiSd, {
         n: ctx.nSamp,
         seed: ctx.seed,
       });
-      const hitsS = K.syntheticHits(s0, 0, ctx.sSd, ctx.phiSd, {
+      const hitsS = K.syntheticHits(s0, 0, sSd, phiSd, {
         n: ctx.nSamp,
         seed: ctx.seed + 1,
       });
