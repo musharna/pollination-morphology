@@ -170,8 +170,12 @@ function partB(flowers) {
     const n = demography(sites, groom);
     console.log(
       `  ${groom.toFixed(2).padStart(5)}   ${String(n).padStart(6)}` +
+        /* Derived, not hardcoded. This line read "recovers 8 of the mean-field
+         * 9" for as long as those happened to be the numbers, and went on
+         * printing it after the head-cap fix moved them to 7 of 8. A claim
+         * stated as a constant cannot track the computation it describes. */
         (groom === 1.0
-          ? "   <- one-chance limit: recovers 8 of the mean-field 9"
+          ? `   <- one-chance limit: recovers ${n} of the mean-field ${flowers.length}`
           : ""),
     );
   }
@@ -200,7 +204,9 @@ function partC() {
     const d = P.placementDistribution(f, bee, { n: 80, seed: 77 });
     if (d.hits.length > 40) flowers.push(f);
   }
-  const sites = flowers.map((f, i) => C.siteSet(f, bee, { n: 200, seed: 11 + i }));
+  const sites = flowers.map((f, i) =>
+    C.siteSet(f, bee, { n: 200, seed: 11 + i }),
+  );
 
   // how much do they actually overlap?
   const sigA = sites.map((st) => K.sig2D(st.anther));
