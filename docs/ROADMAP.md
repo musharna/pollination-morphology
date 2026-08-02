@@ -58,9 +58,20 @@ forming an interior U. Without that control, a harness that could only say "stab
 returned the expected answer. **B is asking the right question**, and this is what licenses building
 the individual-based model. [detail](2026-08-02-panmictic-premise.md)
 
-⬜ Next for B, in order: **recombination** (the current run mutates clones, and frequency-dependent
-selection with recombination need not behave like the asexual case), then assortative mating by
-flowering time or by placement itself, then hybrids.
+✅ **Recombination and hybrids, measured 2026-08-02.** ⚠️ **My hypothesis was refuted.** Because
+placement is computed from shape rather than inherited, I expected hybrids to land off-axis — giving
+isolation a placement gene could not. Measured: additive inheritance of shape produces **almost
+perfectly blending placement** (detour 1.01, nearest 0.45 — indistinguishable from the L1 control),
+and transgressive hybrids are **rare at 2%**. Geometry does not rescue divergence from blending.
+**But hybrids still pay 19.1% [0.708, 0.910]** in mating success, purely from placement mismatch —
+and the clonal-population control matters, because hybrids are also slightly worse flowers (0.960)
+and that accounted for 6 of the 25 raw points. So selection against hybrids is real without any
+genetic incompatibility. [detail](2026-08-02-hybrid-placement.md)
+
+⬜ **Next for B: assortative mating.** The two results name it precisely — blending will erode
+divergence, but a measured 19% hybrid cost is exactly what pays for reinforcement. Assortment by
+flowering time or by placement itself, then hybrid zones across generations (the current test is F1
+only, no backcrossing).
 
 ### C. Widen the table, which is where value scales — 🟡 first class shipped
 
