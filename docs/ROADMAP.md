@@ -110,8 +110,24 @@ calibration control shows in exactly that cell (it survived seed-averaging). The
 RELIEVED, not reversed. ⚠️ The patch-growing arm (corrected 0.889, 0.800, 1.220) is non-monotone and
 single-draw; the crossing it hints at is **not claimed**. [detail](2026-08-02-spatial.md)
 
-⬜ **Next for B, and it is now a sharp question rather than a search:** does a LARGER PATCH push
-`rare/common` past 1.0? The mechanism argues yes — more un-emptied partners, the separate
+⚠️ **Larger patch: MEASURED AND INCONCLUSIVE 2026-08-02.** Corrected 1.020 ± 0.492 (4/24) and
+0.863 ± 0.278 (8/48) — intervals spanning penalty to advantage, point estimates falling not rising.
+Reported as a failure to measure rather than dressed up; the verdict logic now refuses to conclude
+above ±0.2, after an earlier draft printed "✅ PREDICTION HELD" off ±0.417.
+⚠️ **The diagnostic was worth more than the result**: holding the bout fixed while the ring grew made
+the identical-morph control drift 0.976 → 1.133 → 1.228, and a control that cannot vary by
+construction but does is a broken harness. A locally foraging bee DIFFUSES, so mixing time scales as
+(ring/step)²; scaling visits accordingly flattens the control to 1.009/1.071.
+⬜ **Better next move than brute force:** measure boundary and interior plants SEPARATELY. The
+prediction is specifically about boundary dilution and interior plants should already sit at parity,
+so that tests the mechanism at 4/24 without needing large rings — brute force costs 9× per row.
+[detail](2026-08-02-patch-size.md)
+
+⚠️ **Live possibility after five mechanisms: NOTHING in this model pushes a rare placement past
+parity**, and placement divergence needs drift plus the measured 19.1% hybrid cost rather than a rare
+advantage. That would be a result, but no experiment has established it.
+
+⬜ _Superseded framing:_ does a LARGER PATCH push `rare/common` past 1.0? The mechanism argues yes — more un-emptied partners, the separate
 partner-availability effect already measured in the constancy work (0.471 → 0.550 at fixed
 frequency) — and the under-powered arm hints yes. Needs many more draws. After that: clustering that
 EMERGES from limited dispersal rather than being imposed, and temporal assortment by flowering time.
