@@ -34,7 +34,7 @@ suite (65 tests). Every experiment is `node experiments/<name>.js`.
 
 **⚠️ The headline below is in question as of 2026-08-02** — the 1-D control's precision was fixed
 rather than evolvable, and correcting that inside the evolution loop cut the advantage from 3.07× to
-1.24×. Re-measured on a continuous metric it holds at **2.7×** against a precision-matched control.
+1.24×. Re-measured on a continuous metric: **2.7×** with neither arm precision-selected, **1.05×** with both.
 [detail](docs/2026-08-02-l1-precision-decision.md)
 
 **The 3-D contact model earns its place.** A free 1-D placement gene — the cheap version of this
@@ -48,9 +48,10 @@ achievable ceiling. ⚠️ **The 2-D advantage under evolution was 3.07× and is
 control had been handed a fixed median precision while L2 inherits precision from morphology, and
 making L1's precision heritable — bounded by real flowers — very nearly closes the gap. The same
 objection applies to the ablation figure above. Re-measured on a **continuous** overlap metric (the
-histogram one saturates at fine precision), the static advantage is **2.7× against a precision-matched
-1-D control** — so the headline survives the comparison it was designed to make — but **L2 loses** to a
-control granted the best precision in the pool. That second comparison is not yet fair on pool size.
+histogram one saturates at fine precision): the advantage is **2.7× when neither arm is
+precision-selected**, and **1.05× — a tie — when both are**. The 2-D advantage turns out to be a fact
+about *precision* as much as dimensionality: a second axis multiplies the available slots only while
+placement is imprecise, which is where real morphologies actually sit.
 [detail](docs/2026-08-02-l1-precision-decision.md) [detail](docs/2026-08-01-v1-result.md)
 
 **The pollen dilemma has a price, and it is large.** Pollen is reward and gamete at once, so a

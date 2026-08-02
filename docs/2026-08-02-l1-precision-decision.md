@@ -180,11 +180,48 @@ larger draw, taking the tightest N from a pool many times bigger, and that was n
 survive against a best-precision control, and no comparison yet separates precision quality from pool
 size. That last one is the experiment that would settle it.
 
+## Part 4 — the comparison that decides it
+
+The confound was that selecting "the best K of a pool" changes two things: quality **and** count. So:
+one draw of **2,369 morphologies** across eight seeds, then every L2 arm takes **exactly N = 301** —
+quality varies, count does not.
+
+```
+  arm                        N    median s-spread   ceiling (tau=0.2)
+  L2, TIGHTEST N            301          0.0397        69
+  L2, random N              301          0.0444        44
+  L2, LOOSEST N             301          0.0525        15
+  L1 1-D at best precision  234          0.0053        66
+```
+
+**Positive control passes:** at constant N, precision quality drives packing hard and monotonically
+(69 > 44 > 15). The axis is real and the pool-size confound is gone.
+
+**L2 (tightest) vs L1 (best precision) = 1.05× — a tie.**
+
+## The resolution
+
+There is no single answer because there are two legitimate, *symmetric* comparisons:
+
+| both arms unselected                  | 2.71× | L2 wins clearly |
+| both arms precision-selected          | 1.05× | a tie           |
+
+The earlier 0.70× "L2 loses" was neither — it compared a **selected** L1 against an **unselected** L2,
+and that asymmetry was the error.
+
+**The mechanism is the interesting part.** A second placement dimension multiplies the available
+slots only when precision is coarse relative to the body. At realistic precision, 1-D affords few
+slots (17) and the second axis multiplies them (44) — a 2.6× gain. At the best precision any real
+flower achieves, one axis already affords 66 slots, and the second buys essentially nothing (69).
+
+So **the 2-D advantage is real, and it is a fact about precision rather than about dimensionality
+alone.** Morphology-derived placement wins where placement is imprecise — which is where real
+morphologies actually sit (median s-spread 0.044, eight times coarser than the tightest). The headline
+should be stated with that condition attached, not as an unconditional property of 2-D placement.
+
 ## Next
 
-1. **Sample a much larger morphology pool** and take the tightest N, so L2's precision quality can be
-   raised at constant pool size. This is the comparison that decides the headline.
-2. **Switch the ablation's default metric to the continuous one** — a deliberate re-baseline that
+1. **Switch the ablation's default metric to the continuous one** — a deliberate re-baseline that
    moves every packing number and re-pins the golden tests (`tests/head-cap.test.js` pins overlap
    `0.170000` and the histogram resolution). The KDE functions are in place and validated; only the
    switch-over and re-pinning remain.
