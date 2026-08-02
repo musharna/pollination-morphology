@@ -12,20 +12,24 @@ Four things are built and measured, in this order, each gating the next:
 2. **The reveal** (`visit.html`) — one bee, two flowers, pollen loaded and not delivered. The first
    attempt failed on a user's read (_"feels more like the number on a chart changing"_); rebuilt as
    an event in time with a rigid animal, and it now lands.
-⚠️⚠️ **SUPERSEDED / IN QUESTION 2026-08-02.** The L1 control was handicapped: it was handed a FIXED MEDIAN precision while L2 inherits precision from morphology. With L1's precision made heritable and bounded by real morphologies, the EVOLVED advantage falls **3.07× → 1.24×**, and the static 3.0× was re-measured on a CONTINUOUS metric (the 24-bin histogram SATURATES at fine precision). TWO symmetric comparisons: **2.7× with neither arm precision-selected, 1.05× (a TIE) with both**. The 2-D advantage is a fact about PRECISION as much as dimensionality — a second axis multiplies slots only while placement is imprecise. [detail](2026-08-02-l1-precision-decision.md)
+⚠️⚠️ **RESTATED 2026-08-02 — the advantage is CONDITIONAL ON PRECISION.** The L1 control was handicapped: it was handed a FIXED MEDIAN precision while L2 inherits precision from morphology. With L1's precision made heritable and bounded by real morphologies, the EVOLVED advantage falls **3.07× → 1.24×**, and the static 3.0× was re-measured on a CONTINUOUS metric (the 24-bin histogram SATURATES at fine precision). TWO symmetric comparisons: **2.7× with neither arm precision-selected, 1.05× (a TIE) with both**. The 2-D advantage is a fact about PRECISION as much as dimensionality — a second axis multiplies slots only while placement is imprecise. [detail](2026-08-02-l1-precision-decision.md)
 
-3. **The ablation** — ⚠️ **3.0× IS IN QUESTION, see the banner above** — 2-D placement supports **3.0×** the species a 1-D gene does, at matched
-   precision. This was the delete-the-grid test and it passed, which is the only reason v1 exists.
+3. **The ablation** — 2-D placement out-packs a 1-D gene **2.7× when neither arm is
+   precision-selected, 1.05× (a tie) when both are** (see the banner above). This was the
+   delete-the-grid test; it passed, which is the only reason v1 exists, and it now carries its
+   condition.
 4. **v1, the evolution loop** — blind selection reaches **~52%** of the achievable ceiling and
    ⚠️ **preserved the 2-D advantage at 3.07× — NOW 1.24×** once L1's precision is made heritable
    rather than fixed at the median. [detail](2026-08-02-l1-precision-decision.md)
 5. **The head cap** (item D below) — the coordinate edge is gone, and fixing it exposed a broken
    control. Both headline figures above are post-correction.
    [detail](2026-08-01-head-cap-result.md)
-6. **Three mechanism classes** on the item-C table — carryover, reward currency, and the cost of
-   prolonged presentation. Castellanos et al. 2006 now reproduces **4 of 4**, though the last cell
-   turned out to be half missing biology and half my own carry-cap artefact.
+6. **Four mechanism classes** on the item-C table — carryover, reward currency, the cost of
+   prolonged presentation, and pollen packaging. Castellanos et al. 2006 reproduces **4 of 4**, though
+   that last cell turned out to be half missing biology and half my own carry-cap artefact.
    [detail](2026-08-02-presentation-cost-result.md)
+7. **Roadmap B, six steps** — the premise verified, then four mechanism tests of which three are clean
+   negatives and spatial structure a partial positive. [detail](2026-08-02-spatial.md)
 
 ## Next
 
