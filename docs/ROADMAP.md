@@ -1,7 +1,7 @@
 # Roadmap
 
 **Canonical.** If another document disagrees about what comes next, this one wins.
-Last updated 2026-08-01.
+Last updated 2026-08-02.
 
 ## Where this stands
 
@@ -125,6 +125,8 @@ Nearest, in order of cheapness:
   one cell of the four, suppressing simultaneous presentation by 44%, because `cap = 140` was
   calibrated for an 8-grain deposit and then reused across a sweep running to 60.
   [detail](2026-08-02-presentation-cost-result.md)
+- ✅ **pollen packaging** — BUILT 2026-08-02 as roadmap E's mechanism; solid pollinia vs granular
+  monads, calibrated against 228 species. [detail](2026-08-02-dispersal-unit.md)
 - **deception** — no reward at all, already enumerated
 
 ### D. Close the head-tip boundary artefact ✅ _found and closed 2026-08-01_
@@ -150,12 +152,27 @@ inherits heterogeneous precision from morphology. Inside the evolution loop that
 choice (is precision heritable in a placement-gene world?), not a bug, and it should be decided
 rather than defaulted.
 
-### E. Replace overlap with a transfer rate ⬜
+### E. Replace overlap with a transfer rate — 🟡 three of four targets met
 
-Everything currently rests on _placement overlap_, which is a proxy. The sharpest available
-calibration gate is Johnson & Harder 2023 (228 species): under 45% removal for solid pollinia
-against over 80% for granular monads. A model that reproduces that split has earned the right to
-call its number a transfer rate.
+Everything rests on _placement overlap_, a proxy. The gate is Johnson & Harder 2023
+(10.1098/rspb.2023.1148, 228 species) — ⚠️ **open access, not blocked as this roadmap previously
+recorded** — and it is a CROSSED pair, which is why it can fail: removal <45% for solid pollinia
+against >80% for granular monads, while transfer efficiency runs 27.0% against 2.4%.
+
+✅ **BUILT 2026-08-02** (`dispersalUnit` in `sim/carryover.js`). One mechanism — a pollinium is one
+solid object — with `viscidium` selected on the REMOVAL axis alone, so the transfer figure is a
+prediction. Removal: 99.9% granular, 27.0% pollinia, both targets met. Transfer decomposes at matched
+removal as granular 7.1% → coherence 10.3% → not-harvestable 18.6% → adhesion **27.1%** against the
+measured 27.0%.
+
+⚠️ **The monad side is still 2.9x too generous** (7.1% vs 2.4%), so absolute delivery magnitudes are
+still not quotable as rates. What IS calibrated is the contrast between dispersal units.
+⚠️ **Retires a caveat repeated in four documents**: "3–6% against Harder & Thomson's 0.6%, five to ten
+times too generous" compared against ONE species; PTE is the same quantity and the 228-species monad
+mean is 2.4%, so the discrepancy was always 2.9x.
+⬜ Next here: **sectile pollinia**, the intermediate condition — packaged but not solid, and grouped
+with monads on removal — which is the sharpest remaining test.
+[detail](2026-08-02-dispersal-unit.md)
 
 ### F. Renderer, only where it serves the above ⬜
 
@@ -173,6 +190,10 @@ project's value scales with mechanism classes rather than polish.
   herkogamy asymmetry.
 - **Never compare an evolved outcome to an optimiser's bound at a tolerance the evolutionary
   process does not use.** Cost one wrong headline already (30% vs the true 64%).
+- **A single-seed assertion about a stochastic quantity can be green and backwards at the same
+  time.** A test asserting that coherence is a liability at matched removal passed on one seed; over
+  twelve seeds the effect is a ~1.6x advantage in the opposite direction, and it had already
+  propagated into an experiment's conclusion text. Seed-average anything directional.
 - **A new mechanism needs a limiting case or a deterministic reference with a known right answer,
   and any effect it reports must survive a stricter measurement before it is believed.** Three
   measurement artefacts impersonated results on 2026-08-01 alone: a 10× wrong pollen-limitation

@@ -28,7 +28,7 @@ a model that does not need geometry at all.
 | `docs/`            | groundwork, and a write-up per experiment including what went wrong            |
 
 Open `visit.html` in a browser — no build step, no dependencies. Run `node --test tests/` for the
-suite (59 tests). Every experiment is `node experiments/<name>.js`.
+suite (65 tests). Every experiment is `node experiments/<name>.js`.
 
 ## What has been measured
 
@@ -47,6 +47,13 @@ pollen-rewarding flower must spend gametes to advertise. Nectar breaks that coup
 dispensing schedule is **four times more gradual and yields 2.2× the male fitness**. Harder &
 Thomson's saturating gain curve is reproduced — and the mechanism turns out to be finite stigma
 capacity, not grooming. [detail](docs/2026-08-01-reward-result.md)
+
+**Pollen packaging is calibrated against 228 species.** Johnson & Harder 2023 report a _crossed_
+result — solid pollinia are hard to remove (<45%) yet efficient once removed (27.0% transfer), while
+granular monads are the reverse (>80%, 2.4%). One mechanism reproduces three of the four numbers:
+a pollinium is a single solid object, so it comes away only on a visit precise enough to catch the
+viscidium, and once glued on it is neither harvested nor groomed off grain by grain.
+[detail](docs/2026-08-02-dispersal-unit.md)
 
 **Pollen presentation theory reproduces in full — after one of the four cells turned out to be my
 own bug.** Castellanos' two-sided prediction now comes out right in all four pollinator regimes. It
@@ -71,10 +78,10 @@ one. That is a stronger claim than Armbruster's own framework makes.
 ## What is not claimed
 
 Overlap in the packing results is _placement overlap_, not a measured transfer rate. Carryover,
-packaging efficiency and last-male advantage are now built and counted, but the **delivery level is
-uncalibrated** — this model delivers 3–6% of removed pollen where Harder & Thomson measured 0.6%, so
-the shapes are reproduced and the magnitudes are not. The evolution loop is adaptive dynamics, not
-population genetics — no standing variation, no
+packaging efficiency and last-male advantage are now built and counted, and the **contrast between
+pollen-dispersal units is calibrated** against 228 species — but the **absolute monad delivery level
+is not**, running 2.9x generous (7.1% against a measured 2.4%), so magnitudes still should not be
+quoted as rates. The evolution loop is adaptive dynamics, not population genetics — no standing variation, no
 recombination, no hybridisation — so it speaks to coexistence among species already distinct and
 **not to speciation itself**.
 

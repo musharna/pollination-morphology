@@ -66,10 +66,24 @@ function siteSet(flower, bee, { n = 160, seed = 5 } = {}) {
     seed: seed + 1,
     part: "stigma",
   });
+  const anther = a.hits.map((h) => ({ s: h.s, phi: h.phi }));
   return {
-    anther: a.hits.map((h) => ({ s: h.s, phi: h.phi })),
+    anther,
     stigma: s.hits.map((h) => ({ s: h.s, phi: h.phi })),
     contactRate: a.contactRate,
+    /* Modal anther placement — the spot a perfectly-aligned visitor would touch.
+     * A solid pollinium is removed only by a visit that lands close to it (see
+     * `dispersalUnit` below), so this is the target that removal is measured
+     * against. Circular in phi. */
+    antherMode: anther.length
+      ? {
+          s: anther.reduce((t, h) => t + h.s, 0) / anther.length,
+          phi: Math.atan2(
+            anther.reduce((t, h) => t + Math.sin(h.phi), 0),
+            anther.reduce((t, h) => t + Math.cos(h.phi), 0),
+          ),
+        }
+      : null,
   };
 }
 
@@ -98,6 +112,25 @@ const DEFAULTS = {
    * else in this model. Measured in BOUT TICKS, because pollen dies on a clock
    * rather than per visitor. Infinity = no senescence = the previous model. */
   pollenLife: Infinity,
+
+  /* ---- pollen-dispersal unit (roadmap E, sim/reward.js has the accounting).
+   *
+   * "granular" is the model everything before this assumed: pollen is many
+   * independent grains, picked up a dose at a time by any contact, groomed off
+   * and deposited grain by grain.
+   *
+   * "pollinium" is one solid mass — the orchid and milkweed condition. ONE
+   * mechanism, two consequences that pull in opposite directions, which is what
+   * makes it testable rather than a knob:
+   *   REMOVAL falls, because the whole mass leaves only on a visit precise
+   *   enough to catch the viscidium (`viscidium`, in body-metric units);
+   *   TRANSFER rises, because a coherent unit is not whittled away grain by
+   *   grain by grooming and is not diluted across many stigmas.
+   * Johnson & Harder 2023 (10.1098/rspb.2023.1148, 228 species) measured
+   * exactly that crossing: removal <45% for solid pollinia against >80% for
+   * granular monads, while transfer efficiency runs 27.0% against 2.4%. */
+  dispersalUnit: "granular",
+  viscidium: 0.6,
 };
 
 /*
@@ -121,8 +154,15 @@ function runBout(sites, abundance, opts = {}) {
     visitJitter,
     harvest,
     pollenLife,
+    dispersalUnit,
+    viscidium,
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
+  const pollinium = dispersalUnit === "pollinium";
+  if (pollinium && !Number.isFinite(pollenPerFlower))
+    throw new Error(
+      "a pollinium IS the flower's pollen, so pollenPerFlower must be finite",
+    );
   const rng = makeRng(seed);
   const S = sites.length;
 
@@ -197,14 +237,18 @@ function runBout(sites, abundance, opts = {}) {
          * limited slots and simply fails to sire, which is why senescence is
          * not merely a discount on the delivered count — dead pollen crowds
          * out live pollen. The grain is dropped from the load either way. */
+        /* `mass` is 1 for a granular grain and the whole pool for a
+         * pollinium, so every count below is in GRAINS regardless of how the
+         * pollen is packaged — which is what makes the two units comparable. */
+        const m = g.mass || 1;
         if (g.ok === false) {
-          deadDelivered++;
+          deadDelivered += m;
           continue;
         }
-        T[g.sp][j] += 1;
+        T[g.sp][j] += m;
         ageOnDeposit.push(v - g.t);
-        if (g.sp === j) landedRight++;
-        else landedWrong++;
+        if (g.sp === j) landedRight += m;
+        else landedWrong += m;
       }
       const drop = new Set(take);
       load = load.filter((_, gi) => !drop.has(gi));
@@ -220,7 +264,7 @@ function runBout(sites, abundance, opts = {}) {
      */
     const kept = [];
     for (const g of load) {
-      if (rng() < groom) groomedOff++;
+      if (rng() < groom) groomedOff += g.mass || 1;
       else kept.push(g);
     }
     load = kept;
@@ -234,6 +278,7 @@ function runBout(sites, abundance, opts = {}) {
      * TOTAL — the two quantities pollen presentation theory separates.
      */
     let dose = deposit;
+    let polSite = null;
     if (finite) {
       /*
        * A flower gets a bounded number of visits and then dies, and whatever it
@@ -271,7 +316,20 @@ function runBout(sites, abundance, opts = {}) {
        * number even in runs where nothing actually senesces. */
       if (flowerVisits[j] === 0) flowerOpenedAt[j] = v;
       flowerVisits[j] += 1;
-      dose = Math.min(dosePerVisit, remaining[j]);
+      if (pollinium) {
+        /* All or nothing. The mass comes away only if this visit lands close
+         * enough to the modal anther contact to catch the viscidium, which is
+         * why removal efficiency is LOW for pollinia without anything being
+         * wrong with the flower. */
+        polSite = site.anther[(rng() * site.anther.length) | 0];
+        const m = site.antherMode;
+        const caught =
+          m && bodyDist(polSite, m.s, m.phi) < viscidium && remaining[j] > 0;
+        dose = caught ? remaining[j] : 0;
+        if (!caught) polSite = null;
+      } else {
+        dose = Math.min(dosePerVisit, remaining[j]);
+      }
       remaining[j] -= dose;
       released[j] += dose;
     }
@@ -284,16 +342,35 @@ function runBout(sites, abundance, opts = {}) {
     const viability = senesce
       ? Math.exp(-(v - flowerOpenedAt[j]) / pollenLife)
       : 1;
-    for (let d = 0; d < dose; d++) {
-      const aSite = site.anther[(rng() * site.anther.length) | 0];
-      /* Short-circuit when fully viable so the rng stream is untouched in the
-       * default (pollenLife = Infinity) model — every earlier result, and the
-       * groom = 1 mean-field regression, must stay bit-identical. */
-      const ok = viability >= 1 || rng() < viability;
-      if (!ok) senesced++;
-      load.push({ s: aSite.s, phi: aSite.phi, sp: j, t: v, ok });
-      produced++;
-    }
+    if (pollinium) {
+      /* ONE unit carrying the whole mass. Everything downstream — grooming,
+       * the carry cap, deposition — then acts on it as a single object rather
+       * than on `dose` independent grains, which is exactly the coherence that
+       * makes transfer efficiency HIGH. Two opposite consequences, one cause. */
+      if (polSite && dose > 0) {
+        const ok = viability >= 1 || rng() < viability;
+        if (!ok) senesced += dose;
+        load.push({
+          s: polSite.s,
+          phi: polSite.phi,
+          sp: j,
+          t: v,
+          ok,
+          mass: dose,
+        });
+        produced += dose;
+      }
+    } else
+      for (let d = 0; d < dose; d++) {
+        const aSite = site.anther[(rng() * site.anther.length) | 0];
+        /* Short-circuit when fully viable so the rng stream is untouched in the
+         * default (pollenLife = Infinity) model — every earlier result, and the
+         * groom = 1 mean-field regression, must stay bit-identical. */
+        const ok = viability >= 1 || rng() < viability;
+        if (!ok) senesced++;
+        load.push({ s: aSite.s, phi: aSite.phi, sp: j, t: v, ok });
+        produced++;
+      }
 
     /*
      * --- and the animal packs some of it away for itself.
@@ -309,7 +386,7 @@ function runBout(sites, abundance, opts = {}) {
     if (harvest > 0) {
       const keep = [];
       for (const g of load) {
-        if (rng() < harvest) harvested++;
+        if (rng() < harvest) harvested += g.mass || 1;
         else keep.push(g);
       }
       load = keep;
