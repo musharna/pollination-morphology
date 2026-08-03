@@ -89,7 +89,7 @@ smallest real SD is 10⁵× clear) and a test now pins both the invariance and t
 ⬜ Still open, and still needing the paywalled source: the **ceiling** half. Nothing here measures how
 many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
 
-### B. Speciation, which v1 explicitly cannot address — 🟡 premise verified, model not built
+### B. Speciation, which v1 explicitly cannot address — 🟡 IBM BUILT 2026-08-03, and it does not split
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
@@ -97,6 +97,36 @@ question sits exactly there: placement selection in one panmictic population is 
 frequency-dependent and converges, so what breaks that symmetry in the first place? Needs an
 individual-based model with real inheritance and hybrid formation. **This is the biggest open
 scientific question in the project.**
+
+✅ **THE IBM IS BUILT 2026-08-03 (`sim/ibm.js`), and the proxy is retired.** Every mechanism above was
+scored against `rare/common ~ 0.26` in machinery that cannot speciate. This one can: `runBout`'s
+`T[i][j]` IS a mating matrix, so a mother is drawn by the pollen she received and her mate by who
+delivered it — **parentage is decided by the placement geometry and assortative mating is an OUTPUT,
+not a parameter.** Diploid, free recombination, additive expression (because the hybrid work MEASURED
+additive shape to give blending placement), placement still computed.
+
+**Neither arm splits.** A placement-mated population is indistinguishable from a null whose mating is
+severed from placement (tail separation 2.20 vs 2.32). ⚠️⚠️ **The stronger half: fecundity selection
+pointed at two REACHABLE placements at k=8 still did not go bimodal — it CONTRACTED, spread 0.73
+against the null's 1.97.** Whichever cluster falls behind loses its mates, so placement-mediated
+mating is positively frequency-dependent and **ERASES an imposed bimodality rather than merely
+failing to create one**. That is the rare-morph mate-finding problem with real inheritance, and it is
+what sympatric Platanthera shows in the field.
+
+⚠️⚠️ **Two positive controls FAILED before one worked, both in the same mechanism class**, and the
+tell was identical each time: the forced arm had LESS spread than the null, which no real split does.
+`exp(k·distance-from-mean)` is disruptive on a 1-D trait axis but on a 2-D body surface rewards a
+direction-free shell and then collapses onto the leading extreme — **the second time this project has
+hit that**, the panmictic experiment recorded it first. The control that worked **changed mechanism
+class**: it selects nothing, hands the pipeline a population that IS two lineages, and asks only
+whether the measurement can see one — up to **23x** the one-cloud baseline. A control sharing a
+mechanism with the thing under test cannot separate "selection can't beat the mating system" from
+"the statistic can't see a split", because the mechanism under test is free to defeat it.
+⚠️ **The anchor gate also caught a broken diagnostic**: correlating deviation against pollen RECEIVED
+(the female half of fitness) read +0.149, i.e. disruptive; realized parentage reads **-0.842**.
+⬜ **Next, and it now has a harness whose negatives mean something: wire DECEPTION into the IBM** —
+the one mechanism measured past parity, and it is not in this model yet. N=30 over 35 generations
+bounds the effect rather than proving impossibility. [detail](2026-08-03-ibm.md)
 
 ✅ **The premise is now measured rather than asserted** (2026-08-02). It had lived only in a comment
 at the top of `sim/evolve.js`, and it justifies both B's framing and why the evolution loop starts
