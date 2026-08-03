@@ -281,6 +281,20 @@ times too generous" compared against ONE species; PTE is the same quantity and t
 mean is 2.4%, so the discrepancy was always 2.9x.
 ⬜ Next here: **sectile pollinia**, the intermediate condition — packaged but not solid, and grouped
 with monads on removal — which is the sharpest remaining test.
+
+⚠️ **RUN 2026-08-03, AND THE MECHANISM DOES NOT REACH IT.** Two corrections to the framing above:
+sectile groups with monads on **both** axes, not just removal ("massula and monad dispersal with
+higher removal _and lower transfer efficiency_ ... was not expected a priori"), and the structure
+worth predicting is a **split** — on net export sectile groups with the SOLID pollinia while monads
+sit alone and worst. Selected on carryover length so transfer stayed a prediction, sectile lands at
+**6.9%, i.e. −3% of the way** from monad to pollinium where the measured unit sits at 67%; the export
+grouping fails too. **The negative survives a hundredfold resolution control** — transfer depends on
+the massula COUNT alone and is identical at pools of 60, 600 and 6000, so grains-per-massula is
+irrelevant to transfer here. What binds is a **tension between the two axes**: carryover pushes the
+count up and transfer falls as it rises, so the model cannot match sectile's carryover and its
+transfer at once. Points at a missing mechanism — massula adhesion, or the pollinarium bending that
+places successive massulae on successive stigmas — rather than at a tuning failure.
+[detail](2026-08-03-sectile.md)
 [detail](2026-08-02-dispersal-unit.md)
 
 ### F. Renderer, only where it serves the above ⬜
