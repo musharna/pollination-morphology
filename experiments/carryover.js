@@ -41,7 +41,7 @@ function evolvedCommunity() {
     phiSd: K.median(sP),
     seed: 1097,
   };
-  const { state } = E.run({
+  const { state: st } = E.run({
     arm: E.ARMS.L2,
     ctx,
     nSpecies: 40,
@@ -52,7 +52,14 @@ function evolvedCommunity() {
     extinctAt: 0.002,
     seed: 1,
   });
-  return state.species.filter((s) => s.alive).map((s) => E.toFlower(s.g));
+  /* The mean-field abundances come back too. The claim about which species the
+   * counted simulation fails to recover is a claim about how marginal they were
+   * HERE, so it has to be read off this state rather than restated. */
+  const live = st.species.filter((s) => s.alive);
+  return {
+    flowers: live.map((s) => E.toFlower(s.g)),
+    abund: live.map((s) => s.n),
+  };
 }
 
 // ==========================================================================
@@ -154,10 +161,12 @@ function demography(
     });
     for (const i of idx) if (n[i] < 0.002) alive[i] = false;
   }
-  return alive.filter(Boolean).length;
+  /* Returns WHICH species survived, not just how many, so a claim about the
+   * ones that are lost can be derived rather than remembered. */
+  return { count: alive.filter(Boolean).length, alive };
 }
 
-function partB(flowers) {
+function partB(flowers, abund) {
   rule("B — does the evolved community survive carryover?");
   const sites = flowers.map((f, i) =>
     C.siteSet(f, bee, { n: 200, seed: 11 + i }),
@@ -166,23 +175,47 @@ function partB(flowers) {
     `  ${flowers.length} species, evolved under the mean-field model\n`,
   );
   console.log("  groom   surviving species");
+  let lostAtLimit = null;
   for (const groom of [1.0, 0.5, 0.25, 0.12, 0.05]) {
-    const n = demography(sites, groom);
+    const r = demography(sites, groom);
+    if (groom === 1.0) lostAtLimit = r.alive;
     console.log(
-      `  ${groom.toFixed(2).padStart(5)}   ${String(n).padStart(6)}` +
+      `  ${groom.toFixed(2).padStart(5)}   ${String(r.count).padStart(6)}` +
         /* Derived, not hardcoded. This line read "recovers 8 of the mean-field
          * 9" for as long as those happened to be the numbers, and went on
          * printing it after the head-cap fix moved them to 7 of 8. A claim
          * stated as a constant cannot track the computation it describes. */
         (groom === 1.0
-          ? `   <- one-chance limit: recovers ${n} of the mean-field ${flowers.length}`
+          ? `   <- one-chance limit: recovers ${r.count} of the mean-field ${flowers.length}`
           : ""),
     );
   }
+
+  /* ⚠️ The explanation used to be a hardcoded "sat at abundance 0.004", two
+   * functions after this file's own warning that a claim stated as a constant
+   * cannot track the computation it describes. It was measured once, before the
+   * evolution loop changed metric, and has been reprinted unverified since.
+   * Derived now, and it reports whichever way the comparison actually falls. */
+  const lost = abund.filter((_, i) => !lostAtLimit[i]);
+  const kept = abund.filter((_, i) => lostAtLimit[i]);
+  if (!lost.length) {
+    console.log(
+      "\n  The one-chance limit recovers every species — nothing to explain.",
+    );
+    return;
+  }
+  const fm = (xs) => xs.map((x) => x.toFixed(4)).join(", ");
+  const marginal = Math.max(...lost) < Math.min(...kept);
   console.log(
-    "\n  The species the limit does not recover sat at abundance 0.004 against an\n" +
-      "  extinction floor of 0.002 — marginal in the deterministic model, and lost\n" +
-      "  once transfer is counted rather than assumed.",
+    `\n  Mean-field abundance of the ${lost.length} species the limit does NOT recover:` +
+      ` ${fm(lost.sort((a, b) => a - b))}\n` +
+      `  against a survivor range of ${Math.min(...kept).toFixed(4)} to ${Math.max(...kept).toFixed(4)}` +
+      ` and an extinction floor of 0.002.\n  ` +
+      (marginal
+        ? "Every lost species was rarer than every survivor — marginal in the deterministic\n" +
+          "  model, and lost once transfer is counted rather than assumed."
+        : "⚠️ NOT simply the rarest: at least one lost species was commoner than a survivor,\n" +
+          "  so carryover is removing something other than the marginal tail."),
   );
 }
 
@@ -195,7 +228,25 @@ function partB(flowers) {
  * pollen piling up on the body, never had a chance to bite. The honest test is
  * a community that genuinely overlaps.
  */
-function partC() {
+/* Mean anther->stigma overlap across every heterospecific pair, on the live
+ * continuous metric. Shared so the unevolved community and the evolved one it
+ * is contrasted against are measured by the same code, not by one measurement
+ * and one remembered number. */
+function meanHeteroOverlap(sites) {
+  const sigA = sites.map((st) => K.kdeSig(st.anther));
+  const sigS = sites.map((st) => K.kdeSig(st.stigma));
+  let sum = 0,
+    cnt = 0;
+  for (let i = 0; i < sites.length; i++)
+    for (let j = 0; j < sites.length; j++)
+      if (i !== j) {
+        sum += K.kdeOverlap(sigA[i], sigS[j]);
+        cnt++;
+      }
+  return sum / cnt;
+}
+
+function partC(evolvedSites) {
   rule("C — carryover in a community that has NOT separated");
   const rng = E.makeRng(4242);
   const flowers = [];
@@ -208,32 +259,34 @@ function partC() {
     C.siteSet(f, bee, { n: 200, seed: 11 + i }),
   );
 
-  // how much do they actually overlap?
-  const sigA = sites.map((st) => K.sig2D(st.anther));
-  const sigS = sites.map((st) => K.sig2D(st.stigma));
-  let sum = 0,
-    cnt = 0;
-  for (let i = 0; i < sites.length; i++)
-    for (let j = 0; j < sites.length; j++)
-      if (i !== j) {
-        sum += K.overlap(sigA[i], sigS[j]);
-        cnt++;
-      }
+  /* How much do they actually overlap — and how much did the evolved community?
+   *
+   * ⚠️ The contrast used to be a HARDCODED "0.000", which was two things at
+   * once: a constant standing in for a computation, and a rounding artefact of
+   * the histogram metric that could return exact zeros. Continuous overlap has
+   * gaussian tails and is never exactly zero, so the real contrast is between
+   * two measured numbers. This file's own partB comment warns against exactly
+   * this ("a claim stated as a constant cannot track the computation it
+   * describes") twenty lines earlier. */
+  const un = meanHeteroOverlap(sites);
+  const ev = meanHeteroOverlap(evolvedSites);
   console.log(
-    `  ${flowers.length} unevolved species, mean heterospecific overlap ${(sum / cnt).toFixed(3)}` +
-      `  (the evolved community's was 0.000)
-`,
+    `  ${flowers.length} unevolved species, mean heterospecific overlap ${un.toExponential(2)}\n` +
+      `  the evolved community, same metric and same code path: ${ev.toExponential(2)}` +
+      `  (${(un / ev).toFixed(1)}x separated)\n`,
   );
   console.log("  groom   surviving species");
   for (const groom of [1.0, 0.5, 0.25, 0.12, 0.05]) {
     console.log(
-      `  ${groom.toFixed(2).padStart(5)}   ${String(demography(sites, groom, { seed: 31 })).padStart(6)}`,
+      `  ${groom.toFixed(2).padStart(5)}   ${String(demography(sites, groom, { seed: 31 }).count).padStart(6)}`,
     );
   }
 }
 
-const flowers = evolvedCommunity();
+const { flowers, abund } = evolvedCommunity();
 partA(flowers);
-partB(flowers);
-partC();
+partB(flowers, abund);
+/* Built the same way partA and partB build theirs, so the overlap contrast in
+ * part C is against the community those parts actually ran on. */
+partC(flowers.map((f, i) => C.siteSet(f, bee, { n: 200, seed: 11 + i })));
 console.log();
