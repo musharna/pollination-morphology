@@ -3,6 +3,16 @@
 **Date:** 2026-08-01 · **Code:** `experiments/checks.js` · Run before the evolution loop was
 written, because each could change its design and all four were nearly free.
 
+> ⚠️ **SUPERSEDED IN PART, 2026-08-03.** Every number here was measured on the retired histogram
+> metric and at unmatched pool sizes. Re-based in
+> [the checks re-baseline](2026-08-03-checks-rebaseline.md), which is the current source. Three
+> conclusions hold; what moved:
+>
+> - **§1's "unlooked-for finding" is RETRACTED** — it named the wrong organ. See below.
+> - **§2's body-plan modulation was ~1.5×, is ~1.2×**; the range is 2.06–2.47×, not 2.1–3.0×.
+> - **§1's 60° survivor is gone** — all three thetas are noise, which strengthens the conclusion.
+> - §3 and §4's conclusions are unchanged.
+
 ## 1. Is isolation reciprocal? — **No directional isolation; symmetric within noise**
 
 A species' anther and stigma move together, but sit at _different depths_ — herkogamy — which is the
@@ -40,7 +50,18 @@ real symmetry. Floored pairs are now flagged rather than counted. The second was
 outright** — the stigma stops touching the animal at all. Herkogamy has a hard ceiling set by the
 visitor's body, not a smooth trade-off.
 
+> ⛔ **RETRACTED 2026-08-03. This was inferred from overlaps that printed as `0.000`, never
+> measured.** Measured, the stigma contacts 81% of visits at separation 0.270, and contact is
+> non-monotonic. The overlap collapse there is the two organs touching at _different places_ —
+> herkogamy working — not contact loss. A hard bound does exist, but it acts on the **anther**, which
+> retreats out of the visitor's reach past ~0.4. Wrong organ, wrong threshold, wrong mechanism.
+> [detail](2026-08-03-checks-rebaseline.md)
+
 ## 2. Other pollinator body plans — **holds everywhere, 2.1–3.0×; compact plans gain most**
+
+> ⚠️ **Re-based 2026-08-03 to 2.06–2.47× at a common N = 337.** These pools differ in size (153–309)
+> and the ratio depends strongly on pool size, so the spread below is mostly a data-quantity
+> artefact. The Limits section's dismissal — "no ceiling appeared pool-limited" — is falsified.
 
 Re-run 2026-08-01 after the head-cap fix. Each body plan now gets its own cap extent (r0/bodyLen
 differs per animal) and the steelman draws precision pairs from that plan's own pool.
@@ -109,7 +130,8 @@ No separate treatment needed. One transfer routine serves both organs.
 - **Precision as a modifier**, not a packing dimension.
 - **Pollinator body plan is a real parameter** — it moves the ceiling by ~1.5× across plausible
   animals, which supports treating body plans as the columns of the combinatorial table rather than
-  as set dressing.
+  as set dressing. ⚠️ **~1.2×, not ~1.5×** — see the 2026-08-03 re-baseline. Still a real parameter,
+  but a weaker one.
 - **Herkogamy is bounded**, not traded off: past a threshold the stigma stops contacting entirely.
 
 ## Limits
@@ -118,3 +140,8 @@ No separate treatment needed. One transfer routine serves both organs.
 in size across body plans (153–309), and while no ceiling appeared pool-limited, the small-bee arm
 had the least headroom. Check 1's 60° result is one survivor from three thetas and should not be
 treated as a positive finding without a proper multiple-comparison correction.
+
+> ⚠️ **Both limits resolved 2026-08-03, in opposite directions.** The pool-size caveat was correctly
+> spotted and **wrongly dismissed** — every arm is pool-limited at these sizes, and matching N cut
+> the body-plan spread by more than half. The 60° caveat was right: that survivor does not exist on
+> the continuous metric, so no multiple-comparison correction is needed.

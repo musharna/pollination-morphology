@@ -110,6 +110,10 @@ The packer was also undercounting: 200 restarts returned 21 at τ=0.05 where 200
 | check 2, advantage over 4 body plans | 2.3–3.6×     | **2.1–3.0×**       |
 | check 4, stigma-side advantage       | 3.00×        | **2.67×**          |
 
+⚠️ **The last two rows moved again on 2026-08-03**, once the arms were given matched candidate
+counts: check 2 is **2.06–2.47×** and check 4's stigma side is **2.88× against the anther's 2.79×**,
+i.e. no gap at all. [detail](2026-08-03-checks-rebaseline.md)
+
 **The headline survives.** 2-D placement supports about three times the species a 1-D gene does,
 and the fix moved it from 3.33× to 3.00× — the same claim, measured on a surface without an
 arbitrary edge in it. L1-strict gained most in relative terms (6 → 8, +33%), which is exactly what
