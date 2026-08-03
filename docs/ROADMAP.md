@@ -37,7 +37,7 @@ Four things are built and measured, in this order, each gating the next:
 
 ## Next
 
-### A. Close the empirical leg ⬜ _blocked on access, not on work_
+### A. Close the empirical leg — 🟡 mechanism leg CLOSED 2026-08-03, ceiling leg still blocked
 
 The packing prediction has two halves and only the geometric one is closed. Needed: **orchid species
 per _shared_ euglossine pollinator**, to compare against the 1-D ceiling. The figure in the
@@ -61,6 +61,33 @@ pollinaria-on-proboscis vs pollinaria-on-eyes pair.
 
 Until this lands the claim is _"2-D out-packs 1-D in this model"_, **not** _"real richness exceeds
 what 1-D placement supports."_ Only the second is about the world.
+
+✅ **THE MECHANISM LEG IS CLOSED 2026-08-03 — the first result in this project that is a fact about
+the world rather than about the model.** The Esposito route above turned out to test something better
+than the ceiling: it tests the **founding constraint**. The companion paper (Esposito et al. 2018,
+PeerJ 6:e4256) types these plants with AFLP and the intermediates are **NOT hybrids** — "could not be
+genetically separated from _P. bifolia_ (full overlap of AFLP's profiles)", hybrid index 0.1. So
+inside ONE gene pool a shape trait shifts half a millimetre and the pollen lands somewhere else on
+the animal, on a cheek that is nobody's adaptation. That is `placement is never a gene` in the wild.
+
+The paper measures **four** floral traits and so supplies its own control. Split declared before the
+run — placement (viscidia distance, caudicle length) vs size (spur length, labellum length) — and
+scored against an independent molecular answer key. **Only the placement traits separate the two
+species** (bif–chl overlap 1.5e-5 and 2.4e-13) ; the size traits leave them **30–66% overlapping**.
+Both sympatric sites, independently.
+
+⚠️ **The secondary criterion FAILED and was not re-thresholded.** Viscidia distance misses the
+pre-registered bifolia–intermediate cut (0.397, 0.230 vs 0.5). The criterion is confounded — the
+intermediates were _defined_ morphologically — but the number is real and points at **B**: placement
+diverged this far **inside one gene pool with no isolation following**, so placement divergence is
+necessary but not sufficient. ⚠️ The cross-site gradient arm (17% vs 7% admixture) is **uninformative**
+— all four traits get the direction right, which is what a coin does with two sites.
+⚠️ **The metric control found a real defect**: below the `1e-4` bandwidth floor the KDE estimator
+reports **0.997 overlap for well-separated samples** — it saturates toward "these are the same",
+which here would read as "no isolation". No existing result is affected (all run at scale ~1;
+smallest real SD is 10⁵× clear) and a test now pins both the invariance and the floor.
+⬜ Still open, and still needing the paywalled source: the **ceiling** half. Nothing here measures how
+many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
 
 ### B. Speciation, which v1 explicitly cannot address — 🟡 premise verified, model not built
 
