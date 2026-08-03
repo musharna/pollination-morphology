@@ -149,10 +149,8 @@ removing the floor fails loudly.
 
 ## Tests
 
-11 new tests, **96 in the suite on this branch**. (It forks from `master`, so it does not carry the
-7 sectile tests still open in PR #17 — the total is 103 once that lands. The 103 first quoted here
-was measured on the sectile branch before this work was moved onto master, and was wrong for this
-branch.) The load-bearing ones are the pair that pin **both** halves of the
+11 new tests, **103 in the suite** — 85 on master, plus the 7 from PR #17 (sectile), which landed
+first and is merged in here. The load-bearing ones are the pair that pin **both** halves of the
 scale argument — invariance across six decades, _and_ that saturation below the floor inflates
 overlap toward 1 — plus the test that pins the pre-declared trait split, without which the whole
 design becomes unfalsifiable.
