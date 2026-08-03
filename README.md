@@ -120,9 +120,18 @@ quoted as rates. The evolution loop is adaptive dynamics, not population genetic
 recombination, no hybridisation — so it speaks to coexistence among species already distinct and
 **not to speciation itself**.
 
-The empirical leg is open. The packing prediction has two halves; the geometric half is confirmed
-and the other is not. Whether real orchid richness on a _shared_ euglossine exceeds the 1-D ceiling
-needs a number that is not yet in hand — and the figure sitting in our own notes, fifteen sympatric
-_Euglossa_, is **bee** richness, a different quantity.
+The empirical leg is half closed. The **mechanism** half now has real-world support: in two
+sympatric _Platanthera_ populations, the floral traits that determine where pollen is placed
+(viscidia distance, caudicle length) separate the two species completely, while the traits that set
+flower size (spur, labellum) leave them 30–66% overlapping — scored against an independent AFLP
+answer key. The intermediates there are **not hybrids**, so a shape trait shifting half a millimetre
+inside one gene pool moves the pollen onto a different part of the moth's head, which is
+`placement is never a gene` observed in the wild.
+⚠️ It also showed placement can diverge that far **without producing any isolation**, so placement
+divergence is necessary but not sufficient. [detail](docs/2026-08-03-platanthera.md)
+
+The **ceiling** half is still open. Whether real orchid richness on a _shared_ euglossine exceeds the
+1-D ceiling needs a number that is not yet in hand — and the figure sitting in our own notes, fifteen
+sympatric _Euglossa_, is **bee** richness, a different quantity.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md).
