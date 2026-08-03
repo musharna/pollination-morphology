@@ -157,6 +157,21 @@ const DEFAULTS = {
    * `forageRange` is the kernel width in ring units; Infinity = global. */
   positions: null,
   forageRange: Infinity,
+
+  /* ---- deception (roadmap C, and roadmap B's sixth symmetry-breaker). A
+   * deceptive flower advertises and pays nothing, so what limits it is not its
+   * advertisement but what the animal has LEARNED. `learner` is that memory
+   * (sim/deception.js); `signals` is one advertising coordinate per entry and
+   * `rewardP` the probability a visit is paid — 0 for a cheat, 1 for a reliable
+   * rewarder, in between for the variable rewarders that actually exist.
+   *
+   * null = no learning = every earlier result, and — the part that matters —
+   * NO EXTRA RNG DRAW IS CONSUMED, so existing streams are byte-identical.
+   * Whether learning produces a rare-morph advantage is measured, not assumed;
+   * see the module header for why that had to be left open. */
+  learner: null,
+  signals: null,
+  rewardP: null,
 };
 
 /*
@@ -185,6 +200,9 @@ function runBout(sites, abundance, opts = {}) {
     constancy,
     positions,
     forageRange,
+    learner,
+    signals,
+    rewardP,
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
   const pollinium = dispersalUnit === "pollinium";
@@ -236,7 +254,49 @@ function runBout(sites, abundance, opts = {}) {
     return d > 0.5 ? 1 - d : d;
   };
   const localW = new Float64Array(S);
+
+  /* Deception. The weights are no longer constant across the bout — the whole
+   * point is that they move as the animal learns — so they are recomputed per
+   * visit when a learner is present, exactly as the local-foraging path already
+   * does. Guarded so the default path keeps its precomputed cumulative array. */
+  const learning = !!learner;
+  if (learning) {
+    if (!Array.isArray(signals) || signals.length !== S)
+      throw new Error(
+        `deception needs one signal per entry: got ${signals && signals.length} for ${S}`,
+      );
+    if (rewardP && rewardP.length !== S)
+      throw new Error(
+        `rewardP must be one per entry: got ${rewardP.length} for ${S}`,
+      );
+  }
+  const learnW = new Float64Array(S);
+  const pickLearned = () => {
+    let tot = 0;
+    for (let i = 0; i < S; i++) {
+      const w = abundance[i] * learner.expect(signals[i]);
+      learnW[i] = w;
+      tot += w;
+    }
+    /* Every signal fully avoided. The animal still has to forage somewhere, so
+     * it falls back to abundance alone rather than the bout silently stalling —
+     * a stalled bout would read as "deception is costless", which is the
+     * opposite of what a total aversion means. */
+    if (!(tot > 0)) {
+      const r = rng() * acc;
+      for (let i = 0; i < S; i++) if (r <= cum[i]) return i;
+      return S - 1;
+    }
+    let r = rng() * tot;
+    for (let i = 0; i < S; i++) {
+      r -= learnW[i];
+      if (r <= 0) return i;
+    }
+    return S - 1;
+  };
+
   const pick = () => {
+    if (learning) return pickLearned();
     /* The rng is only touched when constancy is actually in play, so the
      * default model's stream — and every result built on it — is untouched. */
     if (constancy > 0 && lastSp >= 0 && rng() < constancy) return lastSp;
@@ -244,7 +304,8 @@ function runBout(sites, abundance, opts = {}) {
       let tot = 0;
       for (let i = 0; i < S; i++) {
         const d = ringDist(positions[i], positions[lastSp]);
-        const w = abundance[i] * Math.exp(-(d * d) / (2 * forageRange * forageRange));
+        const w =
+          abundance[i] * Math.exp(-(d * d) / (2 * forageRange * forageRange));
         localW[i] = w;
         tot += w;
       }
@@ -276,6 +337,19 @@ function runBout(sites, abundance, opts = {}) {
     if (!site.anther.length || !site.stigma.length) continue;
     visitsTo[j] += 1;
     lastSp = j;
+
+    /* The animal finds out whether this flower pays, and time passes.
+     *
+     * The rng is drawn UNCONDITIONALLY here rather than only when rewardP is
+     * fractional, so two arms that differ only in who is deceptive consume the
+     * identical draw sequence. Otherwise the arms would diverge in the rng
+     * stream as well as in the mechanism, and a difference between them could
+     * not be attributed. */
+    if (learning) {
+      const p = rewardP ? rewardP[j] : 1;
+      learner.learn(signals[j], rng() < p ? 1 : 0);
+      learner.decay();
+    }
 
     // --- the stigma sweeps first: a flower cannot pollinate itself with the
     // --- pollen it is about to hand over on the same visit
