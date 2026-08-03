@@ -52,7 +52,7 @@ achieves, one axis already affords enough slots that the second buys nothing.
 fixed median precision while L2 inherits precision from morphology; and the 24-bin histogram used to
 score placement **saturates below one bin width**, which is exactly where a precision-evolving L1
 lands. On the continuous metric that replaced it, the loop first read 0.84× — the 1-D control
-*winning* — and that was an artefact of how many points the estimator retains, which biases irregular
+_winning_ — and that was an artefact of how many points the estimator retains, which biases irregular
 and gaussian clouds in opposite directions. The converged answer is a tie.
 [detail](docs/2026-08-02-continuous-metric-rebaseline.md) [decision](docs/2026-08-02-l1-precision-decision.md)
 
@@ -86,8 +86,18 @@ the ideal placement surface did not, and is now 39%.
 
 **Precision is a modifier, not a niche axis.** Species differing only in how repeatable their
 placement is cannot coexist at any realistic threshold — a tight distribution nests inside a broad
-one. That is a stronger claim than Armbruster's own framework makes.
+one. That is a stronger claim than Armbruster's own framework makes. It is the one claim here that
+has survived three independent re-measurements unchanged, each against its own positive control.
 [detail](docs/2026-08-01-pre-v1-checks.md)
+
+**⚠️ The advantage is a scaling law, not a multiplier — and one published finding was about the
+wrong organ.** Two passes over every file that scored placement found the same bug three times:
+arms were compared at different candidate counts, and the packing ceiling depends steeply on that
+count. At matched pool sizes the 2-D advantage runs **2.11× at 309 candidates, levelling near 3.1×**,
+and the variation across pollinator body plans is ~1.2×, not the ~1.5× published. Separately, "past
+~0.15 herkogamy the stigma stops touching the animal" was **inferred from a displayed `0.000` and
+never measured** — the stigma contacts 81% of visits there; the real bound acts on the anther.
+[scaling](docs/2026-08-02-pool-scaling.md) · [checks](docs/2026-08-03-checks-rebaseline.md)
 
 ## What is not claimed
 

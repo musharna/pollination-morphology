@@ -195,3 +195,10 @@ Named rather than left to be discovered: `experiments/checks.js` (checks 1, 2 an
 re-measured above), `carryover.js`, `head-exposure.js`, `precision-audit.js`. Their published claims
 were measured on the retired metric and have not been re-run. `head-exposure.js` and
 `precision-audit.js` both bear on the headline directly and should be re-based next.
+
+> ✅ **CLOSED. Nothing in the repo scores placement with the histogram any more.**
+> `head-exposure.js` and `precision-audit.js` were re-based in
+> [pool scaling](2026-08-02-pool-scaling.md); `checks.js` and `carryover.js` in
+> [the checks re-baseline](2026-08-03-checks-rebaseline.md). Naming the four files was worth it —
+> **every one of them turned out to carry a defect beyond the metric**, and three of the four had the
+> same one: arms compared at different candidate counts.

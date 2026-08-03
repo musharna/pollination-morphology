@@ -182,10 +182,14 @@ Nearest, in order of cheapness:
   frequent+efficient robustly fails and three of my explanations for it were refuted — the model
   gives gradual dispensing no cost except stranding. [detail](2026-08-01-reward-result.md)
   ✅ **Now 4 of 4** — see the next item.
-- **more body plans as first-class** — check 2 showed the 2-D advantage runs **2.1–3.0×** across
-  four animals, clearing 2× on every one; that variation is a result, not noise. ⚠️ The original
-  "largest for small compact ones" did **not** survive the head-cap re-run — the default bee now
-  leads, not the small slender plan. Only the coarse compact-above-elongated pattern holds.
+- **more body plans as first-class** — check 2 showed the 2-D advantage runs **2.06–2.47×** across
+  four animals at a matched pool size, clearing 2× on every one. ⚠️ The original "largest for small
+  compact ones" did **not** survive the head-cap re-run — the default bee leads, not the small
+  slender plan. Only the coarse compact-above-elongated pattern holds. ⚠️ **And the variation is
+  about half what was claimed**: at unmatched pool sizes it read 2.1–3.0× (~1.5× modulation); at a
+  common N = 337 it is ~1.2×. Still a real parameter, but most of the apparent spread across animals
+  was the spread in how many candidates each animal's pool contained.
+  [detail](2026-08-03-checks-rebaseline.md)
 - ✅ **cost of prolonged presentation** — BUILT 2026-08-02. Pollen senescence in the anther and
   floral upkeep while open, both schedule-selective (a simultaneous presenter's anther residence is
   zero, so senescence costs it exactly nothing). **Castellanos now reproduces 4 of 4** across a wide
