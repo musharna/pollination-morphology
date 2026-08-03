@@ -138,6 +138,16 @@ so that tests the mechanism at 4/24 without needing large rings — brute force 
 parity**, and placement divergence needs drift plus the measured 19.1% hybrid cost rather than a rare
 advantage. That would be a result, but no experiment has established it.
 
+✅ **CLOSED 2026-08-03 by the sixth mechanism. Deception pushes a rare placement past parity in 4 of
+8 morphs**, mean lift 3.18× over an identical no-learner arm that never crosses (max 0.679). The
+no-learner arm independently reproduces the 0.26 barrier it was not tuned for (0.236/0.249/0.253),
+so the harness is measuring the right thing. **The property that mattered is that deception acts on
+the animal's MOTIVATION rather than on its encounter rate** — the other five redistribute visits
+among plants the animal already wants to visit. ⚠️ It is not a general rare-morph advantage: the
+surrounding community must itself be deceptive (a rare cheat among honest flowers is punished), and
+it assumes a new placement morph also carries a new signal, which is unmodelled pleiotropy.
+[detail](2026-08-03-deception.md)
+
 ⬜ _Superseded framing:_ does a LARGER PATCH push `rare/common` past 1.0? The mechanism argues yes — more un-emptied partners, the separate
 partner-availability effect already measured in the constancy work (0.471 → 0.550 at fixed
 frequency) — and the under-powered arm hints yes. Needs many more draws. After that: clustering that
@@ -157,7 +167,7 @@ and it converts the rare morph's penalty directly into an advantage), or tempora
 flowering time — an assortment axis genuinely independent of placement. Then hybrid zones across
 generations (the F1 test has no backcrossing).
 
-### C. Widen the table, which is where value scales — 🟡 first class shipped
+### C. Widen the table, which is where value scales — ✅ five classes shipped, table complete
 
 Groundwork §4.6: rows are mechanism classes, columns are pollinator body plans. v1 implements
 **one cell**. Value scales with how many classes are implemented, not with render quality.
@@ -202,7 +212,17 @@ Nearest, in order of cheapness:
   [detail](2026-08-02-presentation-cost-result.md)
 - ✅ **pollen packaging** — BUILT 2026-08-02 as roadmap E's mechanism; solid pollinia vs granular
   monads, calibrated against 228 species. [detail](2026-08-02-dispersal-unit.md)
-- **deception** — no reward at all, already enumerated
+- ✅ **deception** — BUILT 2026-08-03, `sim/deception.js`. Rescorla-Wagner associative learning over
+  a ring of signal space with a stimulus-generalisation gradient; a cheat advertises and pays
+  nothing, and what limits it is what the animal has LEARNED. **Negative frequency-dependence is an
+  OUTPUT, not an assumption** — the literature is split (Gigord et al. 2001 measured a rare-morph
+  advantage; the same group found no diversity advantage in 2007; avoidance learning is
+  short-lived per Whitehead & Peakall 2012), so building it in would have assumed the answer.
+  A rare cheat gains up to **2.01×** against a measured null band of 0.991 ± 0.028, the effect
+  survives a 3-visit memory half-life, and **Internicola & Harder reproduces** — a cheat's advantage
+  falls 1.69× → 0.42× as its neighbours become honest. ⚠️ A perfect memory is WORSE than a leaky one
+  (saturated aversion generalises onto the rare morph too), so the mechanism has an optimum memory
+  length. [detail](2026-08-03-deception.md)
 
 ### D. Close the head-tip boundary artefact ✅ _found and closed 2026-08-01_
 

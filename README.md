@@ -90,6 +90,17 @@ one. That is a stronger claim than Armbruster's own framework makes. It is the o
 has survived three independent re-measurements unchanged, each against its own positive control.
 [detail](docs/2026-08-01-pre-v1-checks.md)
 
+**Deception breaks the symmetry that stopped five other mechanisms.** A rare placement is penalised
+because it has nobody to exchange pollen with (`rare/common ≈ 0.26`), and pollinator heterogeneity,
+flower constancy, larger patches and recombination all failed to lift it. A rewardless flower plus
+pollinator avoidance learning does: **4 of 8 morphs cross parity, mean lift 3.18×** over an identical
+no-learner arm that never crosses. The property that mattered is that deception acts on the animal's
+_motivation_ rather than on who it meets. ⚠️ Negative frequency-dependence is an **output** here, not
+an assumption — the field literature is split, so what is built is standard associative learning and
+what is measured is whether frequency-dependence emerges. It does, up to 2.01× against a measured
+null band of 0.991 ± 0.028, and only when the animal can actually tell the morphs apart.
+[detail](docs/2026-08-03-deception.md)
+
 **⚠️ The advantage is a scaling law, not a multiplier — and one published finding was about the
 wrong organ.** Two passes over every file that scored placement found the same bug three times:
 arms were compared at different candidate counts, and the packing ceiling depends steeply on that
