@@ -131,13 +131,46 @@ test("bad learner parameters are refused rather than clamped", () => {
 });
 
 /*
- * ⚠️ THE REGRESSION THAT MATTERS. A bout that does not mention deception must
- * produce EXACTLY what it produced before the option existed — same transfer
- * matrix, same rng stream. Asserted against a second bout rather than a pinned
- * constant, so it keeps testing the invariant if the model's numbers move for
- * some unrelated reason.
+ * ⚠️ THE REGRESSION THAT MATTERS — AND THE FIRST VERSION OF IT COULD NOT FAIL.
+ *
+ * Every published result came out of runBout, and deception adds a branch to
+ * its visit loop. The obvious test — run with the options omitted, run again
+ * with them null, compare — is worthless: both arms are the SAME BUILD, so a
+ * change to the DEFAULT path moves both together and the assertion stays green.
+ * Mutation testing caught it. An injected `rng()` on the shared path survived,
+ * which is exactly the regression this test exists to stop.
+ *
+ * The reference therefore has to come from OUTSIDE the current build. These
+ * numbers were captured by running the identical bout against `sim/carryover.js`
+ * as it stood on master before deception existed (`git show master:...`), so
+ * they are a historical fact rather than something this code derived about
+ * itself. That is the difference between a golden constant and a circular one.
  */
-test("the default path is byte-identical — no learner, no extra rng draw", () => {
+const PRE_DECEPTION_BOUT = {
+  T: [
+    [2358, 473, 0],
+    [650, 1833, 584],
+    [0, 400, 1093],
+  ],
+  produced: 32000,
+  landedRight: 5284,
+  landedWrong: 2107,
+};
+
+test("the default path still reproduces the pre-deception build exactly", () => {
+  const sites = sitesFor([species(0), species(1.2), species(2.4)]);
+  const now = C.runBout(sites, [0.4, 0.35, 0.25], { visits: 4000, seed: 9 });
+  assert.deepStrictEqual(
+    now.T.map((r) => Array.from(r)),
+    PRE_DECEPTION_BOUT.T,
+    "the transfer matrix moved — every earlier result rests on this path",
+  );
+  assert.strictEqual(now.produced, PRE_DECEPTION_BOUT.produced);
+  assert.strictEqual(now.landedRight, PRE_DECEPTION_BOUT.landedRight);
+  assert.strictEqual(now.landedWrong, PRE_DECEPTION_BOUT.landedWrong);
+});
+
+test("passing the deception options as null is the same as omitting them", () => {
   const sites = sitesFor([species(0), species(1.2), species(2.4)]);
   const ab = [0.4, 0.35, 0.25];
   const plain = C.runBout(sites, ab, { visits: 4000, seed: 9 });
@@ -151,10 +184,7 @@ test("the default path is byte-identical — no learner, no extra rng draw", () 
   assert.deepStrictEqual(
     plain.T.map((r) => Array.from(r)),
     withNulls.T.map((r) => Array.from(r)),
-    "passing the deception options as null must change nothing",
   );
-  assert.strictEqual(plain.produced, withNulls.produced);
-  assert.strictEqual(plain.landedRight, withNulls.landedRight);
 });
 
 test("a mismatched signal array is refused, not padded", () => {
