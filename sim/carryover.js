@@ -132,6 +132,28 @@ const DEFAULTS = {
   dispersalUnit: "granular",
   viscidium: 0.6,
 
+  /* "sectile" is the INTERMEDIATE condition, and it is the sharpest test the
+   * dispersal-unit mechanism has: packaged but not solid. Roughly 11% of orchid
+   * species have pollinia built of numerous segments called MASSULAE, each
+   * holding several hundred grains, "which enables some pollen carryover
+   * between successively visited flowers" (Johnson & Harder 2023).
+   *
+   * It is not a third mechanism — it is the SAME one at a different grain size.
+   * A massula detaches like a monad dose (no all-or-nothing viscidium gate, so
+   * removal stays high) but travels and lands as ONE coherent object (so it
+   * resists grooming and is not diluted, like a pollinium). `massulae` is how
+   * many the flower's pool is divided into, and it interpolates the whole way:
+   * 1 massula is a pollinium without the viscidium, `pollenPerFlower` massulae
+   * is granular monads. That single number is the only new degree of freedom.
+   *
+   * ⚠️ It is selected on CARRYOVER LENGTH, not on transfer, so the transfer
+   * figure stays a prediction — the same discipline `viscidium` was chosen
+   * under. Johnson & Harder give the independent target: the minimum number of
+   * flowers a dispersal unit's pollen can service runs "one flower for many
+   * orchids with solid pollinia, two for milkweeds, a few to 20 for species
+   * with massulate pollinia, tens of flowers for species with monads." */
+  massulae: 12,
+
   /* ---- flower constancy (roadmap B). A foraging bee tends to keep visiting
    * the kind of flower it last visited rather than sampling freely — one of the
    * best-documented facts in pollinator behaviour (Waser 1986; Chittka, Thomson
@@ -197,6 +219,7 @@ function runBout(sites, abundance, opts = {}) {
     pollenLife,
     dispersalUnit,
     viscidium,
+    massulae,
     constancy,
     positions,
     forageRange,
@@ -206,10 +229,16 @@ function runBout(sites, abundance, opts = {}) {
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
   const pollinium = dispersalUnit === "pollinium";
-  if (pollinium && !Number.isFinite(pollenPerFlower))
+  const sectile = dispersalUnit === "sectile";
+  if ((pollinium || sectile) && !Number.isFinite(pollenPerFlower))
     throw new Error(
       "a pollinium IS the flower's pollen, so pollenPerFlower must be finite",
     );
+  if (sectile && !(massulae >= 1))
+    throw new Error(`sectile pollinia need at least one massula: ${massulae}`);
+  /* Grains per massula. The flower's pool divided into coherent segments — the
+   * one number that separates this condition from the two it sits between. */
+  const perMassula = sectile ? pollenPerFlower / massulae : 0;
   const rng = makeRng(seed);
   const S = sites.length;
 
@@ -464,6 +493,14 @@ function runBout(sites, abundance, opts = {}) {
           m && bodyDist(polSite, m.s, m.phi) < viscidium && remaining[j] > 0;
         dose = caught ? remaining[j] : 0;
         if (!caught) polSite = null;
+      } else if (sectile) {
+        /* Massulae come away a few at a time. There is no all-or-nothing
+         * viscidium gate, which is why removal stays monad-like — the measured
+         * contrast is <45% for solid pollinia against >80% for monads AND
+         * sectile pollinia together. The dose is quantised to whole massulae. */
+        const want =
+          Math.max(1, Math.round(presentRate * massulae)) * perMassula;
+        dose = Math.min(want, remaining[j]);
       } else {
         dose = Math.min(dosePerVisit, remaining[j]);
       }
@@ -496,6 +533,22 @@ function runBout(sites, abundance, opts = {}) {
           mass: dose,
         });
         produced += dose;
+      }
+    } else if (sectile) {
+      /* Each massula is ONE object carrying several grains, detaching at its
+       * own contact point rather than all at a single site the way a solid
+       * pollinium does. That is the whole condition: monad-like release,
+       * pollinium-like coherence, because grooming, the carry cap and
+       * deposition all act on `mass` — a massula is lost or delivered whole. */
+      let left = dose;
+      while (left > 1e-9) {
+        const m = Math.min(perMassula, left);
+        const aSite = site.anther[(rng() * site.anther.length) | 0];
+        const ok = viability >= 1 || rng() < viability;
+        if (!ok) senesced += m;
+        load.push({ s: aSite.s, phi: aSite.phi, sp: j, t: v, ok, mass: m });
+        produced += m;
+        left -= m;
       }
     } else
       for (let d = 0; d < dose; d++) {
