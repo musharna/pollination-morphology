@@ -9,8 +9,12 @@
  *
  * That matters only for the L1 arms, which are allowed to use s and nothing
  * else. If a large share of the pool pins, L1's ceiling could be set by a
- * coordinate edge rather than by biology, and the 3.3x headline would inherit
- * it.
+ * coordinate edge rather than by biology, and the headline would inherit it.
+ *
+ * Re-based 2026-08-02 onto the continuous overlap metric, along with everything
+ * else that scores placement. The histogram this used saturates below one bin
+ * width, and the L1 arm here is exactly a marginalised placement — the case that
+ * saturates first.
  *
  * THE TEST: drop every species that touches the boundary and see what the
  * L2/L1 ratio does. If the edge is what holds L1 down, removing the species
@@ -57,13 +61,16 @@ function pooled(seed) {
   return out;
 }
 
-function ceilings(pool, sigOf, seed) {
-  const sigs = pool.map((p) => ({ A: sigOf(p.a.hits), S: sigOf(p.s.hits) }));
+function ceilings(pool, dims, seed) {
+  const sigs = pool.map((p) => ({
+    A: K.kdeSig(p.a.hits, { dims }),
+    S: K.kdeSig(p.s.hits, { dims }),
+  }));
   const n = sigs.length;
   const mat = [];
   for (let i = 0; i < n; i++) {
     mat.push(new Float64Array(n));
-    for (let j = 0; j < n; j++) mat[i][j] = K.overlap(sigs[i].A, sigs[j].S);
+    for (let j = 0; j < n; j++) mat[i][j] = K.kdeOverlap(sigs[i].A, sigs[j].S);
   }
   return TAUS.map(
     (t) => K.packingCeiling(mat, t, { restarts: 200, seed }).size,
@@ -99,10 +106,10 @@ function main() {
     totPool += pool.length;
     totTouch += pool.length - clean.length;
 
-    const f1 = ceilings(pool, K.sig1D, seed);
-    const f2 = ceilings(pool, K.sig2D, seed);
-    const c1 = ceilings(clean, K.sig1D, seed);
-    const c2 = ceilings(clean, K.sig2D, seed);
+    const f1 = ceilings(pool, 1, seed);
+    const f2 = ceilings(pool, 2, seed);
+    const c1 = ceilings(clean, 1, seed);
+    const c2 = ceilings(clean, 2, seed);
 
     const rFull = f2.map((v, i) => v / f1[i]);
     const rCln = c2.map((v, i) => v / c1[i]);

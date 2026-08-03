@@ -14,10 +14,12 @@ Four things are built and measured, in this order, each gating the next:
    an event in time with a rigid animal, and it now lands.
    ⚠️⚠️ **RESTATED 2026-08-02 — the advantage is CONDITIONAL ON PRECISION, and the whole project is now measured on a CONTINUOUS metric.** The L1 control had been handicapped with a FIXED MEDIAN precision while L2 inherits precision from morphology; making L1's precision heritable and bounded by real morphologies collapsed the evolved advantage. The 24-bin histogram that scored placement SATURATES below one bin width, so it was replaced throughout `sim/` — in the evolution loop as well as the ablation, since L1 evolves to a precision 7× finer than a bin. TWO symmetric comparisons: **2.5× with neither arm precision-selected, and a TIE (0.92×, converged) with both**. The 2-D advantage is a fact about PRECISION as much as dimensionality — a second axis multiplies slots only while placement is imprecise. [detail](2026-08-02-continuous-metric-rebaseline.md) [decision](2026-08-02-l1-precision-decision.md)
 
-3. **The ablation** — 2-D placement out-packs a precision-matched 1-D gene **2.5×** (40 vs 16 at
-   τ=0.2, and 2.4–2.9× across every tolerance). This was the delete-the-grid test; it passed, which
-   is the only reason v1 exists, and it now carries its condition.
-   [detail](2026-08-02-continuous-metric-rebaseline.md)
+3. **The ablation** — 2-D placement out-packs a precision-matched 1-D gene **2.1× at the 309-species
+   pool it samples** (40 vs 19 at τ=0.2), rising to **~3.1× once both arms get a large enough
+   candidate set**. ⚠️ The ratio is NOT a constant and the arms had never been given the SAME NUMBER
+   OF CANDIDATES — 234 vs 309 vs 3760 — so every earlier figure was two points on two different
+   curves. Quote the pool size with the ratio. This was the delete-the-grid test; it passed, which is
+   the only reason v1 exists. [detail](2026-08-02-pool-scaling.md)
 4. **v1, the evolution loop** — blind selection reaches **40%** of the achievable ceiling, and with
    both arms precision-selected the 2-D advantage is **0.92× — a tie**, stable from KDE_M 96 to 192.
    ⚠️ At the estimator's old resolution this read 0.84×, i.e. the 1-D control WINNING; that was an

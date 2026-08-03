@@ -45,6 +45,19 @@ const MIN_CONTACT = 0.5; // a flower that rarely touches the animal is not a spe
  * has nothing to do with dimensionality, which is precisely the rigging this
  * ablation exists to avoid. So counts scale with the domain rather than staying
  * fixed.
+ *
+ * ⚠️ AND THE SAME NUMBER OF CANDIDATES, which this file got wrong for longer.
+ * L1-free was handed scaled(200) = 234 candidates while L2 drew on 309 species
+ * and CTRL-2D-ideal on 3760. The packing ceiling depends on candidate count
+ * strongly, and the arms grow at different rates, so a ratio taken across
+ * mismatched pools is two points on two different curves rather than a
+ * comparison. Measured: at 234 candidates the steelman reaches 16 and at 309 it
+ * reaches 19, so a fifth of the reported advantage was the control simply being
+ * offered less to choose from. Every arm is now sized to the L2 pool.
+ *
+ * The ratio is NOT a constant — it RISES with pool size, because a 1-D axis runs
+ * out of line while a 2-D surface keeps finding room. experiments/pool-scaling.js
+ * measures that, and any quoted ratio must name the pool size it came from.
  */
 const S_LO = -P.bodyRadius(P.DEFAULT_BEE, 0) / P.DEFAULT_BEE.bodyLen;
 const S_SPAN = 1 - S_LO;
@@ -282,16 +295,23 @@ function main() {
   const sigs2D = pool.map((p) => K.kdeSig(p.d.hits));
   const sigs1D = pool.map((p) => K.kdeSig(p.d.hits, { dims: 1 }));
 
+  /* MATCHED CANDIDATE COUNT — every arm is offered exactly as many candidates
+   * as the morphology pool has species, so no arm can win by having been handed
+   * more to choose from. For the 2-D ideal arm that means a grid whose product
+   * is the same N rather than the 3760 it used to get. */
+  const N = pool.length;
+  const nPhi = 10;
+  const nS = Math.max(1, Math.round(N / nPhi));
   const rows = [
-    ceilings(armL0(60), "L0 (no placement)"),
+    ceilings(armL0(N), "L0 (no placement)"),
     ceilings(sigs1D, "L1-strict (roll discarded)"),
-    ceilings(armFree1D(scaled(200), prec, 20000), "L1-free, drawn precision"),
+    ceilings(armFree1D(N, prec, 20000), "L1-free, drawn precision"),
     ceilings(
-      armFree1DEvolved(scaled(200), prec, 21000),
+      armFree1DEvolved(N, prec, 21000),
       "L1-free, EVOLVED precision",
     ),
     ceilings(sigs2D, "L2 (from morphology)"),
-    ceilings(armFree2D(scaled(80), 40, prec, 40000), "CTRL-2D-ideal [CEILING]"),
+    ceilings(armFree2D(nS, nPhi, prec, 40000), "CTRL-2D-ideal [CEILING]"),
   ];
 
   /* ⚠️ RESOLUTION CHECK — kept, INVERTED, and still printed BEFORE the table.
@@ -312,7 +332,7 @@ function main() {
     const sMin = Math.min(...prec.map((q) => q[0]));
     const probe = (sSd) => {
       const sg = [];
-      const count = scaled(200);
+      const count = pool.length;
       for (let i = 0; i < count; i++)
         sg.push(
           K.kdeSig(

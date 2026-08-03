@@ -32,12 +32,14 @@ suite (71 tests). Every experiment is `node experiments/<name>.js`.
 
 ## What has been measured
 
-**The 3-D contact model earns its place.** A free 1-D placement gene — the cheap version of this
-project — supports 16 coexisting species on one pollinator where morphology-derived 2-D placement
-supports 40, at matched precision, with both pools saturated. The 1-D arm is a steelman: it is
-handed the whole body surface and draws its precision from the real pool's own distribution.
-That 2.5× holds across every isolation tolerance (2.4–2.9×).
-[detail](docs/2026-08-02-continuous-metric-rebaseline.md) [origin](docs/2026-08-01-ablation-result.md)
+**The 3-D contact model earns its place — and the advantage depends on how many species are in
+play.** A free 1-D placement gene, the cheap version of this project, supports 19 coexisting species
+on one pollinator where morphology-derived 2-D placement supports 40, at matched precision **and
+matched candidate count**. That is **2.1× at a 309-species pool**; give both arms a larger pool and
+it settles near **3.1×**, because a 1-D axis runs out of line while a 2-D surface keeps finding room.
+The 1-D arm is a steelman: it gets the whole body surface, the same number of candidates, and its
+precision drawn from the real pool's own distribution.
+[detail](docs/2026-08-02-pool-scaling.md) [metric](docs/2026-08-02-continuous-metric-rebaseline.md)
 
 **Blind selection captures about 40% of that, and the advantage is a fact about precision.** An
 evolving community reaches 40% of the achievable ceiling. When **both** arms are allowed to select
