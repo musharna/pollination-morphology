@@ -53,10 +53,25 @@ const sd = (xs) => {
 const f2 = (x) =>
   x === null || x === undefined ? "   -  " : x.toFixed(2).padStart(6);
 
-const N = 30;
-const GENS = 35;
-const SEEDS = [1, 2, 3, 4, 5, 6];
-const SITE_N = 160;
+/*
+ * The published configuration. The env overrides exist for ONE reason and it is
+ * not convenience: this run takes ~20 minutes, and a 20-minute experiment with
+ * no way to exercise its own reporting path is a design flaw I walked into —
+ * a verdict bug (scoring the linked arm against the unlinked control's band)
+ * cost a full re-run to fix and confirm. `DECIBM_SMOKE=1` runs the identical
+ * code end to end in seconds so the REPORTING can be checked without re-deriving
+ * the RESULT. Smoke numbers are not results and the banner says so.
+ */
+const SMOKE = process.env.DECIBM_SMOKE === "1";
+const N = SMOKE ? 12 : 30;
+const GENS = SMOKE ? 4 : 35;
+const SEEDS = SMOKE ? [1, 2, 3] : [1, 2, 3, 4, 5, 6];
+const SITE_N = SMOKE ? 50 : 160;
+if (SMOKE)
+  console.log(
+    "\n*** DECIBM_SMOKE=1 — tiny configuration. This exercises the code path and\n" +
+      "*** the reporting. THE NUMBERS BELOW ARE NOT RESULTS.\n",
+  );
 
 /*
  * The learning parameters are NOT re-tuned here. They are the ones
@@ -276,8 +291,15 @@ console.log("=".repeat(88));
 rule("PART 0 — the anchor gate");
 const gate = [anchorReproduction(), anchorLive(), anchorStabilising()];
 if (!gate.every(Boolean)) {
-  console.log("\nANCHORS FAILED — refusing to compute a result.");
-  process.exit(1);
+  /* The anchors are calibrated to the PUBLISHED configuration, so under SMOKE
+   * they are expected to fail and are informational only — which is exactly why
+   * a smoke run must never be read as a result. The real path is unchanged. */
+  console.log(
+    SMOKE
+      ? "\n(anchors do not apply at smoke size — informational only)"
+      : "\nANCHORS FAILED — refusing to compute a result.",
+  );
+  if (!SMOKE) process.exit(1);
 }
 
 rule("PART A — deception with free recombination (the conservative default)");
