@@ -89,7 +89,7 @@ smallest real SD is 10⁵× clear) and a test now pins both the invariance and t
 ⬜ Still open, and still needing the paywalled source: the **ceiling** half. Nothing here measures how
 many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
 
-### B. Speciation, which v1 explicitly cannot address — 🟡 IBM BUILT; deception splits the ADVERTISEMENT, not the plant (2026-08-04)
+### B. Speciation, which v1 explicitly cannot address — ✅ ORIGIN **and** MAINTENANCE both fail (2026-08-04)
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
@@ -215,6 +215,28 @@ construction but does is a broken harness. A locally foraging bee DIFFUSES, so m
 prediction is specifically about boundary dilution and interior plants should already sit at parity,
 so that tests the mechanism at 4/24 without needing large rings — brute force costs 9× per row.
 [detail](2026-08-02-patch-size.md)
+
+✅ **SECONDARY CONTACT RUN 2026-08-04 — the standing alternative fails too, and the failure CHANGES
+CHARACTER.** Everything before asked whether a split can ARISE. This asked whether one PERSISTS: two
+lineages founded at a controlled placement separation (genomes DRAWN and SELECTED on the placement
+they produce — placement still never a gene), run forward under ordinary mating.
+**Below d≈4 they interbreed and FUSE, exactly as the random-mating null does. At d=8 they do not fuse
+at all — ONE LINEAGE IS LOST OUTRIGHT in every seed, while the null at the SAME separation fuses.**
+Same demography, same drift, same N: the exclusion is the geometry. ⚠️⚠️ **NOT DRIFT — the lineage is
+still lost at N=60.**
+⚠️ Every arm ends at ancestry variance 0.000, so a **neutral ancestry tracer** is what distinguishes
+fusion from extinction; without it they are the same row. ⚠️ **The hybrid cost is
+SEPARATION-DEPENDENT** (1.018/0.997/1.105/1.109 at d=0.5–4, **0.268 at d=8**) — absent exactly where
+it would be needed and arriving only once the lineages have already stopped exchanging genes.
+**Reproductive isolation does not protect a lineage: once two groups stop competing for MATES they
+compete for OFFSPRING SLOTS, and one is excluded.** Placement-mediated mating erases a minority
+whether it ARISES, is IMPOSED, or is FOUNDED.
+⚠️⚠️ **THE TENSION THIS CREATES:** Platanthera sits in the fusion regime and is consistent, but the
+model predicts a pair past the exclusion separation ends with ONE MEMBER LOST — and real orchid
+communities contain coexisting congeners. Something outside this model permits that; the obvious
+candidate is **more than one pollinator** (roadmap C). ⚠️ The anchor gate blocked this run THREE times
+and was right each time (wrong frequency → sign inverted; wrong construction; underpowered n).
+[detail](2026-08-04-secondary-contact.md)
 
 ⚠️ **Live possibility after five mechanisms: NOTHING in this model pushes a rare placement past
 parity**, and placement divergence needs drift plus the measured 19.1% hybrid cost rather than a rare
