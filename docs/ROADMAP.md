@@ -216,6 +216,21 @@ prediction is specifically about boundary dilution and interior plants should al
 so that tests the mechanism at 4/24 without needing large rings — brute force costs 9× per row.
 [detail](2026-08-02-patch-size.md)
 
+⚠️ **THE COEXISTENCE DISCREPANCY IS NOT POLLINATOR NUMBER (2026-08-04).** The exclusion result
+predicts a pair past d=8 ends with ONE MEMBER LOST, yet orchid communities contain coexisting
+congeners — so the IBM was extended from one pollinator to N (separate bouts summed, never one mixed
+bout; visit budget SPLIT so arms differ in geometry not in how much pollination they get; single-animal
+path bit-identical across 45 fields). **It does not work: one lineage is still lost 5/5 with two very
+different body plans.** The decisive control is **two IDENTICAL animals** — same bouts, same split
+budget, same summation, no new geometry — which also loses 5/5, so it is not the machinery. ⚠️ The
+animals genuinely differ: **106.9x** the sampling floor measured from two identical animals drawing
+sites independently.
+⚠️⚠️ **The leading remaining candidate is a MODELLING ASSUMPTION, not biology: POPULATION SIZE IS
+FIXED.** The IBM fills exactly N slots every generation, so two isolated lineages are forced into a
+zero-sum contest that is built into the demography rather than derived from pollination. Testable by
+letting size follow total seed set — ⚠️ but giving each lineage its own quota would ASSUME coexistence.
+[detail](2026-08-04-two-pollinator-coexistence.md)
+
 ✅ **SECONDARY CONTACT RUN 2026-08-04 — the standing alternative fails too, and the failure CHANGES
 CHARACTER.** Everything before asked whether a split can ARISE. This asked whether one PERSISTS: two
 lineages founded at a controlled placement separation (genomes DRAWN and SELECTED on the placement
