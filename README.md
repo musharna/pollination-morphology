@@ -104,7 +104,7 @@ null band of 0.991 ± 0.028, and only when the animal can actually tell the morp
 **⚠️ But inside a model that can actually breed, deception splits the _advertisement_ and not the
 plant.** Deception's negative frequency-dependence acts on the **signal** axis; the mating system's
 positive frequency-dependence acts on **placement**; so the real question was whether the first can
-_reach_ the axis the second lives on. It cannot. Deception inflates the advertisement cloud **~4×**
+_reach_ the axis the second lives on. It cannot. Deception inflates the advertisement cloud **3.2× free / 3.6× linked**
 and moves placement not at all — **and linking the advertisement directly to the anther loci does not
 rescue it**, which kills the obvious explanation that free recombination merely separated them.
 The mechanism: **negative frequency-dependence maintains a polymorphism, it does not complete a

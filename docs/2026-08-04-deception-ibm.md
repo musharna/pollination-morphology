@@ -100,9 +100,15 @@ so the negative below is about what happens across generations, not about a bad 
   linked, all plants CHEAT               2.17 +/-0.22    1.32       3.84 +/-0.37   0.20
 ```
 
-**Deception inflates the advertisement cloud 3.6× free and 4.0× linked** — spread 0.05 → 0.18 and
-0.05 → 0.20 — while every control sits at 0.05. **It does not move placement at all**: 2.36 and 2.17
-against a random-mating band of 2.90 (null 2.28 ± 0.31).
+**Deception inflates the advertisement cloud 3.2× free and 3.6× linked** — spread 0.055 → 0.175 and
+0.054 → 0.196 — while every control sits near 0.05. **It does not move placement at all**: 2.36 and
+2.17 against a random-mating band of 2.90 (null 2.28 ± 0.31).
+
+> ⚠️ **Those ratios were wrong in the first version of this document, and the error is instructive.**
+> I reported 3.6× and 4.0× by dividing the **printed two-decimal** spreads (0.18 / 0.05). With a
+> denominator near 0.05, rounding the inputs moves the quotient by ~12%. The full-precision values
+> give 3.2× and 3.6×. A derived quantity must never be recomputed from a display value — so the
+> column now prints three decimals and the experiment computes the ratio itself.
 
 **And linking does not rescue it.** That is the discriminator the supergene arm existed for, and it
 kills the most attractive explanation: the failure is _not_ that free recombination separated the

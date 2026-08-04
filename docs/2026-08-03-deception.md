@@ -147,7 +147,7 @@ whereas deception changes how much it wants to visit them at all.
 > but the claim stands. [detail](2026-08-04-deception-ibm.md)
 >
 > ⚠️ **What it does NOT license is a claim about speciation.** Wired into a model that can breed,
-> deception diversifies the **advertisement ~4×** and does not move placement at all — even when the
+> deception diversifies the **advertisement 3.2-3.6×** and does not move placement at all — even when the
 > advertisement is genetically linked to the anther loci. Past parity is the condition for a
 > _protected polymorphism_, which is the opposite of a completed split.
 
