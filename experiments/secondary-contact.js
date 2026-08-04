@@ -129,7 +129,7 @@ function twoLineages(n, rng, srng, targetD) {
       anc: 1,
     }),
   ];
-  return { pop, realised: best.d };
+  return { pop, realised: best.d, gA: base, gB: best.g };
 }
 
 const ancMean = (pop) => mean(pop.map((i) => i.anc || 0));
@@ -185,58 +185,179 @@ function anchorInert() {
 /*
  * ⚠️ ANCHOR 2 — IS THE HYBRID COST ACTUALLY OPERATING HERE?
  *
- * The whole hypothesis rests on it, and it is NOT imposed by this code — it is
- * supposed to fall out of placement mismatch. If it does not bite at this
- * operating point then every "the split fused" result below is just a population
- * with no force holding it apart, which is a broken harness rather than a
- * finding. Measured the way it was measured on 2026-08-02: mating success of
- * intermediate-placement individuals against the two parental groups.
+ * The whole hypothesis rests on it, and it is NOT imposed anywhere — it is meant
+ * to fall out of placement mismatch. If it does not bite, every "the split fused"
+ * result below is a population with no force holding it apart, which is a broken
+ * harness rather than a finding.
+ *
+ * ⚠️⚠️ THIS ANCHOR FAILED TWICE AND BOTH TIMES THE ANCHOR WAS WRONG. Recorded
+ * because each failure is a real lesson about the quantity being reproduced.
+ *
+ * FAILURE 1 — the wrong FREQUENCY. It ran one generation of free mating from a
+ * 50/50 founding and compared the resulting intermediates against the pure types:
+ * −18.7%, i.e. hybrids do BETTER. The reason is in the source document's own
+ * sentence — the cost is "underdominance arising from FREQUENCY DEPENDENCE rather
+ * than from transgression". The 19.1% is defined for a hybrid RARE among two
+ * parental morphs; after one generation of free mating the intermediates are the
+ * MAJORITY at the modal placement, and this model's placement selection is
+ * stabilising (−48.9%), so the common central type is favoured. Inverting the
+ * frequency condition inverted the sign.
+ *
+ * FAILURE 2 — the wrong CONSTRUCTION. Corrected to one hybrid among 10+10
+ * parentals, it read 1.145 +/- 0.252 (n=12) and still would not reproduce. Two
+ * differences from the published construction, both mine:
+ *   - the published pairs are two INDEPENDENT random genomes at a minimum
+ *     separation. Mine were a genome and its own MUTANT, which share almost
+ *     everything, so there was barely a mismatch to pay for.
+ *   - the published hybrid is a RECOMBINANT (each locus from one parent or the
+ *     other). Mine was an additive F1 sitting at the exact midpoint.
+ *
+ * So the anchor now does BOTH, and the distinction turns out to matter for the
+ * experiment rather than only for the anchor:
+ *
+ *   2a  the PUBLISHED construction — independent pairs, recombinant hybrid.
+ *       This is the POSITIVE CONTROL: it proves the measurement can detect a cost
+ *       that is known to be there. It is the only one gated on.
+ *   2b  the IBM's OWN F1 — additive blend of the two lineage genomes at the
+ *       separation actually used below. Reported, not gated, because whatever it
+ *       reads is an input to the result rather than a check on the harness.
+ *
+ * If 2a finds the cost and 2b does not, that is not a harness problem — it says
+ * the cost depends on the inheritance model, and the IBM's F1s are the case that
+ * does not pay it.
  */
+const BOUNDED = Object.keys(E.GENE_BOUNDS);
+
+function recombine(a, b, rng) {
+  const g = {};
+  for (const k of BOUNDED) g[k] = rng() < 0.5 ? a[k] : b[k];
+  g.antherTheta = rng() < 0.5 ? a.antherTheta : b.antherTheta;
+  return g;
+}
+
+const viableSite = (s) => s.anther.length && s.stigma.length;
+const flowerOf = (shape, seed) =>
+  C.siteSet(E.toFlower(shape), optsAt().bee, { n: SITE_N, seed });
+function successIn(sites, i) {
+  const n = sites.length;
+  const r = C.runBout(sites, new Array(n).fill(1 / n), {
+    visits: optsAt().visits,
+    seed: 13,
+  });
+  let t = 0;
+  for (let j = 0; j < n; j++) if (j !== i) t += r.T[i][j] + r.T[j][i];
+  return { self: t, all: r };
+}
+
+/*
+ * The published net matching effect: one hybrid rare among 10+10 parentals,
+ * divided by the same hybrid among clones of itself. The clone arm is what
+ * removes intrinsic flower quality (it was 0.960, about 6 of the original 25 raw
+ * points). Summed transfer over both sex roles because that is the statistic the
+ * 19.1% was DEFINED with — reproducing a published quantity, not endorsing it.
+ */
+function netEffect(gA, gB, hybShape, tag) {
+  const hs = flowerOf(hybShape, 8000 + tag);
+  if (!viableSite(hs)) return null;
+  const mixed = [];
+  for (let i = 0; i < 10; i++) mixed.push(flowerOf(gA, 7000 + tag * 40 + i));
+  for (let i = 0; i < 10; i++) mixed.push(flowerOf(gB, 7500 + tag * 40 + i));
+  if (!mixed.every(viableSite)) return null;
+  mixed.push(hs);
+  const rm = successIn(mixed, mixed.length - 1);
+  const parentMixed = mean(
+    Array.from({ length: 20 }, (_, i) => {
+      let t = 0;
+      for (let j = 0; j < mixed.length; j++)
+        if (j !== i) t += rm.all.T[i][j] + rm.all.T[j][i];
+      return t;
+    }),
+  );
+  if (!(parentMixed > 0)) return null;
+  const hClones = Array.from({ length: 21 }, (_, i) =>
+    flowerOf(hybShape, 8600 + tag * 40 + i),
+  );
+  const aClones = Array.from({ length: 21 }, (_, i) =>
+    flowerOf(gA, 9200 + tag * 40 + i),
+  );
+  if (!hClones.every(viableSite) || !aClones.every(viableSite)) return null;
+  const hSolo = successIn(hClones, 0).self;
+  const aSolo = successIn(aClones, 0).self;
+  if (!(aSolo > 0) || !(hSolo > 0)) return null;
+  return rm.self / parentMixed / (hSolo / aSolo);
+}
+
+const ci = (xs) =>
+  xs.length > 1 ? (1.96 * sd(xs)) / Math.sqrt(xs.length) : 0;
+
 function anchorHybridCost() {
-  const costs = [];
-  for (const seed of [1, 2, 3]) {
-    const rng = E.makeRng(seed);
-    const srng = I.signalRng(seed);
-    const built = twoLineages(N, rng, srng, 4);
-    if (!built) continue;
-    /* one generation of mating produces hybrids; measure THEM */
-    const out = I.step(built.pop, optsAt(), rng, 0, srng);
-    const kids = out.pop;
-    const sites = I.sitesOf(kids, optsAt(), 1);
-    const n = sites.length;
-    const r = C.runBout(sites, new Array(n).fill(1 / n), {
-      visits: optsAt().visits,
-      seed: 7,
-    });
-    const succ = new Array(n).fill(0);
-    for (let i = 0; i < n; i++)
-      for (let j = 0; j < n; j++) {
-        if (i === j) continue;
-        succ[j] += r.T[i][j];
-        succ[i] += r.T[i][j];
-      }
-    const hyb = [],
-      par = [];
-    kids.forEach((k, i) => {
-      const a = k.anc || 0;
-      if (a > 0.35 && a < 0.65) hyb.push(succ[i]);
-      else par.push(succ[i]);
-    });
-    if (hyb.length >= 2 && par.length >= 2)
-      costs.push(1 - mean(hyb) / mean(par));
+  const nPairs = SMOKE ? 4 : 12;
+  const rng = E.makeRng(20260804);
+
+  /* --- 2a: the published construction, as the positive control --- */
+  const pool = [];
+  for (let i = 0; i < nPairs * 14 && pool.length < nPairs * 3; i++) {
+    const g = E.randomGenome(rng);
+    const s = flowerOf(g, 900 + i);
+    if (viableSite(s)) pool.push({ g, p: I.placementOf(s) });
   }
-  const mc = costs.length ? mean(costs) : null;
-  const ok = mc !== null && mc > 0;
+  const pubs = [];
+  let tag = 0;
+  for (let i = 0; i < pool.length && pubs.length < nPairs; i++)
+    for (let j = i + 1; j < pool.length && pubs.length < nPairs; j++) {
+      if (!pool[i].p || !pool[j].p) continue;
+      if (I.dist(pool[i].p, pool[j].p) < 1.5) continue;
+      const v = netEffect(
+        pool[i].g,
+        pool[j].g,
+        recombine(pool[i].g, pool[j].g, rng),
+        ++tag,
+      );
+      if (v !== null && Number.isFinite(v)) pubs.push(v);
+    }
+  const mPub = pubs.length ? mean(pubs) : null;
+  const hiPub = mPub === null ? null : mPub + ci(pubs);
+  const ok = hiPub !== null && hiPub < 1;
+
   console.log(
-    `\n  2. the HYBRID COST is live at this operating point (2026-08-02: 19.1%)`,
+    `\n  2a. POSITIVE CONTROL — the published construction (2026-08-02: 0.809 [0.708, 0.910])`,
   );
   console.log(
-    `     intermediate-placement offspring lose ${mc === null ? "n/a" : (100 * mc).toFixed(1) + "%"} of mating success   ${ok ? "ok" : "FAIL"}` +
-      `${costs.length ? "   [" + costs.map((c) => (100 * c).toFixed(0) + "%").join(", ") + "]" : ""}`,
+    `      independent parent pairs, RECOMBINANT hybrid, clone control`,
   );
   console.log(
-    `     (not imposed anywhere — it falls out of placement mismatch, which is why\n` +
-      `      it has to be measured rather than assumed)`,
+    `      net matching effect ${mPub === null ? "n/a" : mPub.toFixed(3)} +/- ${ci(pubs).toFixed(3)}` +
+      `  (n=${pubs.length}, upper ${hiPub === null ? "n/a" : hiPub.toFixed(3)})   ${ok ? "ok" : "FAIL"}`,
+  );
+
+  /* --- 2b: the IBM's own F1, additive, at the separations actually used --- */
+  console.log(
+    `\n  2b. the IBM's OWN hybrid — additive F1 of the two lineages (reported, not gated)`,
+  );
+  console.log("        target d   net matching effect");
+  for (const d of SEPARATIONS) {
+    const vals = [];
+    for (const seed of SEEDS) {
+      const r2 = E.makeRng(seed);
+      const s2 = I.signalRng(seed);
+      const built = twoLineages(N, r2, s2, d);
+      if (!built) continue;
+      const v = netEffect(
+        built.gA,
+        built.gB,
+        I.shapeOf({ h1: built.gA, h2: built.gB }),
+        1000 + Math.round(d * 10) * 7 + seed,
+      );
+      if (v !== null && Number.isFinite(v)) vals.push(v);
+    }
+    if (!vals.length) continue;
+    console.log(
+      `      ${f2(d)}     ${f3(mean(vals))} +/- ${ci(vals).toFixed(3)}  (n=${vals.length})`,
+    );
+  }
+  console.log(
+    `      Gated on 2a only. 2b is an INPUT to the result: if the IBM's own F1s pay no\n` +
+      `      cost, the force assumed to maintain a split is not there to begin with.`,
   );
   return ok;
 }
