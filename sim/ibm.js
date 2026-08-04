@@ -48,12 +48,90 @@
 const P = require("./placement.js");
 const C = require("./carryover.js");
 const E = require("./evolve.js");
+const D = require("./deception.js");
 
 const GENE_KEYS = Object.keys(E.GENE_BOUNDS);
 const ANGLE_GENE = "antherTheta";
-const ALL_KEYS = [...GENE_KEYS, ANGLE_GENE];
+
+/*
+ * THE ADVERTISEMENT LOCUS, and it is worth being explicit about why this one is
+ * allowed to be a gene when placement is not.
+ *
+ * Placement is not a gene because placement is not a trait — it is where a
+ * particular animal's body happens to touch a particular flower, i.e. an
+ * OUTCOME of two geometries meeting. Writing it as an allele would let the model
+ * assume the thing it exists to derive.
+ *
+ * A signal is the opposite: colour and scent ARE floral traits with known
+ * genetics, and in the one system where rare-morph advantage was measured in the
+ * field — Gigord et al. 2001 on Dactylorhiza sambucina — the polymorphism IS a
+ * heritable colour morph. So `signal` is inherited, and the invariant that
+ * matters is enforced separately and tested: the advertisement must never reach
+ * the geometry. `shapeOf` is what keeps it out.
+ */
+const SIGNAL_GENE = "signal";
+const ALL_KEYS = [...GENE_KEYS, ANGLE_GENE, SIGNAL_GENE];
+
+/*
+ * The linkage group for the supergene arm. Free recombination is the
+ * conservative default everywhere in this model, but it is ALSO the thing most
+ * likely to stop deception from ever reaching placement — a signal allele and an
+ * anther allele that arise together are separated in one generation. So linkage
+ * is an explicit arm rather than a hidden assumption, and this is the group:
+ * the advertisement plus the three loci that actually position the anther.
+ * Mimicry supergenes of exactly this kind are real (Heliconius, Papilio
+ * polytes), so the arm is a hypothesis about orchids, not a modelling flourish.
+ */
+const LINK_GROUP = ["antherT", ANGLE_GENE, "antherProject", SIGNAL_GENE];
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/* Box-Muller, matching sim/evolve.js — not exported there. */
+const gauss = (rng) =>
+  Math.sqrt(-2 * Math.log(1 - rng())) * Math.cos(2 * Math.PI * rng());
+
+/* Signal lives on a RING in [0,1), the same coordinate sim/deception.js bins,
+ * so that no advertisement is distinctive merely by sitting at the end of a
+ * line. */
+const wrap01 = (x) => ((x % 1) + 1) % 1;
+
+/* Circular blend of two ring coordinates — the signal analogue of meanAngle,
+ * and wrong for the same reason a plain average is wrong at the wrap. */
+function meanRing(a, b) {
+  const A = 2 * Math.PI * a;
+  const B = 2 * Math.PI * b;
+  const m = Math.atan2(
+    (Math.sin(A) + Math.sin(B)) / 2,
+    (Math.cos(A) + Math.cos(B)) / 2,
+  );
+  return wrap01(m / (2 * Math.PI));
+}
+
+/* Ring distance in signal units. */
+const ringDist = (a, b) => {
+  const d = Math.abs(a - b) % 1;
+  return d > 0.5 ? 1 - d : d;
+};
+
+/*
+ * ⚠️ THE ADVERTISEMENT DRAWS FROM ITS OWN RANDOM STREAM, and this is load-bearing
+ * rather than tidiness.
+ *
+ * `shapeOf` stops the signal reaching the geometry through the phenotype. This
+ * stops it reaching the geometry through the RNG. Sharing one stream would mean
+ * that switching deception on, or changing the advertisement's mutation rate,
+ * silently re-rolled every subsequent shape mutation and site draw — so an arm
+ * with deception and an arm without would differ in two things at once and no
+ * difference between them could be attributed. `sim/carryover.js` already draws
+ * its reward coin unconditionally for exactly this reason; this is the same
+ * requirement one level up.
+ *
+ * It also means every number published for the IBM before the advertisement
+ * existed still reproduces bit-for-bit, which is how it was checked.
+ */
+function signalRng(seed) {
+  return E.makeRng((seed * 2654435761) >>> 0 || 1);
+}
 
 /* Circular mean of two angles. A plain average is wrong at the wrap and would
  * put the offspring of two individuals straddling +/-pi at zero — i.e. exactly
@@ -75,7 +153,27 @@ function phenotype(ind) {
   const g = {};
   for (const k of GENE_KEYS) g[k] = (ind.h1[k] + ind.h2[k]) / 2;
   g[ANGLE_GENE] = meanAngle(ind.h1[ANGLE_GENE], ind.h2[ANGLE_GENE]);
+  g[SIGNAL_GENE] = meanRing(ind.h1[SIGNAL_GENE], ind.h2[SIGNAL_GENE]);
   return g;
+}
+
+/*
+ * ⚠️ THE INVARIANT THAT KEEPS THE ADVERTISEMENT OUT OF THE GEOMETRY.
+ *
+ * Everything that becomes a flower goes through here, and here is where the
+ * signal is dropped. If it were not, `toFlower` would spread it onto the flower
+ * object and a future contact-model change could silently start reading it — at
+ * which point "the population split on placement" would be a statement about an
+ * advertisement gene. Tested directly: two individuals differing ONLY in signal
+ * must produce byte-identical placements.
+ */
+function shapeOf(ind) {
+  const { [SIGNAL_GENE]: _drop, ...shape } = phenotype(ind);
+  return shape;
+}
+
+function signalOf(ind) {
+  return phenotype(ind)[SIGNAL_GENE];
 }
 
 /*
@@ -85,26 +183,72 @@ function phenotype(ind) {
  * together, so assuming none means any split found here is not an artefact of
  * a linkage map I chose.
  */
-function gamete(ind, rng, rate) {
+function gamete(ind, rng, rate, opts = {}) {
   const g = {};
-  for (const k of ALL_KEYS) g[k] = rng() < 0.5 ? ind.h1[k] : ind.h2[k];
-  return E.mutate(g, rng, rate);
+  /* Falls back to `rng` only when no advertisement stream is supplied, which is
+   * the case in the unit tests that exercise segregation directly. */
+  const srng = opts.srng || rng;
+  /*
+   * One shared coin for the linkage group when the supergene arm is on, an
+   * independent coin per locus otherwise. The coin is drawn LAZILY, so the free
+   * arm's rng stream is byte-identical to what it was before linkage existed and
+   * every earlier IBM number still reproduces.
+   */
+  const linked = opts.linkSignal ? LINK_GROUP : null;
+  /* Drawn up front rather than lazily: the signal locus is last in ALL_KEYS, and
+   * a coin that only exists once an earlier group member has been visited would
+   * make correctness depend on key order. Only the supergene arm draws it, so
+   * the free arm's stream is untouched. */
+  let linkCoin = linked ? rng() < 0.5 : null;
+  for (const k of ALL_KEYS) {
+    let fromH1;
+    if (k === SIGNAL_GENE) {
+      /* The advertisement's own segregation coin comes from the advertisement's
+       * own stream — unless it is LINKED, in which case it must by definition
+       * take the shape loci's coin, which is the whole content of linkage. */
+      fromH1 = linked ? linkCoin : srng() < 0.5;
+    } else if (linked && linked.includes(k)) {
+      fromH1 = linkCoin;
+    } else {
+      fromH1 = rng() < 0.5;
+    }
+    g[k] = fromH1 ? ind.h1[k] : ind.h2[k];
+  }
+  /* E.mutate only touches the shape loci and carries anything else through
+   * untouched, so the signal is mutated here, on its own ring and at its own
+   * rate. Advertisement and morphology are different kinds of trait and there is
+   * no reason their mutational steps should be tied together — but the rate IS
+   * swept in the experiment rather than picked. */
+  const m = E.mutate(g, rng, rate);
+  const sRate = opts.signalMut === undefined ? rate : opts.signalMut;
+  m[SIGNAL_GENE] = wrap01(m[SIGNAL_GENE] + gauss(srng) * sRate);
+  return m;
 }
 
-function randomIndividual(rng) {
-  return { h1: E.randomGenome(rng), h2: E.randomGenome(rng) };
+function randomIndividual(rng, srng = rng) {
+  return {
+    h1: { ...E.randomGenome(rng), [SIGNAL_GENE]: srng() },
+    h2: { ...E.randomGenome(rng), [SIGNAL_GENE]: srng() },
+  };
 }
 
 /* A population of near-clones plus mutational variance — one lineage, which is
  * the starting condition the speciation question actually asks about. */
-function foundPopulation(n, rng, { spread = 0.06 } = {}) {
-  const base = E.randomGenome(rng);
+function foundPopulation(
+  n,
+  rng,
+  { spread = 0.06, signalSpread = null, srng = null } = {},
+) {
+  const sr = srng || rng;
+  const base = { ...E.randomGenome(rng), [SIGNAL_GENE]: sr() };
+  const sS = signalSpread === null ? spread : signalSpread;
+  const hap = () => {
+    const h = E.mutate(base, rng, spread);
+    h[SIGNAL_GENE] = wrap01(h[SIGNAL_GENE] + gauss(sr) * sS);
+    return h;
+  };
   const pop = [];
-  for (let i = 0; i < n; i++)
-    pop.push({
-      h1: E.mutate(base, rng, spread),
-      h2: E.mutate(base, rng, spread),
-    });
+  for (let i = 0; i < n; i++) pop.push({ h1: hap(), h2: hap() });
   return pop;
 }
 
@@ -125,11 +269,40 @@ const DEFAULTS = {
   optimaK: 0,
   /* Sever placement from mating, for the null. */
   randomMating: false,
+
+  /* ---- deception (sim/deception.js), the one mechanism measured past parity
+   * and the only one of the six not previously inside a model that can breed.
+   *
+   * `deceptive` switches the MECHANISM, not the machinery: the learner is
+   * present in both settings and runBout draws its reward coin unconditionally,
+   * so the honest control runs the identical code path and the identical rng
+   * stream with rewardP = 1. A learner-null control would have differed in two
+   * things at once. */
+  deceptive: false,
+  /*
+   * ⚠️ NULL BY DEFAULT, deliberately. A learner present at all sends runBout
+   * down `pickLearned`, which selects flowers differently AND consumes the rng
+   * differently — so defaulting this to a parameter object would have quietly
+   * moved every pre-deception IBM arm onto a different code path while looking
+   * like an inert default. There are therefore THREE levels, not two:
+   *   learn: null                      no machinery  — reproduces the 2026-08-03 run
+   *   learn: LEARN, deceptive: false   machinery on, mechanism off
+   *   learn: LEARN, deceptive: true    mechanism on
+   * The middle one is the control that isolates deception; the first is what
+   * shows the middle one did not itself change the answer.
+   */
+  learn: null,
+  /* Reward probability of every plant when `deceptive` is off. 1 = all honest. */
+  honestP: 1,
+  /* Advertisement mutation rate; defaults to the shape rate. Swept, not tuned. */
+  signalMut: undefined,
+  /* Supergene arm: the advertisement co-segregates with the anther loci. */
+  linkSignal: false,
 };
 
 function sitesOf(pop, opts, gen) {
   return pop.map((ind, i) =>
-    C.siteSet(E.toFlower(phenotype(ind)), opts.bee, {
+    C.siteSet(E.toFlower(shapeOf(ind)), opts.bee, {
       n: opts.siteN,
       seed: 1000 + 31 * gen + i,
     }),
@@ -210,6 +383,72 @@ function twoClusterSeparation(places) {
   };
 }
 
+/*
+ * The SAME statistic on the advertisement axis, so the two axes are read in the
+ * same units and a split on one cannot be confused with a split on the other.
+ *
+ * This is the point of wiring deception in at all. Deception's negative
+ * frequency-dependence acts on SIGNAL; the mating system's positive
+ * frequency-dependence acts on PLACEMENT. Reporting only placement would answer
+ * "did deception do anything?" with a number that cannot see where it acted.
+ */
+function ringSeparation(signals) {
+  const xs = signals.filter((x) => Number.isFinite(x));
+  if (xs.length < 6) return null;
+  let best = null;
+  for (let a = 0; a < xs.length; a++)
+    for (let b = a + 1; b < xs.length; b++) {
+      const d = ringDist(xs[a], xs[b]);
+      if (!best || d > best.d) best = { a, b, d };
+    }
+  let m1 = xs[best.a],
+    m2 = xs[best.b];
+  let assign = null;
+  for (let iter = 0; iter < 12; iter++) {
+    assign = xs.map((p) => (ringDist(p, m1) <= ringDist(p, m2) ? 0 : 1));
+    for (const c of [0, 1]) {
+      const members = xs.filter((_, i) => assign[i] === c);
+      if (!members.length) continue;
+      let bestM = members[0],
+        bestCost = Infinity;
+      for (const cand of members) {
+        const cost = members.reduce((s, o) => s + ringDist(cand, o), 0);
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestM = cand;
+        }
+      }
+      if (c === 0) m1 = bestM;
+      else m2 = bestM;
+    }
+  }
+  const w = mean(xs.map((p, i) => ringDist(p, assign[i] === 0 ? m1 : m2)));
+  const sizes = [
+    assign.filter((x) => x === 0).length,
+    assign.filter((x) => x === 1).length,
+  ];
+  return {
+    separation: w > 1e-9 ? ringDist(m1, m2) / w : 0,
+    sizes,
+    minorityFrac: Math.min(...sizes) / xs.length,
+    gap: ringDist(m1, m2),
+  };
+}
+
+/* Circular spread of the advertisement cloud about its own mean. */
+function ringSpread(signals) {
+  const xs = signals.filter((x) => Number.isFinite(x));
+  if (xs.length < 2) return 0;
+  let cs = 0,
+    sn = 0;
+  for (const x of xs) {
+    cs += Math.cos(2 * Math.PI * x);
+    sn += Math.sin(2 * Math.PI * x);
+  }
+  const centre = wrap01(Math.atan2(sn, cs) / (2 * Math.PI));
+  return mean(xs.map((x) => ringDist(x, centre)));
+}
+
 /* Spread of the cloud about its own centre — the quantity measured to collapse
  * 12.6x when mutation is switched off, so it is the anchor for convergence. */
 function spreadOf(places) {
@@ -231,12 +470,27 @@ function spreadOf(places) {
  * One generation. The whole point is between the two marked lines: parentage
  * comes out of the transfer matrix.
  */
-function step(pop, opts, rng, gen) {
+function step(pop, opts, rng, gen, srng = null) {
   const n = pop.length;
   const sites = sitesOf(pop, opts, gen);
+  const signals = pop.map(signalOf);
+  /*
+   * The learner is REBUILT EACH GENERATION. That is a claim, so it is stated:
+   * the animal is not the same individual across plant generations, and
+   * Whitehead & Peakall 2012 measured short-term but not long-term avoidance, so
+   * carrying one memory across decades of flowering would be the strong version
+   * of a mechanism the field says is weak. Within a generation the memory
+   * persists across the whole bout, which is where the learning has to happen.
+   */
+  const learner = opts.learn ? D.makeLearner(opts.learn) : null;
   const r = C.runBout(sites, new Array(n).fill(1 / n), {
     visits: opts.visits,
     seed: 7 + gen,
+    learner,
+    signals: learner ? signals : null,
+    rewardP: learner
+      ? new Array(n).fill(opts.deceptive ? 0 : opts.honestP)
+      : null,
   });
 
   const received = new Array(n).fill(0);
@@ -321,17 +575,25 @@ function step(pop, opts, rng, gen) {
       if (failed > 40 * n) break;
       continue;
     }
+    const gopts = {
+      linkSignal: opts.linkSignal,
+      signalMut: opts.signalMut,
+      srng,
+    };
     next.push({
-      h1: gamete(pop[mother], rng, opts.mutRate),
-      h2: gamete(pop[father], rng, opts.mutRate),
+      h1: gamete(pop[mother], rng, opts.mutRate, gopts),
+      h2: gamete(pop[father], rng, opts.mutRate, gopts),
     });
   }
 
   return {
     pop: next.length ? next : pop,
     places,
+    signals,
     spread: spreadOf(places),
     cluster: twoClusterSeparation(places),
+    signalCluster: ringSeparation(signals),
+    signalSpread: ringSpread(signals),
     unmated: failed,
     stalled: next.length < n,
   };
@@ -346,16 +608,24 @@ function run({
 } = {}) {
   const opts = { ...DEFAULTS, ...rest };
   const rng = E.makeRng(seed);
-  let pop = found || foundPopulation(n, rng, {});
+  /* The advertisement's independent stream — see signalRng(). */
+  const srng = signalRng(seed);
+  let pop = found || foundPopulation(n, rng, { srng });
   const history = [];
   for (let g = 0; g < generations; g++) {
-    const out = step(pop, opts, rng, g);
+    const out = step(pop, opts, rng, g, srng);
     pop = out.pop;
     history.push({
       gen: g,
       spread: out.spread,
       separation: out.cluster ? out.cluster.separation : null,
       minorityFrac: out.cluster ? out.cluster.minorityFrac : null,
+      signalSpread: out.signalSpread,
+      signalSeparation: out.signalCluster ? out.signalCluster.separation : null,
+      signalGap: out.signalCluster ? out.signalCluster.gap : null,
+      signalMinorityFrac: out.signalCluster
+        ? out.signalCluster.minorityFrac
+        : null,
       unmated: out.unmated,
       stalled: out.stalled,
     });
@@ -366,9 +636,18 @@ function run({
 module.exports = {
   GENE_KEYS,
   ALL_KEYS,
+  SIGNAL_GENE,
+  LINK_GROUP,
   DEFAULTS,
   meanAngle,
+  meanRing,
+  ringDist,
+  signalRng,
   phenotype,
+  shapeOf,
+  signalOf,
+  ringSeparation,
+  ringSpread,
   gamete,
   randomIndividual,
   foundPopulation,
