@@ -89,7 +89,14 @@ smallest real SD is 10⁵× clear) and a test now pins both the invariance and t
 ⬜ Still open, and still needing the paywalled source: the **ceiling** half. Nothing here measures how
 many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
 
-### B. Speciation, which v1 explicitly cannot address — ✅ ORIGIN **and** MAINTENANCE both fail (2026-08-04)
+### B. Speciation, which v1 explicitly cannot address — ✅ ORIGIN **and** MAINTENANCE both fail, and the two are ONE PROBLEM (2026-08-04)
+
+⚠️⚠️ **THE UNIFYING RESULT (2026-08-04, density dependence).** Origin and maintenance both need the
+same thing — **a rare placement doing better than a common one** — and the invasion criterion says
+this model has the opposite sign at every frequency tested (0.214 → 4.654 across f = 0.1…0.9, flat
+control). So the coexistence gap is not a second problem to solve after the speciation barrier: it is
+the speciation barrier seen from the far side, and neither demography nor pollinator number can close
+it. What would: **negative** frequency dependence on placement, or a genuinely second limiting factor.
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
@@ -229,7 +236,37 @@ sites independently.
 FIXED.** The IBM fills exactly N slots every generation, so two isolated lineages are forced into a
 zero-sum contest that is built into the demography rather than derived from pollination. Testable by
 letting size follow total seed set — ⚠️ but giving each lineage its own quota would ASSUME coexistence.
+✅ **TESTED AND REFUTED 2026-08-04, below.**
 [detail](2026-08-04-two-pollinator-coexistence.md)
+
+⚠️⚠️ **IT IS NOT THE FIXED POPULATION SIZE EITHER — AND PART C SAYS NO DEMOGRAPHY COULD EVER FIX IT
+(2026-08-04).** Filling exactly N slots is **soft selection** (Wallace 1975), so only relative success
+can matter; letting recruits follow total seed set is **hard selection**. ⚠️ It is TWO constants, not
+one — `visits` is also a constant total shared over n plants, and lifting only the first would have
+been inert. Both were lifted as a 2×2 with a **shared** ceiling (a per-lineage quota would assume the
+answer). **Every viable regime still loses a lineage 5/5 at d=8**, including the one that genuinely
+tracks its own seed set (mean N 28.5, range 7–45, **0.0% at the ceiling**); the null still fuses.
+⚠️ One cell is unevaluable and that is a finding: constant PER-PLANT service has **no density
+regulation at all** (critical branching — 3/5 seeds extinct), so removing the fixed limiting factor
+removes the regulation with it.
+⚠️⚠️ **THE MECHANISM: the invasion criterion fails in BOTH directions.** Per-capita receipt vs own
+frequency at d=8 = **0.214 / 0.580 / 0.981 / 1.789 / 4.654** at f = 0.1…0.9 — a rare lineage does
+WORSE, monotonically. 0.981 at 50/50 and near-exact reciprocity (1/0.214 = 4.67 vs 4.654) make it pure
+symmetric frequency dependence, not an intrinsic advantage; **0.214 sits on the same order as the
+rare/common ≈ 0.26 proxy**, reached from a different construction. Control: one lineage wearing BOTH
+labels (exact null) reads 1.011/0.991/0.992/0.947/0.997 — flat, so the statistic can report absence.
+**Coexistence needs a STABILISING niche difference and this model has the opposite sign, so the
+constant was never the cause.**
+⚠️⚠️ **THIS UNIFIES B AND THE COEXISTENCE GAP:** coexistence needs a rare lineage to beat a common
+one, and so does the ORIGIN of a split — the same requirement, failed by eight mechanisms. The
+coexistence gap is the speciation barrier seen from the far side.
+⚠️ **And it explains why two pollinators could not have worked:** the split budget keeps ONE limiting
+factor. Two animals become two limiting factors only with INDEPENDENT budgets — which needs a
+one-animal double-budget control to separate that from "more visits".
+⚠️ The anchor gate fired once and was WRONG: it demanded HELD in every seed and got 4/5, but seed 5
+genuinely loses a lineage in 3 generations. The predicate's scope exceeded its claim (reachability),
+so it could not discriminate its target from ordinary behaviour.
+[detail](2026-08-04-density-dependence.md)
 
 ✅ **SECONDARY CONTACT RUN 2026-08-04 — the standing alternative fails too, and the failure CHANGES
 CHARACTER.** Everything before asked whether a split can ARISE. This asked whether one PERSISTS: two
