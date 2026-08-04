@@ -268,10 +268,24 @@ function arm(label, extra) {
   };
 }
 
+/*
+ * ⚠️ THE ADVERTISEMENT SPREAD PRINTS AT THREE DECIMALS, NOT TWO, AND THAT IS A FIX.
+ *
+ * It used to share the 2-decimal `f2` with everything else, and I then reported
+ * the inflation by dividing the PRINTED values — 0.18 / 0.05 = "3.6x". The real
+ * numbers are 0.175 / 0.055 = 3.2x. Dividing two rounded quantities whose
+ * denominator is ~0.05 amplifies the rounding into a ~12% error in the ratio,
+ * which is the whole reason a derived quantity must never be recomputed from a
+ * display value. So the column carries enough precision to divide, and the ratio
+ * itself is printed below so nobody has to.
+ */
+const f3 = (x) =>
+  x === null || x === undefined ? "    -  " : x.toFixed(3).padStart(7);
+
 function report(a) {
   console.log(
     `  ${a.label.padEnd(34)} ${f2(mean(a.tail))} +/-${f2(sd(a.tail))}  ${f2(a.spread)}   ` +
-      `${f2(mean(a.sigTail))} +/-${f2(sd(a.sigTail))}  ${f2(a.sigSpread)}${a.stalled ? "  (stalled)" : ""}`,
+      `${f2(mean(a.sigTail))} +/-${f2(sd(a.sigTail))}  ${f3(a.sigSpread)}${a.stalled ? "  (stalled)" : ""}`,
   );
 }
 
@@ -398,7 +412,9 @@ for (const [a, control] of [
   console.log(
     `  ${a.label.padEnd(34)} placement split: ${splitsPlacement(a) ? "YES" : "NO "}` +
       `    signal ${mean(a.sigTail).toFixed(2)} vs band ${sigBandOf(control).toFixed(2)}: ${splitsSignal(a, control) ? "CLEARS" : "marginal"}` +
-      `    signal spread ${a.sigSpread.toFixed(3)} vs ${control.sigSpread.toFixed(3)}`,
+      /* the ratio is COMPUTED here, from the full-precision values, precisely so
+       * that it is never re-derived from the rounded column above */
+      `    spread ${a.sigSpread.toFixed(3)} vs ${control.sigSpread.toFixed(3)} = ${(a.sigSpread / control.sigSpread).toFixed(2)}x`,
   );
 
 const anySweepPlacement = sweep.some(

@@ -134,8 +134,8 @@ morphs are heritable; _D. sambucina_'s polymorphism is one) while placement stil
 by `shapeOf` and by giving the advertisement **its own rng stream**, so switching deception on cannot
 silently re-roll every shape mutation. Verified bit-identical to the pre-advertisement model.
 
-Deception inflates the advertisement cloud **~4×** (spread 0.05 → 0.18) and **does not move placement
-at all** (2.36 vs a random-mating band of 2.90). ⚠️⚠️ **And LINKING the advertisement to the anther
+Deception inflates the advertisement cloud **3.2× free / 3.6× linked** (spread 0.055 → 0.175) and
+**does not move placement at all** (2.36 vs a random-mating band of 2.90). ⚠️⚠️ **And LINKING the advertisement to the anther
 loci does not rescue it** (2.17) — the discriminator the supergene arm existed for, killing the
 attractive explanation that free recombination merely separated them. Flat across a 7.5× sweep of the
 one unanchored parameter.
