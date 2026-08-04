@@ -101,6 +101,19 @@ what is measured is whether frequency-dependence emerges. It does, up to 2.01× 
 null band of 0.991 ± 0.028, and only when the animal can actually tell the morphs apart.
 [detail](docs/2026-08-03-deception.md)
 
+**⚠️ But inside a model that can actually breed, deception splits the _advertisement_ and not the
+plant.** Deception's negative frequency-dependence acts on the **signal** axis; the mating system's
+positive frequency-dependence acts on **placement**; so the real question was whether the first can
+_reach_ the axis the second lives on. It cannot. Deception inflates the advertisement cloud **~4×**
+and moves placement not at all — **and linking the advertisement directly to the anther loci does not
+rescue it**, which kills the obvious explanation that free recombination merely separated them.
+The mechanism: **negative frequency-dependence maintains a polymorphism, it does not complete a
+split** — a rare-morph advantage evaporates the moment the morph is common, so it protects variance
+without ever resolving it, and that is precisely what Gigord et al. measured in the field, a colour
+polymorphism maintained _within one species_. ⚠️ My own competing hypothesis — that "past parity" was
+an artefact of scoring summed transfer instead of realized parentage — was **refuted** by re-scoring
+the identical bout: 4 of 8 under both. [detail](docs/2026-08-04-deception-ibm.md)
+
 **⚠️ The advantage is a scaling law, not a multiplier — and one published finding was about the
 wrong organ.** Two passes over every file that scored placement found the same bug three times:
 arms were compared at different candidate counts, and the packing ceiling depends steeply on that

@@ -345,18 +345,38 @@ for (const sm of [0.02, 0.06, 0.15]) {
 // ---------------------------------------------------------------- verdict
 
 const band = mean(nul.tail) + 2 * sd(nul.tail);
-const sigBand = mean(honest.sigTail) + 2 * sd(honest.sigTail);
+
+/*
+ * ⚠️ EACH ARM IS JUDGED AGAINST ITS OWN MATCHED CONTROL.
+ *
+ * The first version of this scored the LINKED cheating arm against the UNLINKED
+ * honest band, which is the wrong comparison and flattered it: linkage changes
+ * how alleles travel, so it has its own honest control and that control's band
+ * is the one it has to clear. Against the correct band the linked arm's signal
+ * result at the default mutation rate is marginal rather than a split, and
+ * saying so is the difference between reporting an effect and reporting the
+ * control it was compared to.
+ */
+const sigBandOf = (control) => mean(control.sigTail) + 2 * sd(control.sigTail);
+const sigFree = sigBandOf(honest);
+const sigLinked = sigBandOf(linkHonest);
 
 const splitsPlacement = (a) => mean(a.tail) > band;
-const splitsSignal = (a) => mean(a.sigTail) > sigBand;
+const splitsSignal = (a, control) => mean(a.sigTail) > sigBandOf(control);
 
 console.log("\n" + "=".repeat(88));
 console.log(
-  `  null bands   placement ${band.toFixed(2)} (random mating +2sd)   signal ${sigBand.toFixed(2)} (honest +2sd)\n`,
+  `  null bands   placement ${band.toFixed(2)} (random mating +2sd)` +
+    `   signal ${sigFree.toFixed(2)} free / ${sigLinked.toFixed(2)} linked (matched honest +2sd)\n`,
 );
-for (const a of [cheat, linkCheat])
+for (const [a, control] of [
+  [cheat, honest],
+  [linkCheat, linkHonest],
+])
   console.log(
-    `  ${a.label.padEnd(34)} placement split: ${splitsPlacement(a) ? "YES" : "NO "}    signal split: ${splitsSignal(a) ? "YES" : "NO "}`,
+    `  ${a.label.padEnd(34)} placement split: ${splitsPlacement(a) ? "YES" : "NO "}` +
+      `    signal ${mean(a.sigTail).toFixed(2)} vs band ${sigBandOf(control).toFixed(2)}: ${splitsSignal(a, control) ? "CLEARS" : "marginal"}` +
+      `    signal spread ${a.sigSpread.toFixed(3)} vs ${control.sigSpread.toFixed(3)}`,
   );
 
 const anySweepPlacement = sweep.some(
@@ -369,25 +389,37 @@ if (
   !splitsPlacement(linkCheat) &&
   !anySweepPlacement
 ) {
-  if (splitsSignal(cheat) || splitsSignal(linkCheat)) {
+  const widened =
+    cheat.sigSpread > 2 * honest.sigSpread &&
+    linkCheat.sigSpread > 2 * linkHonest.sigSpread;
+  if (widened) {
     console.log(
-      "  DECEPTION SPLITS THE ADVERTISEMENT AND NOT THE PLANT.\n" +
+      "  DECEPTION DIVERSIFIES THE ADVERTISEMENT AND DOES NOT MOVE THE PLANT.\n" +
         "\n" +
         "  The mechanism is demonstrably working — a rare advertiser gains several-fold\n" +
-        "  (anchor 2), and the signal axis goes bimodal well outside the honest control's\n" +
-        "  band. What it does not do is move PLACEMENT, and that holds even when the\n" +
-        "  advertisement is linked to the anther loci, so the failure is not that free\n" +
+        "  (anchor 2) and the advertisement cloud is several times wider than its matched\n" +
+        "  honest control. What it does not do is move PLACEMENT, and that holds even when\n" +
+        "  the advertisement is LINKED to the anther loci, so the failure is not that free\n" +
         "  recombination separated them.\n" +
         "\n" +
-        "  Negative frequency-dependence on the signal axis therefore does not transfer\n" +
-        "  to the axis reproductive isolation actually lives on. A rare advertiser is\n" +
-        "  visited more; a rare PLACEMENT still has nobody to exchange pollen with, and\n" +
-        "  extra visits do not create a compatible partner. Deception's 3.18x past parity\n" +
-        "  bought visitation, and visitation was never the barrier.\n" +
+        "  ⚠️ Note which claim the numbers support. The advertisement's SPREAD inflates\n" +
+        "  reliably; its BIMODALITY clears the matched honest band only marginally. That\n" +
+        "  distinction is the mechanism rather than a hedge:\n" +
+        "\n" +
+        "  NEGATIVE FREQUENCY-DEPENDENCE MAINTAINS A POLYMORPHISM; IT DOES NOT COMPLETE A\n" +
+        "  SPLIT. A rare-morph advantage must evaporate the moment the morph becomes\n" +
+        "  common, so it generates and protects variance without ever resolving it into\n" +
+        "  two discrete morphs — and a protected polymorphism is the opposite of a\n" +
+        "  completed split. That is what Gigord et al. 2001 actually reported: the\n" +
+        "  MAINTENANCE of a colour polymorphism within one species, not speciation.\n" +
+        "\n" +
+        "  Meanwhile a rare PLACEMENT still has nobody to exchange pollen with, and extra\n" +
+        "  visits do not create a compatible partner. Deception's 3.18x past parity bought\n" +
+        "  visitation, and visitation was never the barrier.\n" +
         "\n" +
         "  Seven mechanisms, and this is now the second of them shown to break a symmetry\n" +
-        "  on an axis that is not the one that matters — which is a sharper statement of\n" +
-        "  why the other five failed than 'they did not work'.",
+        "  on an axis that is not the one reproductive isolation lives on — a sharper\n" +
+        "  statement of why the other five failed than 'they did not work'.",
     );
   } else {
     console.log(
