@@ -138,6 +138,19 @@ that the harness is measuring the thing it claims.
 that could have: the other five redistribute visits among plants the animal already wants to visit,
 whereas deception changes how much it wants to visit them at all.
 
+> ✅ **RE-SCORED 2026-08-04 AND IT HOLDS.** This number is a **summed transfer**, and the IBM later
+> proved that the choice of statistic can invert a conclusion in this codebase — scoring by pollen
+> received read +0.149 where realized parentage reads −0.842. Transfer is a raw sum; parentage is a
+> normalised share per mother, so a rare morph delivering to already-saturated mothers can score high
+> on one and near-zero on the other. Re-scored from the identical bout: **4 of 8 under both**
+> statistics (parentage mean 1.040 vs transfer 1.132). Parentage is systematically a little harsher,
+> but the claim stands. [detail](2026-08-04-deception-ibm.md)
+>
+> ⚠️ **What it does NOT license is a claim about speciation.** Wired into a model that can breed,
+> deception diversifies the **advertisement ~4×** and does not move placement at all — even when the
+> advertisement is genetically linked to the anther loci. Past parity is the condition for a
+> _protected polymorphism_, which is the opposite of a completed split.
+
 ## What this does and does not license
 
 **It does not say placement diverges by deception in nature.** It says the barrier that stopped five
