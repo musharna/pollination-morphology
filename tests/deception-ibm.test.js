@@ -116,6 +116,47 @@ test("the advertisement's mutation rate cannot perturb the shape dynamics", () =
   );
 });
 
+/*
+ * ⚠️ THIS TEST EXISTS BECAUSE A MUTANT SURVIVED, and the surviving mutant was
+ * the coverage report.
+ *
+ * The test above compares two advertisement RATES. It cannot catch signal
+ * mutation being drawn from the SHAPE stream, because that draw happens the same
+ * number of times whichever rate is set — so both arms shift together, match
+ * each other perfectly, and are both wrong. Changing `gauss(srng)` to
+ * `gauss(rng)` in `gamete` passed it.
+ *
+ * The invariant that actually matters is not "the rate does not matter" but
+ * "the advertisement changed NOTHING about the model that existed before it".
+ * That needs an external reference, so these numbers were generated from commit
+ * 63c4cb5 — the IBM as published on 2026-08-03, before the advertisement locus
+ * existed — and NOT from the code under test. A constant calibrated from the
+ * artifact under test would simply encode its defect.
+ */
+const PRE_ADVERTISEMENT = [
+  [0.6426076918656048, 3.0637323268730365],
+  [0.8843517599890253, 3.6807972859897253],
+  [0.8257455458521449, 3.61632994537921],
+  [0.49249979315034653, 2.269042873658907],
+  [0.6023262955018738, 2.172879959409133],
+];
+
+test("the shape dynamics are bit-identical to the model before the advertisement", () => {
+  const h = I.run({
+    n: 12,
+    generations: 5,
+    seed: 3,
+    siteN: 60,
+    visits: 6000,
+  }).history;
+  assert.deepStrictEqual(
+    h.map((r) => [r.spread, r.separation]),
+    PRE_ADVERTISEMENT,
+    "adding the advertisement moved the shape dynamics — every IBM result " +
+      "published on 2026-08-03 would stop reproducing",
+  );
+});
+
 /* --------------------------------------------------- the ring is a ring */
 
 test("the advertisement blends across the 0/1 wrap", () => {
