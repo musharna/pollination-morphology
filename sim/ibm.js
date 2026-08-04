@@ -107,6 +107,27 @@ function meanRing(a, b) {
   return wrap01(m / (2 * Math.PI));
 }
 
+/*
+ * Poisson draws, for the recruit count under density dependence. Knuth's product
+ * method below 30 and the normal approximation above it — the standard split.
+ * Knuth's loop cost grows linearly in the mean, and by 30 the approximation's
+ * error is far below the demographic noise it is there to represent.
+ */
+function poisson(rng, lam) {
+  if (!(lam > 0)) return 0;
+  if (lam < 30) {
+    const L = Math.exp(-lam);
+    let k = 0;
+    let p = 1;
+    do {
+      k++;
+      p *= rng();
+    } while (p > L);
+    return k - 1;
+  }
+  return Math.max(0, Math.round(lam + Math.sqrt(lam) * gauss(rng)));
+}
+
 /* Ring distance in signal units. */
 const ringDist = (a, b) => {
   const d = Math.abs(a - b) % 1;
@@ -356,6 +377,52 @@ const DEFAULTS = {
    * in how much pollination they receive. See step(). */
   bees: null,
 
+  /*
+   * ⚠️ THE TWO CONSTANTS THAT MAKE THIS MODEL ZERO-SUM, AND THEY ARE MODELLING
+   * ASSUMPTIONS RATHER THAN BIOLOGY. Both default to off, so every result
+   * published before they existed is unaffected.
+   *
+   * 1. `demography` — HOW MANY OFFSPRING A GENERATION PRODUCES.
+   *
+   *    Left null, step() fills exactly `pop.length` slots, which is SOFT
+   *    SELECTION in the population-genetics sense (Wallace 1975): the number of
+   *    recruits is a constant and only RELATIVE pollination success can matter,
+   *    so one lineage's seed is by construction another's loss. Two
+   *    reproductively isolated groups are then forced into a zero-sum contest by
+   *    the demography rather than by anything about pollination — which makes
+   *    "one lineage is excluded" a statement about constant-size populations.
+   *
+   *    Set to {seedsPerGrain, K} the recruit count becomes
+   *    min(K, Poisson(seedsPerGrain * total pollen received)) — HARD selection,
+   *    where absolute fitness matters and a population that sets fewer seeds
+   *    SHRINKS instead of handing its slots to a competitor. K is a shared
+   *    ceiling on establishment sites; it is deliberately NOT per-lineage,
+   *    because a quota each would simply assume coexistence.
+   *
+   *    ⚠️ Total-then-multinomial is used rather than a Poisson per mother
+   *    because they are the SAME distribution (Poisson thinning) while the cap
+   *    binds nowhere — and the existing parentage loop is then untouched.
+   *
+   * 2. `visitsPerPlant` — HOW MUCH POLLINATOR SERVICE EXISTS.
+   *
+   *    Left null, `visits` is a constant total shared out over however many
+   *    plants there are, so per-plant visitation is forced to scale as 1/n and
+   *    the pollinators are a second fixed pool to compete over. Set to a number,
+   *    the budget becomes visitsPerPlant * n — constant per-plant service, i.e.
+   *    a pollinator fauna that tracks floral abundance.
+   *
+   *    ⚠️ THIS ONE IS NECESSARY FOR THE FIRST TO MEAN ANYTHING. With a constant
+   *    visit total, total pollen delivered barely depends on n, so the recruit
+   *    count is nearly constant too and density dependence is inert — the
+   *    population would simply be pinned at a different number. Lifting only
+   *    assumption 1 tests a model that is still zero-sum through the pollinator.
+   *
+   *    At n equal to the founding size the rescaling is a no-op by construction,
+   *    which is what keeps the anchors bit-identical.
+   */
+  demography: null,
+  visitsPerPlant: null,
+
   /* ---- deception (sim/deception.js), the one mechanism measured past parity
    * and the only one of the six not previously inside a model that can breed.
    *
@@ -587,7 +654,12 @@ function step(pop, opts, rng, gen, srng = null) {
    * Each animal gets its OWN learner: two animals do not share a memory.
    */
   const bees = opts.bees && opts.bees.length ? opts.bees : [opts.bee];
-  const per = Math.max(1, Math.round(opts.visits / bees.length));
+  /* Constant total service (null) or constant per-plant service — see the note
+   * on `visitsPerPlant` in DEFAULTS. Null leaves every earlier seed unchanged. */
+  const budget = opts.visitsPerPlant
+    ? Math.max(1, Math.round(opts.visitsPerPlant * n))
+    : opts.visits;
+  const per = Math.max(1, Math.round(budget / bees.length));
 
   const T = Array.from({ length: n }, () => new Float64Array(n));
   let sites = null;
@@ -662,6 +734,25 @@ function step(pop, opts, rng, gen, srng = null) {
     });
   }
 
+  /*
+   * ⚠️ HOW MANY OFFSPRING THIS GENERATION MAKES — the fixed-N assumption, and
+   * the whole of it. Null demography reproduces `target = n` exactly, so this
+   * line is the difference between soft and hard selection.
+   *
+   * The total is read off `weight` rather than `received` so that the quantity
+   * deciding HOW MANY seeds are set is the same quantity deciding WHOSE they
+   * are; if the positive control is on, fecundity selection reduces both.
+   */
+  let target = n;
+  let totalSeed = null;
+  if (opts.demography) {
+    totalSeed = weight.reduce((a, b) => a + b, 0);
+    target = Math.min(
+      opts.demography.K,
+      poisson(rng, opts.demography.seedsPerGrain * totalSeed),
+    );
+  }
+
   const pick = (ws) => {
     const tot = ws.reduce((a, b) => a + b, 0);
     if (!(tot > 0)) return -1;
@@ -676,7 +767,7 @@ function step(pop, opts, rng, gen, srng = null) {
   const next = [];
   let failed = 0;
   const uniform = new Array(n).fill(1);
-  while (next.length < n) {
+  while (next.length < target) {
     // ---- parentage from the transfer matrix ----
     /*
      * opts.randomMating severs exactly ONE link: who mates with whom stops
@@ -718,9 +809,21 @@ function step(pop, opts, rng, gen, srng = null) {
   }
 
   return {
-    pop: next.length ? next : pop,
+    /*
+     * ⚠️ THE FALLBACK IS SUPPRESSED UNDER DENSITY DEPENDENCE, deliberately.
+     * With fixed N, a generation that cannot fill itself is a FROZEN run and
+     * returning the parents keeps that visible as a stall. With demography on,
+     * a shortfall is the result: a population that set few seeds is meant to
+     * shrink, and carrying the parents forward would silently rescue exactly
+     * the decline the arm exists to measure.
+     */
+    pop: opts.demography ? next : next.length ? next : pop,
     places,
     signals,
+    target,
+    recruits: next.length,
+    popN: n,
+    totalSeed,
     spread: spreadOf(places),
     cluster: twoClusterSeparation(places),
     signalCluster: ringSeparation(signals),
@@ -729,7 +832,12 @@ function step(pop, opts, rng, gen, srng = null) {
      * the placements above rather than with the offspring */
     ancVar: ancestryVar(pop),
     unmated: failed,
-    stalled: next.length < n,
+    /* A stall is a generation that could not produce the offspring it was
+     * entitled to. With demography off `target` IS n, so this is the same
+     * predicate it has always been; with demography on it must be read against
+     * the entitlement rather than against the parents, or every shrinking
+     * generation would report itself frozen. */
+    stalled: next.length < target,
   };
 }
 
@@ -746,11 +854,26 @@ function run({
   const srng = signalRng(seed);
   let pop = found || foundPopulation(n, rng, { srng });
   const history = [];
+  let extinct = false;
   for (let g = 0; g < generations; g++) {
+    /*
+     * ⚠️ EXTINCTION IS AN OUTCOME AND MUST STOP THE RUN RATHER THAN CRASH IT.
+     * Under density dependence the population can genuinely reach zero, and
+     * every statistic below divides by its size. Unreachable with demography
+     * off, where the generation count and the history length are unchanged.
+     */
+    if (pop.length < 2) {
+      extinct = true;
+      break;
+    }
     const out = step(pop, opts, rng, g, srng);
     pop = out.pop;
     history.push({
       gen: g,
+      popN: out.popN,
+      target: out.target,
+      recruits: out.recruits,
+      totalSeed: out.totalSeed,
       spread: out.spread,
       separation: out.cluster ? out.cluster.separation : null,
       minorityFrac: out.cluster ? out.cluster.minorityFrac : null,
@@ -765,7 +888,7 @@ function run({
       stalled: out.stalled,
     });
   }
-  return { pop, history };
+  return { pop, history, extinct: extinct || pop.length < 2 };
 }
 
 module.exports = {
@@ -781,6 +904,7 @@ module.exports = {
   phenotype,
   shapeOf,
   signalOf,
+  poisson,
   ringSeparation,
   ringSpread,
   gamete,

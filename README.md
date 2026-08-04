@@ -131,7 +131,13 @@ pollen-dispersal units is calibrated** against 228 species — but the **absolut
 is not**, running 2.9x generous (7.1% against a measured 2.4%), so magnitudes still should not be
 quoted as rates. The evolution loop is adaptive dynamics, not population genetics — no standing variation, no
 recombination, no hybridisation — so it speaks to coexistence among species already distinct and
-**not to speciation itself**.
+**not to speciation itself**. The IBM (`sim/ibm.js`) is what addresses that, and its standing answer
+is negative in both directions: **a rare placement never beats a common one.** Measured directly as
+an invasion criterion, per-capita pollen receipt _rises_ with a lineage's own frequency (0.214 at 10%
+frequency to 4.654 at 90%, against a flat control), so neither of two lineages can increase when rare.
+⚠️ That single fact accounts for both open negatives — no split arises, and two founded lineages
+cannot coexist — and it is why lifting the fixed-population-size assumption changed nothing.
+[detail](docs/2026-08-04-density-dependence.md)
 
 The empirical leg is half closed. The **mechanism** half now has real-world support: in two
 sympatric _Platanthera_ populations, the floral traits that determine where pollen is placed
