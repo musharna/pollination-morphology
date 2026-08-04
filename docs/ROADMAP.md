@@ -98,6 +98,27 @@ control). So the coexistence gap is not a second problem to solve after the spec
 the speciation barrier seen from the far side, and neither demography nor pollinator number can close
 it. What would: **negative** frequency dependence on placement, or a genuinely second limiting factor.
 
+⚠️⚠️ **AND A SECOND LIMITING FACTOR IS NOT AVAILABLE BY THE POLLINATOR ROUTE (2026-08-04, limiting
+factors).** The two-pollinator run's own control — SPLIT the visit budget — keeps ONE limiting factor,
+so its negative was partly built in. Tested with **INDEPENDENT budgets** (two factors, 2× visits)
+against a **ONE-ANIMAL DOUBLE-BUDGET** arm at the SAME volume. Delivered pollen genuinely doubles
+(51,985 → 103,738, measured) and absolute per-capita receipt doubles with it — **but the RATIO between
+lineages is unchanged to within a percent at every frequency**, log-slope 3.46 / 3.42 / 3.41. All four
+arms lose a lineage 5/5; the null fuses.
+⚠️⚠️ **THE EXPONENT IS THE QUOTABLE NUMBER: receipt ratio ≈ (own-frequency odds)^0.70**, identical
+across all three service regimes (0.72/0.70, 0.70/0.70, 0.70/0.71). 0 = no frequency dependence,
+1 = pure partner-counting — so it is **mostly partner-counting**, softened by carryover. That is a
+property of MATE-FINDING, not of provisioning: **partners are not a resource a pollinator can
+deliver**, so a second limiting factor cannot be manufactured by adding animals or visits.
+⬜ **The bar is now QUANTITATIVE and CHEAP:** a candidate mechanism must move the 0.70 exponent, and
+the exponent is measurable in single bouts — screen mechanisms there before spending 35 generations.
+What would move it is **rare-biased visit allocation**, which is what deception was recruited to
+supply and it acted on the advertisement axis instead.
+⚠️ A surviving mutant caught two worthless tests: they measured delivered pollen with a helper that
+REIMPLEMENTED the budget rule, so a `step()` that ignored the flag left them green. **A test that
+recomputes the behaviour under test is testing the recomputation.**
+[detail](2026-08-04-limiting-factors.md)
+
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
 question sits exactly there: placement selection in one panmictic population is positively

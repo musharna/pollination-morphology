@@ -139,6 +139,14 @@ frequency to 4.654 at 90%, against a flat control), so neither of two lineages c
 cannot coexist — and it is why lifting the fixed-population-size assumption changed nothing.
 [detail](docs/2026-08-04-density-dependence.md)
 
+The frequency dependence has since been pinned to a number: **receipt ratio ≈ (own-frequency
+odds)^0.70**, unchanged whether pollination arrives through one animal, two sharing a budget, or two
+with a budget each. 0 would be no frequency dependence and 1 pure partner-counting, so it is **mostly
+partner-counting** — a property of mate-finding rather than of provisioning. Partners are not a
+resource a pollinator can deliver, which is why adding animals or visits cannot help. It also gives a
+cheap screen: a candidate mechanism has to move that exponent, measurable in single bouts.
+[detail](docs/2026-08-04-limiting-factors.md)
+
 The empirical leg is half closed. The **mechanism** half now has real-world support: in two
 sympatric _Platanthera_ populations, the floral traits that determine where pollen is placed
 (viscidia distance, caudicle length) separate the two species completely, while the traits that set
