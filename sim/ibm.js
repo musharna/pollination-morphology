@@ -237,19 +237,51 @@ function randomIndividual(rng, srng = rng) {
 function foundPopulation(
   n,
   rng,
-  { spread = 0.06, signalSpread = null, srng = null } = {},
+  {
+    spread = 0.06,
+    signalSpread = null,
+    srng = null,
+    base = null,
+    anc = 0,
+  } = {},
 ) {
   const sr = srng || rng;
-  const base = { ...E.randomGenome(rng), [SIGNAL_GENE]: sr() };
+  const b = base || { ...E.randomGenome(rng), [SIGNAL_GENE]: sr() };
   const sS = signalSpread === null ? spread : signalSpread;
   const hap = () => {
-    const h = E.mutate(base, rng, spread);
+    const h = E.mutate(b, rng, spread);
     h[SIGNAL_GENE] = wrap01(h[SIGNAL_GENE] + gauss(sr) * sS);
     return h;
   };
   const pop = [];
-  for (let i = 0; i < n; i++) pop.push({ h1: hap(), h2: hap() });
+  for (let i = 0; i < n; i++) pop.push({ h1: hap(), h2: hap(), anc });
   return pop;
+}
+
+/*
+ * ⚠️ A NEUTRAL ANCESTRY TRACER, AND IT MUST STAY NEUTRAL.
+ *
+ * `anc` is not a gene and not a trait. It is a label carried alongside the
+ * genome and averaged between parents, the standard admixture tracker, and it
+ * exists because THREE DIFFERENT OUTCOMES ALL LOOK LIKE "the split went away":
+ *
+ *   FUSION      the lineages interbreed and the difference is averaged out
+ *   EXTINCTION  drift removes one lineage entirely — nothing fused
+ *   PERSISTENCE placement stays bimodal
+ *
+ * Placement separation alone cannot tell fusion from extinction, and they are
+ * opposite mechanisms. Worse, a population can stay visibly bimodal in placement
+ * while its ancestry has completely homogenised — genetically fused but looking
+ * split — and only a tracer catches that.
+ *
+ * It reads nothing and decides nothing: it is not on a haplotype, so it cannot
+ * reach the phenotype, and it consumes NO random numbers, so it cannot perturb
+ * any published result. Both are tested.
+ */
+function ancestryVar(pop) {
+  const xs = pop.map((i) => (i.anc === undefined ? 0 : i.anc));
+  const m = mean(xs);
+  return mean(xs.map((x) => (x - m) * (x - m)));
 }
 
 // -------------------------------------------------------------- placement
@@ -583,6 +615,8 @@ function step(pop, opts, rng, gen, srng = null) {
     next.push({
       h1: gamete(pop[mother], rng, opts.mutRate, gopts),
       h2: gamete(pop[father], rng, opts.mutRate, gopts),
+      /* the tracer: the parental mean, drawing no random numbers */
+      anc: ((pop[mother].anc || 0) + (pop[father].anc || 0)) / 2,
     });
   }
 
@@ -594,6 +628,9 @@ function step(pop, opts, rng, gen, srng = null) {
     cluster: twoClusterSeparation(places),
     signalCluster: ringSeparation(signals),
     signalSpread: ringSpread(signals),
+    /* measured on the population that PRODUCED this generation, so it pairs with
+     * the placements above rather than with the offspring */
+    ancVar: ancestryVar(pop),
     unmated: failed,
     stalled: next.length < n,
   };
@@ -626,6 +663,7 @@ function run({
       signalMinorityFrac: out.signalCluster
         ? out.signalCluster.minorityFrac
         : null,
+      ancVar: out.ancVar,
       unmated: out.unmated,
       stalled: out.stalled,
     });
@@ -651,6 +689,7 @@ module.exports = {
   gamete,
   randomIndividual,
   foundPopulation,
+  ancestryVar,
   sitesOf,
   placementOf,
   dist,
