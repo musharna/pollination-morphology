@@ -376,6 +376,10 @@ const DEFAULTS = {
    * summed and the visit budget is SPLIT, so arms differ in geometry rather than
    * in how much pollination they receive. See step(). */
   bees: null,
+  /* Each animal brings its OWN visit budget rather than sharing one pool — the
+   * difference between one limiting factor and two. See the note in step(); only
+   * interpretable against a one-animal double-budget control. */
+  independentBudgets: false,
 
   /*
    * ⚠️ THE TWO CONSTANTS THAT MAKE THIS MODEL ZERO-SUM, AND THEY ARE MODELLING
@@ -638,12 +642,23 @@ function step(pop, opts, rng, gen, srng = null) {
    *    A. This is the convention experiments/two-pollinators.js already
    *    established and the reason it is a convention.
    *
-   * 2. THE VISIT BUDGET IS SPLIT, not duplicated. Giving each animal the full
-   *    budget would mean the two-pollinator arm also receives twice the
+   * 2. THE VISIT BUDGET IS SPLIT BY DEFAULT, not duplicated. Giving each animal
+   *    the full budget would mean the two-pollinator arm also receives twice the
    *    pollination, and "two pollinators permit coexistence" would be
    *    indistinguishable from "more visits permit coexistence". Splitting holds
    *    total visitation invariant to the number of animals, so the arms differ
    *    in GEOMETRY alone.
+   *
+   *    ⚠️⚠️ AND THAT CONTROL HAS A COST THAT ONLY BECAME VISIBLE LATER. Splitting
+   *    one budget keeps ONE LIMITING FACTOR — the animals divide a single pool of
+   *    visits, so the two lineages still compete for the same resource however
+   *    different their pollinators are. Competitive exclusion follows from one
+   *    limiting factor, so the 2026-08-04 two-pollinator negative was partly
+   *    guaranteed by its own control. Two animals become TWO limiting factors
+   *    only with `independentBudgets`, where each animal brings its own visits.
+   *    That reintroduces the confound the split existed to remove, so it is only
+   *    interpretable against a ONE-ANIMAL DOUBLE-BUDGET control holding total
+   *    visits equal — which is exactly how the limiting-factors run uses it.
    *
    * 3. THE SINGLE-ANIMAL CASE IS BIT-IDENTICAL. With one bee the split is a
    *    no-op, the site seeds and bout seed are unchanged, and `runBout` builds
@@ -659,7 +674,13 @@ function step(pop, opts, rng, gen, srng = null) {
   const budget = opts.visitsPerPlant
     ? Math.max(1, Math.round(opts.visitsPerPlant * n))
     : opts.visits;
-  const per = Math.max(1, Math.round(budget / bees.length));
+  /* One shared pool divided among the animals (default, one limiting factor), or
+   * a full budget each (two limiting factors — and twice the visits, which is why
+   * it needs the double-budget control). A no-op with a single animal either way,
+   * so every earlier result is untouched. */
+  const per = opts.independentBudgets
+    ? budget
+    : Math.max(1, Math.round(budget / bees.length));
 
   const T = Array.from({ length: n }, () => new Float64Array(n));
   let sites = null;
