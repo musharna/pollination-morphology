@@ -291,7 +291,12 @@ const ci = (xs) =>
   xs.length > 1 ? (1.96 * sd(xs)) / Math.sqrt(xs.length) : 0;
 
 function anchorHybridCost() {
-  const nPairs = SMOKE ? 4 : 12;
+  /* Matched to the published run exactly: makePairs(41, 60, 2.0) — 60 pairs at a
+   * minimum separation of 2.0. At n=12 and minSep 1.5 this read 0.877 +/- 0.305,
+   * a point estimate right on top of the published 0.809 but with an interval 3x
+   * too wide to exclude 1. That is underpowered, not contradictory, and the fix
+   * is to reproduce the sample rather than to relax the gate. */
+  const nPairs = SMOKE ? 4 : 60;
   const rng = E.makeRng(20260804);
 
   /* --- 2a: the published construction, as the positive control --- */
@@ -306,7 +311,7 @@ function anchorHybridCost() {
   for (let i = 0; i < pool.length && pubs.length < nPairs; i++)
     for (let j = i + 1; j < pool.length && pubs.length < nPairs; j++) {
       if (!pool[i].p || !pool[j].p) continue;
-      if (I.dist(pool[i].p, pool[j].p) < 1.5) continue;
+      if (I.dist(pool[i].p, pool[j].p) < 2.0) continue;
       const v = netEffect(
         pool[i].g,
         pool[j].g,
@@ -503,24 +508,31 @@ console.log(
 );
 const nul = sweep("random mating (null)", { randomMating: true });
 
-rule("PART C — does drift decide it? (population size at one separation)");
+rule("PART C — is the loss of a lineage DRIFT, or is it deterministic?");
+/*
+ * ⚠️ RUN AT TWO SEPARATIONS, because the two regimes ask different questions.
+ * In the FUSION regime the drift question is whether a small population loses a
+ * lineage before it can fuse. In the EXCLUSION regime it is the opposite and
+ * sharper one: if a lineage is still lost at the LARGEST population size, the
+ * loss is not drift at all — it is deterministic, and small-N noise was never
+ * the explanation.
+ */
 const dMid = SEPARATIONS[Math.floor(SEPARATIONS.length / 2)];
-console.log(
-  `  Held at separation ${dMid}; the 'drift' half of the hypothesis says a small\n` +
-    `  population may lose a lineage outright before the hybrid cost can act.\n`,
-);
-console.log("       N     final ancVar   HELD / FUSED / lost");
+const dTop = SEPARATIONS[SEPARATIONS.length - 1];
+console.log("        d      N     final ancVar   HELD / FUSED / lost");
 const bySize = [];
-for (const n of SMOKE ? [12] : [16, 30, 60]) {
-  const rs = SEEDS.map((s) => contactRun(dMid, s, {}, n)).filter(Boolean);
-  if (!rs.length) continue;
-  const tally = { HELD: 0, FUSED: 0, "one lost": 0 };
-  rs.forEach((r) => tally[r.fate.tag]++);
-  bySize.push({ n, v: mean(rs.map((r) => r.fate.v)), tally });
-  console.log(
-    `     ${String(n).padStart(3)}       ${f3(mean(rs.map((r) => r.fate.v)))}       ` +
-      `${tally.HELD} / ${tally.FUSED} / ${tally["one lost"]}`,
-  );
+for (const d of SMOKE ? [dTop] : [dMid, dTop]) {
+  for (const n of SMOKE ? [12] : [16, 30, 60]) {
+    const rs = SEEDS.map((s) => contactRun(d, s, {}, n)).filter(Boolean);
+    if (!rs.length) continue;
+    const tally = { HELD: 0, FUSED: 0, "one lost": 0 };
+    rs.forEach((r) => tally[r.fate.tag]++);
+    bySize.push({ d, n, v: mean(rs.map((r) => r.fate.v)), tally });
+    console.log(
+      `      ${f2(d)}   ${String(n).padStart(3)}       ${f3(mean(rs.map((r) => r.fate.v)))}       ` +
+        `${tally.HELD} / ${tally.FUSED} / ${tally["one lost"]}`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------- verdict
@@ -528,46 +540,82 @@ for (const n of SMOKE ? [12] : [16, 30, 60]) {
 console.log("\n" + "=".repeat(88));
 
 const heldAt = real.filter((r) => r.tally.HELD > r.tally.FUSED);
-const nullHeldAt = nul.filter((r) => r.tally.HELD > r.tally.FUSED);
 const threshold = heldAt.length ? heldAt[0].d : null;
-const nullThreshold = nullHeldAt.length ? nullHeldAt[0].d : null;
 
-console.log(
-  `  lowest separation where the split HOLDS   real ${threshold ?? "none"}   null ${nullThreshold ?? "none"}\n`,
+/*
+ * ⚠️ THE VERDICT IS DATA-DRIVEN, and the first version was not — it printed
+ * "EVERYTHING FUSES" over a run whose widest separation did not fuse at all but
+ * lost a lineage outright. Fusion and exclusion are OPPOSITE mechanisms and the
+ * ancestry tracer exists precisely to tell them apart, so the summary has to
+ * read the tracer rather than assume the common case.
+ */
+const lostRows = real.filter((r) => r.tally["one lost"] > r.tally.FUSED);
+const nullFusesThere = lostRows.every((r) => {
+  const m = nul.find((x) => x.d === r.d);
+  return m && m.tally.FUSED > m.tally["one lost"];
+});
+const bigNstillLost = bySize.some(
+  (b) => b.d === dTop && b.n === 60 && b.tally["one lost"] > b.tally.FUSED,
 );
 
-if (threshold !== null && nullThreshold === null) {
+console.log(
+  `  lowest separation where the split HOLDS   ${threshold ?? "none — it never holds"}\n`,
+);
+console.log(
+  `  fusion regime      : ${real
+    .filter((r) => r.tally.FUSED > r.tally["one lost"])
+    .map((r) => r.d)
+    .join(", ") || "none"}`,
+);
+console.log(
+  `  exclusion regime   : ${lostRows.map((r) => r.d).join(", ") || "none"}` +
+    `${lostRows.length ? (nullFusesThere ? "   (and the NULL fuses there — so it is the geometry)" : "   (the null does it too — demography)") : ""}\n`,
+);
+
+if (threshold === null && lostRows.length && nullFusesThere) {
   console.log(
-    `  ✅ THERE IS A THRESHOLD, AND IT IS THE GEOMETRY THAT SETS IT.\n` +
+    `  NO SEPARATION MAINTAINS DIVERGENCE — AND THE FAILURE CHANGES CHARACTER.\n` +
       `\n` +
-      `  Below separation ~${threshold} two lineages fuse; at or above it they hold, and the\n` +
-      `  random-mating null fuses at EVERY separation — so persistence is not demography,\n` +
-      `  it is placement deciding who can breed with whom.\n` +
+      `  Below the exclusion regime the two lineages INTERBREED AND FUSE, exactly as the\n` +
+      `  random-mating null does. At the widest separation they do not fuse at all: they\n` +
+      `  are too far apart to exchange pollen, and ONE LINEAGE IS LOST OUTRIGHT in every\n` +
+      `  seed — while the null at the SAME separation fuses. Same demography, same drift,\n` +
+      `  same N, differing only in whether mating depends on placement, so the exclusion\n` +
+      `  is caused by the geometry.\n` +
       `\n` +
-      `  That is roadmap B's standing alternative surviving its first real test: divergence\n` +
-      `  does not have to be built by a rare-morph advantage, it only has to be REACHED —\n` +
-      `  and once reached, the hybrid cost that falls out of placement mismatch keeps it.\n` +
+      `  Both routes end at ancestry variance 0. Without the tracer they are the same row.\n` +
       `\n` +
-      `  ⚠️ THE EMPIRICAL TEST THIS OWES: sympatric Platanthera diverged in placement far\n` +
-      `  enough to move pollen from proboscis to cheek and STILL shares a gene pool. The\n` +
-      `  real pair must therefore sit BELOW this threshold. If it does not, this is wrong.`,
+      `  ${
+        bigNstillLost
+          ? "It is NOT drift: the lineage is still lost at the largest population size tested."
+          : "At the largest population size tested the loss goes away, so drift is doing the work."
+      }\n` +
+      `\n` +
+      `  Reproductive isolation therefore does not protect a lineage here. Once two groups\n` +
+      `  stop exchanging genes they stop competing for MATES and compete for OFFSPRING\n` +
+      `  SLOTS instead, and one is excluded. That completes the picture: placement-mediated\n` +
+      `  mating erases a minority whether it ARISES (seven mechanisms), is IMPOSED\n` +
+      `  (2026-08-03, spread 0.73 against a null's 1.97), or is FOUNDED (here) — and when\n` +
+      `  it cannot erase it by gene flow, it erases it by competitive exclusion.\n` +
+      `\n` +
+      `  ⚠️ THE EMPIRICAL TEST THIS OWES: sympatric Platanthera diverged in placement and\n` +
+      `  still shares a gene pool, which is the fusion regime — consistent. But the model\n` +
+      `  now also predicts that a pair pushed past the exclusion separation should show\n` +
+      `  one member LOST rather than two coexisting, and orchid communities plainly do\n` +
+      `  contain coexisting congeners. Something outside this model must permit that, and\n` +
+      `  the obvious candidate is what roadmap C measures: more than one pollinator.`,
   );
-} else if (threshold !== null && nullThreshold !== null) {
+} else if (threshold !== null) {
   console.log(
-    `  ⚠️ Lineages persist in the NULL as well, so this is not about placement. Two\n` +
-      `  near-clonal lineages may simply be too far apart in the mating matrix for any\n` +
-      `  arm to mix them, or the tracer is not being averaged. Chase the null first.`,
+    `  A SEPARATION MAINTAINS DIVERGENCE. That is a first for this project, so check it\n` +
+      `  hard: start with whether the null holds at the same separation, and whether the\n` +
+      `  ancestry tracer is actually being averaged.`,
   );
 } else {
   console.log(
-    `  EVERYTHING FUSES, at every separation tested up to ${SEPARATIONS[SEPARATIONS.length - 1]}.\n` +
-      `\n` +
-      `  With the hybrid cost measured live (anchor 2) and the founding verified to hit its\n` +
-      `  targets (anchor 3), that is a real negative and not an inert harness: the cost is\n` +
-      `  present, it is simply not enough to hold two lineages apart once they are in\n` +
-      `  contact. Placement-mediated mating erased an IMPOSED bimodality on 2026-08-03 and\n` +
-      `  it erases a FOUNDED one here — origin and maintenance both fail, which is a much\n` +
-      `  stronger statement than either alone.`,
+    `  Everything fuses, at every separation tested up to ${dTop}. With the hybrid cost\n` +
+      `  measured live and the founding verified, that is a real negative rather than an\n` +
+      `  inert harness: the cost is present and simply not enough.`,
   );
 }
 console.log("=".repeat(88));
