@@ -90,47 +90,11 @@ const optsAt = (extra = {}) => ({ ...I.DEFAULTS, siteN: SITE_N, ...extra });
  * move consistent with the founding constraint, and it is why the realised
  * separation is reported alongside the target rather than assumed equal to it.
  */
-function twoLineages(n, rng, srng, targetD) {
-  const base = { ...E.randomGenome(rng), signal: srng() };
-  const opts = optsAt();
-  const placeOf = (g) =>
-    I.sitesOf([{ h1: g, h2: g }], opts, 0).map(I.placementOf)[0];
-  const p0 = placeOf(base);
-  if (!p0) return null;
-
-  let best = null;
-  for (const step of [0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1.2, 1.6]) {
-    for (let k = 0; k < 8; k++) {
-      const g = E.mutate(base, rng, step);
-      g.signal = srng();
-      const p = placeOf(g);
-      if (!p) continue;
-      const d = I.dist(p0, p);
-      const err = Math.abs(d - targetD);
-      if (!best || err < best.err) best = { g, d, err };
-    }
-  }
-  if (!best) return null;
-
-  /* Each lineage is near-clonal, which is what "two lineages meeting" means.
-   * Ancestry 0 and 1 are labels on the individual, not alleles. */
-  const half = Math.floor(n / 2);
-  const pop = [
-    ...I.foundPopulation(half, rng, {
-      spread: 0.02,
-      srng,
-      base,
-      anc: 0,
-    }),
-    ...I.foundPopulation(n - half, rng, {
-      spread: 0.02,
-      srng,
-      base: best.g,
-      anc: 1,
-    }),
-  ];
-  return { pop, realised: best.d, gA: base, gB: best.g };
-}
+/* Lifted into sim/ibm.js so the two-pollinator experiment can share it —
+ * verified byte-identical (realised separation, both parent genomes and the
+ * full founded population) across five configurations before the swap. */
+const twoLineages = (n, rng, srng, targetD) =>
+  I.foundTwoLineages(n, rng, srng, targetD, optsAt());
 
 const ancMean = (pop) => mean(pop.map((i) => i.anc || 0));
 

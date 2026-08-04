@@ -284,6 +284,55 @@ function ancestryVar(pop) {
   return mean(xs.map((x) => (x - m) * (x - m)));
 }
 
+/*
+ * Found two near-clonal lineages whose placements sit a TARGET distance apart.
+ *
+ * ⚠️ PLACEMENT IS STILL NEVER A GENE, which is exactly why this is a search. A
+ * separation cannot be assigned, because placement is not something a genome
+ * carries — so genomes are DRAWN and then SELECTED by the placement they turn
+ * out to produce, and the REALISED separation is returned rather than the
+ * target. Any caller that quotes the target instead of the realised value is
+ * quoting something the model never agreed to.
+ *
+ * Lives here rather than in an experiment because two experiments now need it
+ * and because the discipline above belongs with the model, not beside it.
+ */
+function foundTwoLineages(n, rng, srng, targetD, opts) {
+  const base = { ...E.randomGenome(rng), [SIGNAL_GENE]: srng() };
+  const placeOf = (g) =>
+    sitesOf([{ h1: g, h2: g }], opts, 0).map(placementOf)[0];
+  const p0 = placeOf(base);
+  if (!p0) return null;
+
+  let best = null;
+  for (const step of [0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1.2, 1.6]) {
+    for (let k = 0; k < 8; k++) {
+      const g = E.mutate(base, rng, step);
+      g[SIGNAL_GENE] = srng();
+      const p = placeOf(g);
+      if (!p) continue;
+      const d = dist(p0, p);
+      const err = Math.abs(d - targetD);
+      if (!best || err < best.err) best = { g, d, err };
+    }
+  }
+  if (!best) return null;
+
+  /* Each lineage is near-clonal, which is what "two lineages meeting" means.
+   * Ancestry 0 and 1 are labels on the individual, not alleles. */
+  const half = Math.floor(n / 2);
+  const pop = [
+    ...foundPopulation(half, rng, { spread: 0.02, srng, base, anc: 0 }),
+    ...foundPopulation(n - half, rng, {
+      spread: 0.02,
+      srng,
+      base: best.g,
+      anc: 1,
+    }),
+  ];
+  return { pop, realised: best.d, gA: base, gB: best.g };
+}
+
 // -------------------------------------------------------------- placement
 
 const DEFAULTS = {
@@ -301,6 +350,11 @@ const DEFAULTS = {
   optimaK: 0,
   /* Sever placement from mating, for the null. */
   randomMating: false,
+
+  /* More than one pollinator. null = the single `bee` above. Separate bouts are
+   * summed and the visit budget is SPLIT, so arms differ in geometry rather than
+   * in how much pollination they receive. See step(). */
+  bees: null,
 
   /* ---- deception (sim/deception.js), the one mechanism measured past parity
    * and the only one of the six not previously inside a model that can breed.
@@ -332,11 +386,14 @@ const DEFAULTS = {
   linkSignal: false,
 };
 
-function sitesOf(pop, opts, gen) {
+function sitesOf(pop, opts, gen, beeIdx = 0) {
+  /* beeIdx offsets the site seed so a second animal does not reuse the first
+   * animal's draws. It is 0 for the single-animal case, leaving every seed —
+   * and therefore every earlier result — unchanged. */
   return pop.map((ind, i) =>
     C.siteSet(E.toFlower(shapeOf(ind)), opts.bee, {
       n: opts.siteN,
-      seed: 1000 + 31 * gen + i,
+      seed: 1000 + 31 * gen + i + 500000 * beeIdx,
     }),
   );
 }
@@ -504,26 +561,66 @@ function spreadOf(places) {
  */
 function step(pop, opts, rng, gen, srng = null) {
   const n = pop.length;
-  const sites = sitesOf(pop, opts, gen);
   const signals = pop.map(signalOf);
+
   /*
-   * The learner is REBUILT EACH GENERATION. That is a claim, so it is stated:
-   * the animal is not the same individual across plant generations, and
-   * Whitehead & Peakall 2012 measured short-term but not long-term avoidance, so
-   * carrying one memory across decades of flowering would be the strong version
-   * of a mechanism the field says is weak. Within a generation the memory
-   * persists across the whole bout, which is where the learning has to happen.
+   * ⚠️ MORE THAN ONE POLLINATOR, and three things about it are load-bearing.
+   *
+   * 1. SEPARATE BOUTS, SUMMED — never one mixed bout. Pollen is carried on a
+   *    body, so a grain picked up from animal A can only be delivered by animal
+   *    A. This is the convention experiments/two-pollinators.js already
+   *    established and the reason it is a convention.
+   *
+   * 2. THE VISIT BUDGET IS SPLIT, not duplicated. Giving each animal the full
+   *    budget would mean the two-pollinator arm also receives twice the
+   *    pollination, and "two pollinators permit coexistence" would be
+   *    indistinguishable from "more visits permit coexistence". Splitting holds
+   *    total visitation invariant to the number of animals, so the arms differ
+   *    in GEOMETRY alone.
+   *
+   * 3. THE SINGLE-ANIMAL CASE IS BIT-IDENTICAL. With one bee the split is a
+   *    no-op, the site seeds and bout seed are unchanged, and `runBout` builds
+   *    its own rng from its seed so extra bouts cannot perturb the outer stream.
+   *    Every result published before this still reproduces, which is how it was
+   *    checked.
+   *
+   * Each animal gets its OWN learner: two animals do not share a memory.
    */
-  const learner = opts.learn ? D.makeLearner(opts.learn) : null;
-  const r = C.runBout(sites, new Array(n).fill(1 / n), {
-    visits: opts.visits,
-    seed: 7 + gen,
-    learner,
-    signals: learner ? signals : null,
-    rewardP: learner
-      ? new Array(n).fill(opts.deceptive ? 0 : opts.honestP)
-      : null,
+  const bees = opts.bees && opts.bees.length ? opts.bees : [opts.bee];
+  const per = Math.max(1, Math.round(opts.visits / bees.length));
+
+  const T = Array.from({ length: n }, () => new Float64Array(n));
+  let sites = null;
+  bees.forEach((bee, bi) => {
+    const ss = sitesOf(pop, { ...opts, bee }, gen, bi);
+    /*
+     * The learner is REBUILT EACH GENERATION. That is a claim, so it is stated:
+     * the animal is not the same individual across plant generations, and
+     * Whitehead & Peakall 2012 measured short-term but not long-term avoidance,
+     * so carrying one memory across decades of flowering would be the strong
+     * version of a mechanism the field says is weak. Within a generation the
+     * memory persists across the whole bout, which is where learning happens.
+     */
+    const learner = opts.learn ? D.makeLearner(opts.learn) : null;
+    const rb = C.runBout(ss, new Array(n).fill(1 / n), {
+      visits: per,
+      seed: 7 + gen + 100000 * bi,
+      learner,
+      signals: learner ? signals : null,
+      rewardP: learner
+        ? new Array(n).fill(opts.deceptive ? 0 : opts.honestP)
+        : null,
+    });
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
+    /* Placement is defined RELATIVE TO A BODY, so with two animals a plant has
+     * two of them. The bimodality statistic is reported on the FIRST animal, so
+     * it stays the same quantity it was in every earlier run; the fate of the
+     * lineages, which is what this experiment actually asks, does not depend on
+     * that choice. */
+    if (bi === 0) sites = ss;
   });
+  const r = { T };
 
   const received = new Array(n).fill(0);
   for (let i = 0; i < n; i++)
@@ -689,6 +786,7 @@ module.exports = {
   gamete,
   randomIndividual,
   foundPopulation,
+  foundTwoLineages,
   ancestryVar,
   sitesOf,
   placementOf,
