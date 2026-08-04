@@ -37,8 +37,18 @@ const GENE_BOUNDS = {
 /* Wraps, so it is mutated and stored differently from the bounded genes. */
 const ANGLE_GENE = "antherTheta";
 
-/* Checks doc, 2026-08-01: separation past ~0.15 drives stigma contact to zero
- * outright. Held just inside that, so the stigma still meets the animal. */
+/*
+ * ⚠️ The justification that used to sit here cited a RETRACTED finding —
+ * "separation past ~0.15 drives stigma contact to zero outright". That claim
+ * was never measured; it was inferred from overlaps printing 0.000, and the
+ * 2026-08-03 re-baseline killed it: the stigma still contacts 81% of visits at
+ * a separation of 0.270, and the real bound is an ANTHER-EXPOSURE one biting
+ * past ~0.4. See docs/2026-08-03-checks-rebaseline.md.
+ *
+ * The VALUE is unchanged and still fine — 0.05 is far inside every bound, real
+ * or retracted — but it is kept for a different reason than the one stated:
+ * small herkogamy separates the organs without pushing either off the animal.
+ */
 const HERKOGAMY = 0.05;
 
 function makeRng(seed) {
@@ -260,13 +270,22 @@ const MEANFIELD = {
     return fitnesses(sigs, n, overlapMatrixOf(sigs, arm), params.k);
   },
   invasion(live, n, i, cs, arm, params) {
-    return invasionFitness(live.map((x) => x.sig), n, i, cs, arm, params.k);
+    return invasionFitness(
+      live.map((x) => x.sig),
+      n,
+      i,
+      cs,
+      arm,
+      params.k,
+    );
   },
 };
 
 const CARRYOVER = {
   bout(live, n, params, sub) {
-    const sites = live.map((x, i) => (sub && sub.i === i ? sub.sig.sites : x.sig.sites));
+    const sites = live.map((x, i) =>
+      sub && sub.i === i ? sub.sig.sites : x.sig.sites,
+    );
     const r = C.runBout(sites, n, {
       visits: params.visits || 3000,
       seed: params.boutSeed || 17,
@@ -327,7 +346,15 @@ function invasionFitness(sigs, n, i, cs, arm, k) {
  *   3. anything below the extinction floor is removed
  */
 function step(state, params, rng) {
-  const { arm, ctx, k, mutRate, extinctAt, death = 0.12, noise = 0.03 } = params;
+  const {
+    arm,
+    ctx,
+    k,
+    mutRate,
+    extinctAt,
+    death = 0.12,
+    noise = 0.03,
+  } = params;
   const live = state.species.filter((s) => s.alive);
 
   // 1. mutation and trait substitution

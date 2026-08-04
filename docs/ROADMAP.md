@@ -89,7 +89,7 @@ smallest real SD is 10⁵× clear) and a test now pins both the invariance and t
 ⬜ Still open, and still needing the paywalled source: the **ceiling** half. Nothing here measures how
 many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
 
-### B. Speciation, which v1 explicitly cannot address — 🟡 premise verified, model not built
+### B. Speciation, which v1 explicitly cannot address — 🟡 IBM BUILT; deception splits the ADVERTISEMENT, not the plant (2026-08-04)
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
@@ -97,6 +97,61 @@ question sits exactly there: placement selection in one panmictic population is 
 frequency-dependent and converges, so what breaks that symmetry in the first place? Needs an
 individual-based model with real inheritance and hybrid formation. **This is the biggest open
 scientific question in the project.**
+
+✅ **THE IBM IS BUILT 2026-08-03 (`sim/ibm.js`), and the proxy is retired.** Every mechanism above was
+scored against `rare/common ~ 0.26` in machinery that cannot speciate. This one can: `runBout`'s
+`T[i][j]` IS a mating matrix, so a mother is drawn by the pollen she received and her mate by who
+delivered it — **parentage is decided by the placement geometry and assortative mating is an OUTPUT,
+not a parameter.** Diploid, free recombination, additive expression (because the hybrid work MEASURED
+additive shape to give blending placement), placement still computed.
+
+**Neither arm splits.** A placement-mated population is indistinguishable from a null whose mating is
+severed from placement (tail separation 2.20 vs 2.32). ⚠️⚠️ **The stronger half: fecundity selection
+pointed at two REACHABLE placements at k=8 still did not go bimodal — it CONTRACTED, spread 0.73
+against the null's 1.97.** Whichever cluster falls behind loses its mates, so placement-mediated
+mating is positively frequency-dependent and **ERASES an imposed bimodality rather than merely
+failing to create one**. That is the rare-morph mate-finding problem with real inheritance, and it is
+what sympatric Platanthera shows in the field.
+
+⚠️⚠️ **Two positive controls FAILED before one worked, both in the same mechanism class**, and the
+tell was identical each time: the forced arm had LESS spread than the null, which no real split does.
+`exp(k·distance-from-mean)` is disruptive on a 1-D trait axis but on a 2-D body surface rewards a
+direction-free shell and then collapses onto the leading extreme — **the second time this project has
+hit that**, the panmictic experiment recorded it first. The control that worked **changed mechanism
+class**: it selects nothing, hands the pipeline a population that IS two lineages, and asks only
+whether the measurement can see one — up to **23x** the one-cloud baseline. A control sharing a
+mechanism with the thing under test cannot separate "selection can't beat the mating system" from
+"the statistic can't see a split", because the mechanism under test is free to defeat it.
+⚠️ **The anchor gate also caught a broken diagnostic**: correlating deviation against pollen RECEIVED
+(the female half of fitness) read +0.149, i.e. disruptive; realized parentage reads **-0.842**.
+N=30 over 35 generations bounds the effect rather than proving impossibility. [detail](2026-08-03-ibm.md)
+
+✅ **DECEPTION IS NOW WIRED IN 2026-08-04, and it splits the ADVERTISEMENT and not the plant.** The
+framing is what made it decisive: deception's negative frequency-dependence acts on the **signal**
+axis, the mating system's positive frequency-dependence acts on **placement**, so the question was
+whether the first can **reach** the axis the second lives on. Signal is allowed to be a gene (colour
+morphs are heritable; _D. sambucina_'s polymorphism is one) while placement still is not — kept apart
+by `shapeOf` and by giving the advertisement **its own rng stream**, so switching deception on cannot
+silently re-roll every shape mutation. Verified bit-identical to the pre-advertisement model.
+
+Deception inflates the advertisement cloud **~4×** (spread 0.05 → 0.18) and **does not move placement
+at all** (2.36 vs a random-mating band of 2.90). ⚠️⚠️ **And LINKING the advertisement to the anther
+loci does not rescue it** (2.17) — the discriminator the supergene arm existed for, killing the
+attractive explanation that free recombination merely separated them. Flat across a 7.5× sweep of the
+one unanchored parameter.
+
+⚠️⚠️ **The mechanism: NEGATIVE FREQUENCY-DEPENDENCE MAINTAINS A POLYMORPHISM, IT DOES NOT COMPLETE A
+SPLIT.** The numbers separate the claims — advertisement **spread** inflates reliably, **bimodality**
+clears its matched honest band only marginally. A rare-morph advantage must evaporate once the morph
+is common, so it protects variance without ever resolving it into two morphs, and **a protected
+polymorphism is the opposite of a completed split**. That is what Gigord et al. 2001 actually
+reported: maintenance of a colour polymorphism **within one species**. ⚠️ **My own hypothesis was
+refuted first** — that "past parity" was an artefact of scoring summed transfer rather than realized
+parentage; re-scored from the identical bout it is 4 of 8 under **both** (parentage mean 1.040 vs
+transfer 1.132), so the claim stands and the negative is about generations, not measurement.
+⚠️ A verdict bug scored the linked arm against the **unlinked** control's band; fixed and the run
+regenerated rather than reinterpreted. **Seven mechanisms, and two of them now break a real symmetry
+on an axis that is not the one reproductive isolation lives on.** [detail](2026-08-04-deception-ibm.md)
 
 ✅ **The premise is now measured rather than asserted** (2026-08-02). It had lived only in a comment
 at the top of `sim/evolve.js`, and it justifies both B's framing and why the evolution loop starts
