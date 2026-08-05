@@ -147,6 +147,22 @@ resource a pollinator can deliver, which is why adding animals or visits cannot 
 cheap screen: a candidate mechanism has to move that exponent, measurable in single bouts.
 [detail](docs/2026-08-04-limiting-factors.md)
 
+**⚠️ And the reason no mechanism has completed a split: on a continuous axis, preferring the rare is
+self-defeating.** Rare-biased visitation — an animal that favours the rarer morph — is the first
+mechanism here to invert the invasion criterion, at visits proportional to the square root of
+abundance. Real animals reach that: converting Gigord et al. 2001 gives an exponent of −0.24 against
+the −0.30 needed. It still fails, and the measured reason is not a leaky barrier — at the exclusion
+separation the barrier passes **exactly zero** pollen. It is that the rarest placement in a splitting
+population is the **intermediate**, so a preference for rare morphs pours visits onto precisely the
+plants that bridge the two lineages; at that separation an intermediate draws **136×** the visits of
+an ordinary plant, and it sits where the barrier *is* leaky. The mechanism builds the conduit that
+erases the split it was recruited to protect. This is why deception splits the _advertisement_ and
+not the plant: a colour dimorphism is **discrete** and has no intermediate to subsidise, while
+placement is continuous. **Discrete versus continuous is what decides whether negative
+frequency-dependence completes a split or only maintains a polymorphism.**
+[detail](docs/2026-08-04-rare-biased-visits.md)
+
+
 The empirical leg is half closed. The **mechanism** half now has real-world support: in two
 sympatric _Platanthera_ populations, the floral traits that determine where pollen is placed
 (viscidia distance, caudicle length) separate the two species completely, while the traits that set
