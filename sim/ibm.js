@@ -381,6 +381,13 @@ const DEFAULTS = {
    * interpretable against a one-animal double-budget control. */
   independentBudgets: false,
 
+  /* ---- rare-biased visit allocation (roadmap B). A morph of frequency f takes
+   * f^a of the visits: a = 1 is proportional to abundance (uniform per plant, and
+   * every earlier result, bit-identical), a = 0 splits visits evenly whatever the
+   * frequencies. null = a = 1 = untouched. See allocWeights below for why rarity
+   * is read off placement rather than off ancestry. */
+  allocExponent: null,
+
   /*
    * ⚠️ THE TWO CONSTANTS THAT MAKE THIS MODEL ZERO-SUM, AND THEY ARE MODELLING
    * ASSUMPTIONS RATHER THAN BIOLOGY. Both default to off, so every result
@@ -483,6 +490,47 @@ function placementOf(site) {
 }
 
 const dist = (a, b) => C.bodyDist({ s: a.s, phi: a.phi }, b.s, b.phi);
+/*
+ * ---- rare-biased visit allocation (roadmap B). An animal that preferentially
+ * visits the RARER morph. A morph of frequency f takes f^a of the visits, so
+ * a = 1 is visits-proportional-to-abundance (uniform per plant, and every
+ * earlier result, bit-identical) while a = 0 splits visits evenly whatever the
+ * frequencies. `opts.allocExponent` null = a = 1 = untouched.
+ *
+ * ⚠️ RARITY IS COMPUTED FROM THE POPULATION'S OWN PLACEMENT CLOUD, NEVER FROM
+ * `anc`. Ancestry is bookkeeping the pollinator cannot perceive, so biasing on it
+ * would be the same mistake as making placement a gene. A kernel share around
+ * each plant approximates its cluster's frequency, so weighting by dens^(a-1)
+ * sends a morph's share of visits to f^a with no labels anywhere.
+ *
+ * ⚠️ And the measured consequence is that this mechanism is SELF-DEFEATING on a
+ * continuous axis: the lowest-density placement is the GAP BETWEEN two clusters,
+ * so a preference for rare morphs pours visits onto the intermediates that bridge
+ * them. See docs/2026-08-04-rare-biased-visits.md.
+ */
+const ALLOC_H = 1.0; /* kernel width, body-metric units; stigma radius is 1.15 */
+function allocWeights(sites, a, n) {
+  if (a === null || a === undefined || a === 1) return new Array(n).fill(1 / n);
+  const places = sites.map(placementOf);
+  const w = new Array(n).fill(0);
+  let tot = 0;
+  for (let i = 0; i < n; i++) {
+    if (!places[i]) continue;
+    let dens = 0;
+    for (let j = 0; j < n; j++) {
+      if (!places[j]) continue;
+      const d = dist(places[i], places[j]) / ALLOC_H;
+      dens += Math.exp(-0.5 * d * d);
+    }
+    dens /= n;
+    w[i] = dens > 0 ? Math.pow(dens, a - 1) : 0;
+    tot += w[i];
+  }
+  if (!(tot > 0)) return new Array(n).fill(1 / n);
+  for (let i = 0; i < n; i++) w[i] /= tot;
+  return w;
+}
+
 
 // ------------------------------------------------------------ bimodality
 
@@ -695,7 +743,7 @@ function step(pop, opts, rng, gen, srng = null) {
      * memory persists across the whole bout, which is where learning happens.
      */
     const learner = opts.learn ? D.makeLearner(opts.learn) : null;
-    const rb = C.runBout(ss, new Array(n).fill(1 / n), {
+    const rb = C.runBout(ss, allocWeights(ss, opts.allocExponent, n), {
       visits: per,
       seed: 7 + gen + 100000 * bi,
       learner,
@@ -935,6 +983,7 @@ module.exports = {
   ancestryVar,
   sitesOf,
   placementOf,
+  allocWeights,
   dist,
   twoClusterSeparation,
   spreadOf,
