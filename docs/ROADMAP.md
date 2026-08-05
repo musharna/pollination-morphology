@@ -1,7 +1,7 @@
 # Roadmap
 
 **Canonical.** If another document disagrees about what comes next, this one wins.
-Last updated 2026-08-02.
+Last updated 2026-08-05.
 
 ## Where this stands
 
@@ -110,10 +110,39 @@ across all three service regimes (0.72/0.70, 0.70/0.70, 0.70/0.71). 0 = no frequ
 1 = pure partner-counting — so it is **mostly partner-counting**, softened by carryover. That is a
 property of MATE-FINDING, not of provisioning: **partners are not a resource a pollinator can
 deliver**, so a second limiting factor cannot be manufactured by adding animals or visits.
-⬜ **The bar is now QUANTITATIVE and CHEAP:** a candidate mechanism must move the 0.70 exponent, and
+✅ **The bar is now QUANTITATIVE and CHEAP:** a candidate mechanism must move the 0.70 exponent, and
 the exponent is measurable in single bouts — screen mechanisms there before spending 35 generations.
 What would move it is **rare-biased visit allocation**, which is what deception was recruited to
-supply and it acted on the advertisement axis instead.
+supply and it acted on the advertisement axis instead. **RUN 2026-08-04 — see immediately below.**
+
+⚠️⚠️ **RARE-BIASED VISITATION IS SELF-DEFEATING ON A CONTINUOUS TRAIT AXIS (2026-08-04).** The
+textbook route to negative frequency dependence, and the last mechanism that could plausibly overturn
+the exclusion result. `allocExponent: a` gives a morph of frequency f a share `f^a` of the visits;
+a = 1 is visits-proportional-to-abundance and every earlier result is bit-identical under it. ⚠️ Rarity
+is read off the population's own **placement cloud, NEVER off `anc`** — ancestry is bookkeeping the
+pollinator cannot perceive, so biasing on it would be the same mistake as making placement a gene.
+**The criterion inverts at a ≤ 0.5** and a = 1 independently reproduces the published 0.70 (0.663) —
+⚠️ but the no-placement-difference **control swings just as hard**, so the statistic is real − control,
+and the analytic identities (control `= odds^(a-1)`, real `= odds^(2a-1)`) make the mate-finding gap
+**exactly a**. It shrinks 0.670 → 0.092 and never reaches zero: rare-bias **subsidises** the rare
+type, it does not **repair** mate-finding.
+⚠️ **The bar IS met in nature, against my prior expectation** — Gigord et al. 2001 converts to
+**a ≈ 0.43**; rewarding systems go the other way (Smithson & Macnair 1997), so **deception is the only
+route to a < 1**. The calibrated value nonetheless fails dynamically (0/10); a = 0.25 works
+(6/29 vs 0/34, p = 0.0070, clean dose–response) but is **twice the measured bias**, and a = 0.30
+(p = 0.0414) does not survive Bonferroni.
+⚠️⚠️ **THE MECHANISM, AND IT IS SELF-DEFEATING.** At d = 8 the barrier leaks **exactly zero**, yet
+strong bias still FUSES the clusters. Weighting by `dens^(a-1)` means the lowest-density placement is
+the **GAP BETWEEN the two clusters**, so a preference for rare morphs pours visits onto the
+intermediates that bridge them — **136× at d = 8, a = 0.25** — and those intermediates sit at d/2
+where the barrier IS leaky (m = 0.083). FUSED counts track the subsidy exactly: 0 → 5 → 8.
+**That is why deception splits the ADVERTISEMENT** — a discrete colour dimorphism, with no
+intermediate to subsidise — **rather than the plant.** Discrete-vs-continuous is what this adds.
+⬜ **NOT ESTABLISHED, and cheap:** 136× is the weight an intermediate WOULD receive, not evidence that
+intermediates arose and bridged in the fused replicates. Does gap occupancy rise BEFORE `ancVar`
+collapses? Unrun.
+⚠️ This repo has **no CI**, so a green PR is not a green suite — the local `node --test tests/` run is
+the only test evidence. [detail](2026-08-04-rare-biased-visits.md)
 ⚠️ A surviving mutant caught two worthless tests: they measured delivered pollen with a helper that
 REIMPLEMENTED the budget rule, so a `step()` that ignored the flag left them green. **A test that
 recomputes the behaviour under test is testing the recomputation.**
