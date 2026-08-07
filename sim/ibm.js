@@ -531,7 +531,6 @@ function allocWeights(sites, a, n) {
   return w;
 }
 
-
 // ------------------------------------------------------------ bimodality
 
 /*
@@ -670,6 +669,51 @@ function spreadOf(places) {
   }
   const centre = { s: mean(pts.map((p) => p.s)), phi: Math.atan2(sn, cs) };
   return mean(pts.map((p) => dist(p, centre)));
+}
+
+/*
+ * Occupancy of the GAP BETWEEN two founding placements, and of the two cores.
+ *
+ * ⚠️ THE REFERENCE POINTS ARE FIXED BY THE FOUNDING GEOMETRY AND MUST NOT BE
+ * RECOMPUTED PER GENERATION. Re-deriving "the gap" from the current cloud makes
+ * the statistic circular: as two clusters merge, the midpoint of whatever is
+ * left drifts with them, and a fused population would keep reporting a
+ * comfortably empty gap right up to the point where there is only one cluster
+ * to be in the middle of. `pA`/`pB` come from the founding lineages.
+ *
+ * A plant is an INTERMEDIATE if it lies near the segment joining them
+ *   dist(p,pA) + dist(p,pB) <= ell * d0        (a prolate ellipse; = d0 on the
+ *                                               segment itself)
+ * and is in neither core
+ *   min(dist(p,pA), dist(p,pB)) >= core * d0.
+ *
+ * The ellipse is used rather than a projection because the body metric is
+ * circular in phi and has no straight line to project onto.
+ *
+ * ⚠️ THIS STATISTIC MUST BE ABLE TO REPORT BOTH ANSWERS. A gap that reads empty
+ * is the interesting result, so an implementation that could only ever return ~0
+ * would manufacture it. `coreA`/`coreB` are returned alongside for that reason:
+ * a bridge FORMING keeps both cores occupied while `gap` rises, whereas two
+ * clusters MIGRATING together drain the cores into the middle. Those are
+ * different mechanisms and the pair of numbers separates them.
+ */
+function gapOccupancy(places, pA, pB, { ell = 1.3, core = 0.3 } = {}) {
+  const pts = places.filter(Boolean);
+  const d0 = dist(pA, pB);
+  if (!(d0 > 0) || pts.length === 0)
+    return { gap: 0, coreA: 0, coreB: 0, n: pts.length };
+  let gap = 0,
+    ca = 0,
+    cb = 0;
+  for (const p of pts) {
+    const a = dist(p, pA);
+    const b = dist(p, pB);
+    if (a < core * d0) ca++;
+    else if (b < core * d0) cb++;
+    else if (a + b <= ell * d0) gap++;
+  }
+  const n = pts.length;
+  return { gap: gap / n, coreA: ca / n, coreB: cb / n, n };
 }
 
 // ------------------------------------------------------------------- step
@@ -910,11 +954,28 @@ function step(pop, opts, rng, gen, srng = null) {
   };
 }
 
+/*
+ * `trace` attaches the per-generation placement cloud and the parents' ancestry
+ * labels to each history row. Off by default and it consumes NO random numbers,
+ * so every published run is bit-identical with it absent — asserted by a test.
+ *
+ * ⚠️ IT EXISTS SO AN EXPERIMENT NEED NOT REIMPLEMENT THIS LOOP. Asking "what
+ * happened BEFORE the lineages fused" needs the state of each generation, and
+ * the alternative — a copy of the generation loop living in an experiment — is
+ * the failure this project has already recorded once: a helper that recomputes
+ * the behaviour under test ends up testing the recomputation, and a step() that
+ * ignored a flag left two such tests green. `places` and `anc` are taken from
+ * the SAME objects the model itself scored, so they cannot drift from it.
+ *
+ * Both are measured on the PARENTS of generation g, which is what `places` and
+ * `ancVar` already pair with — see the note in step()'s return.
+ */
 function run({
   n = 30,
   generations = 30,
   seed = 1,
   found = null,
+  trace = false,
   ...rest
 } = {}) {
   const opts = { ...DEFAULTS, ...rest };
@@ -935,6 +996,11 @@ function run({
       extinct = true;
       break;
     }
+    /* captured BEFORE the step, so it labels the parents that produced this
+     * generation rather than their offspring */
+    const parentAnc = trace
+      ? pop.map((i) => (i.anc === undefined ? 0 : i.anc))
+      : null;
     const out = step(pop, opts, rng, g, srng);
     pop = out.pop;
     history.push({
@@ -955,6 +1021,7 @@ function run({
       ancVar: out.ancVar,
       unmated: out.unmated,
       stalled: out.stalled,
+      ...(trace ? { places: out.places, anc: parentAnc } : {}),
     });
   }
   return { pop, history, extinct: extinct || pop.length < 2 };
@@ -986,6 +1053,7 @@ module.exports = {
   allocWeights,
   dist,
   twoClusterSeparation,
+  gapOccupancy,
   spreadOf,
   step,
   run,
