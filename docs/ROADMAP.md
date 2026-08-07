@@ -1,11 +1,11 @@
 # Roadmap
 
 **Canonical.** If another document disagrees about what comes next, this one wins.
-Last updated 2026-08-05.
+Last updated 2026-08-07.
 
 ## Where this stands
 
-Four things are built and measured, in this order, each gating the next:
+Seven things are built and measured, in this order, each gating the next:
 
 1. **The contact model** (`sim/placement.js`) — placement computed from shape, never set. 12 tests,
    three load-bearing mechanisms mutation-verified.
@@ -89,7 +89,7 @@ smallest real SD is 10⁵× clear) and a test now pins both the invariance and t
 ⬜ Still open, and still needing the paywalled source: the **ceiling** half. Nothing here measures how
 many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
 
-### B. Speciation, which v1 explicitly cannot address — ✅ ORIGIN **and** MAINTENANCE both fail, and the two are ONE PROBLEM (2026-08-04)
+### B. Speciation, which v1 explicitly cannot address — ✅ ORIGIN **and** MAINTENANCE both fail, and the two are ONE PROBLEM (2026-08-04); fusion vs exclusion SEPARATED (2026-08-07), but exclusion is only preventable by IMPOSING a minority subsidy
 
 ⚠️⚠️ **THE UNIFYING RESULT (2026-08-04, density dependence).** Origin and maintenance both need the
 same thing — **a rare placement doing better than a common one** — and the invasion criterion says
@@ -158,12 +158,74 @@ cores to stay occupied while the gap fills, which at FIXED POPULATION SIZE canno
 gap can only fill by draining the cores. Rewritten to read the END STATE (a merge leaves cores < 0.1;
 the fused runs keep ~38%), so the bridge conclusion is **post hoc and needs a pre-registered re-run**.
 ⚠️ **Gap-filling is NOT sufficient for fusion** — several `one lost` replicates peak at 0.43–0.67.
-What decides fusion vs exclusion is not identified. ⚠️ Peak gap declines monotonically in a but
+What decides fusion vs exclusion is not identified — ✅ **IDENTIFIED 2026-08-07, below.** ⚠️ Peak gap declines monotonically in a but
 **mean gap does not** (0.024 → 0.028 → 0.006). [detail](2026-08-05-gap-occupancy.md)
 ⚠️ A surviving mutant caught two worthless tests: they measured delivered pollen with a helper that
 REIMPLEMENTED the budget rule, so a `step()` that ignored the flag left them green. **A test that
 recomputes the behaviour under test is testing the recomputation.**
 [detail](2026-08-04-limiting-factors.md)
+
+✅ **WHAT DECIDES FUSION VS EXCLUSION IS NOW IDENTIFIED, AND THE TWO ARE DIFFERENT LEVERS
+(2026-08-07).** The question left open immediately above. At the SAME parameters (d = 8, a = 0.25) the
+same model gives all three outcomes across seeds — **8 HELD / 12 FUSED / 18 `one lost`** of 38 founded —
+so the outcome is not a parameter. **H3 refuted: it is not set at founding either** (realised separation
+p = 0.290, founding spread p = 0.127, founding ancVar p = 1.000). The dynamics do the work.
+⚠️⚠️ **A CONTROL FAILED IN THE WINDOW WHERE THE SIGNAL LIVED, AND THE SPATIAL CLAIM WAS RETRACTED.**
+Permuting ancestry labels should destroy hybrid-gap occupancy's discrimination; at window 0..4 it did
+(p = 0.399), at window 0..8 it **SURVIVED** (p = 0.0020). Cause: `one lost` replicates contain **exactly
+zero** hybrids, so the permutation has nothing to move and the statistic stays 0 however labels are
+shuffled. The measure read WHETHER HYBRIDS EXIST, not WHERE THEY ARE — so the gap decomposition reduces
+to "hybrids form at all", and ⬜ **the bridge conclusion above is still not re-established.**
+⚠️ **The tell was already in the table**: hybrid-gap and hybrids-anywhere returned an IDENTICAL
+p (0.0007) though one is a STRICT SUBSET of the other. Two measures agreeing to 4 dp on a permutation
+test are one measure. ⚠️ Declaring TWO windows in advance is what exposed this — the PASSING control
+belonged to the window where the signal was weak, and reporting only that one would have read clean.
+[detail](2026-08-07-fusion-vs-exclusion.md)
+
+✅ **SEPARATED BY INTERVENTION (2026-08-07).** Fusion and balance are correlated by construction, so
+only an intervention could order them: **HYB** forced real F1s through the model's own `gamete()`,
+**BAL** forced composition back to 50/50 using MINORITY parents (creating no hybrid), **CLONE** was the
+matched disturbance control. **HYB vs CLONE fusion .826 vs .348, p = 0.0029 — gene flow CAUSES fusion.
+BAL vs CLONE p = 0.555 — forcing balance does NOT; balance is a CONSEQUENCE. CLONE vs NONE p = 0.756 —
+the disturbance itself is inert**, which is the enabling control.
+⚠️⚠️ **THE BIT-IDENTITY ANCHOR FAILED FIRST TRY AND CAUGHT A REAL BUG:** `run()` builds a FRESH rng from
+the seed **even when handed a `found` population**, so founding and the generation loop consume SEPARATE
+streams, while the experiment's loop carried the founding stream forward — a different model, silently.
+⚠️ HYB acted in only 4.9 of 35 generations (it self-limits once hybrids dominate), so the arms are NOT
+dose-matched. [detail](2026-08-07-hybrids-or-balance.md)
+
+⚠️⚠️ **BALANCE ACTS ON THE OTHER OUTCOME, AND IT REPLICATES UNDER PRE-REGISTRATION (2026-08-07).**
+Forcing ancestry balance without gene flow cuts EXCLUSION — post hoc in the run above, since that
+pre-registration named FUSION rate. Re-run with the primary declared before results existed: exclusion
+rate, BAL vs CLONE at J = 2, one-sided Fisher, α 0.05, **seeds 101–132 disjoint** from the 1–24 that
+generated the hypothesis. **J = 2 PRIMARY: 5/28 vs 16/28, p = 0.0026 — PASSES. J = 4: 0/28 vs 14/28.**
+Dose-response monotone 12 → 5 → 0, Cochran–Armitage **z = −3.85, p = 0.00006**. Fusion rate UNMOVED
+(.286/.321/.250), so the "different levers" reading survives a test that could have refuted it.
+⚠️ **J = 1 is not significant** (p = 0.297): the effect needs dose. A regression arm reproduced the
+previous run's row EXACTLY (5 HELD / 6 FUSED / 12 one lost), and **no generation loop was rewritten** —
+the merged experiment was reused through its own env knobs, so the replication cannot disagree with the
+original for reasons unrelated to the biology.
+⚠️⚠️ **THIS IS NOT A COEXISTENCE MECHANISM THE MODEL PRODUCED ON ITS OWN.** BAL is a **demographic
+subsidy to the minority**, uncomfortably close to the per-lineage quota ruled out above as
+question-begging: at J = 4 it redirects ~13% of the population toward the losing lineage every
+generation, and "imposed negative frequency-dependence prevents competitive exclusion" is close to a
+restatement of what negative frequency-dependence means. **The NON-tautological content is that the
+rescued lineages STAY DISTINCT** — fusion flat at every dose, hybrid frequency indistinguishable from
+control, HELD rising 8 → 14 → 21 — when a subsidy keeping both lineages present and able to interbreed
+could as easily have MERGED them. And it locates the exclusion in **DEMOGRAPHY rather than pollination**:
+placement-mediated mating is untouched by BAL and exclusion still vanishes.
+[detail](2026-08-07-bal-replication.md)
+
+⬜ **THE NORTHSTAR QUESTION THIS LEAVES: can a minority advantage be DERIVED from pollination rather
+than IMPOSED?** Both routes this roadmap named at the head of section B are now spent — a second
+limiting factor is **not available by the pollinator route**, and NFD on placement is **self-defeating
+on a CONTINUOUS axis** because rare-bias pours visits onto the intermediate that bridges the clusters.
+The live candidate is the discrete-vs-continuous distinction this roadmap already drew when deception
+split the ADVERTISEMENT and not the plant: **make the placement axis discrete from the animal's own body
+geometry** — pollinaria attach to head, thorax and abdomen with real gaps between them — which removes
+the intermediate that defeats rare-bias **without imposing the split**. ⚠️ The trap to avoid is the one
+the per-lineage quota fell into: discreteness must EMERGE from the body morphology already in
+`sim/placement.js`, not be imposed as two bins, or it assumes the answer.
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
@@ -561,6 +623,21 @@ project's value scales with mechanism classes rather than polish.
   downstream number, but only the two experiments re-run at the time were annotated. The carryover
   result kept its pre-fix figures — and one of its conclusions — for a day, and was caught only
   incidentally. A superseded contact model supersedes every result that used it.
+- **A shuffle control cannot falsify a claim when one arm has zero items to permute.** Hybrid-gap
+  occupancy survived its own label permutation because `one lost` replicates contain exactly zero
+  hybrids, so the statistic could not move however the labels were shuffled — the control was
+  structurally incapable of firing. Pre-check that both arms carry non-zero mass in the permuted
+  quantity. The companion tell is cheap: **if a measure and its own superset return an identical
+  p-value, they are one measure**, and the narrower one is adding nothing.
+- **Assert bit-identity against the model's own entry point before driving its loop yourself.**
+  `run()` rebuilds its rng from the seed even when handed a founded population, so an experiment that
+  carried the founding stream forward was running a different model in silence. The no-intervention arm
+  must reproduce `run()` bit-for-bit before any other arm is believed.
+- **An intervention that rescues an outcome by supplying the thing being competed for has proved
+  nothing about the mechanism.** Forcing ancestry balance prevents competitive exclusion, but it is a
+  demographic subsidy — near-tautological on its own. What made it worth keeping is the part that could
+  have gone the other way: the rescued lineages stayed DISTINCT rather than merging. State which half of
+  such a result is tautological before quoting the p-value.
 - **Matching a distribution by its median is not matching it.** The synthetic arms were built at
   median precision under a rule that said precision must be matched; a quarter of the real pool was
   sharper than any blob they contained. Match the distribution, or state plainly that you matched
