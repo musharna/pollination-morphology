@@ -227,6 +227,30 @@ the intermediate that defeats rare-bias **without imposing the split**. ⚠️ T
 the per-lineage quota fell into: discreteness must EMERGE from the body morphology already in
 `sim/placement.js`, not be imposed as two bins, or it assumes the answer.
 
+⚠️⚠️ **THE PREMISE OF THAT PROPOSAL WAS MEASURED 2026-08-07, AND IT FAILS: THE AXIS IS CONNECTED.**
+The cheap version — that the existing geometry already supplies discreteness, since `DEFAULT_BEE` is a
+capsule chain with a radius step at the face/scutum junction (0.32 → 0.42) — is refuted. Across
+**38,915 placed genomes the default bee's reachable placement set is CONNECTED end to end**, and so are
+all three other plans. ⚠️ The right object is REACHABILITY, NOT DENSITY: a merely sparse gap is still
+subsidised, so only placements that CANNOT EXIST starve the bridge; this samples the image of genome
+space under the contact map.
+⚠️⚠️ **THE FIRST PASS WAS A FALSE POSITIVE IN 3 OF 4 PLANS, AND THE DISCRIMINATOR IS THE CONTRIBUTION:
+A REAL HOLE IS STATIONARY.** Empty bins in sparse tails are a fact about the draw. At 4× the draws
+`long slender` became connected outright and `large robust`'s hole MOVED with its tail (0.454 → 0.491
+as the range grew 0.476 → 0.540), while a pinched positive control held still at [0.158, 0.417] against
+a waist built at [0.16, 0.42]. ⚠️ And the control is BLIND to the stability filter — a filter wired to
+accept would flip all four plans and still pass it — so the filter has its own anchor, confirmed to
+FAIL at a relaxed threshold rather than assumed to work.
+⚠️ The four plans could not have differed: `checks.js` builds them all with `scaleBee`, so they share
+s-boundaries by construction. The enumeration is EXHAUSTED, not sampled.
+⬜ **So a discrete axis is now a MODELLING CHOICE, not a measurement.** The control shows a genuine
+constriction does produce a disconnected axis, and that is defensible morphology (Apocrita are named
+for the wasp waist; _Platanthera_ uses proboscis vs eyes). But choosing a constricted body BECAUSE it
+delivers the needed discreteness is the per-lineage quota again. **The honest form: fix the constriction
+from published wasp morphometry, treat the reachability gap as a PREDICTION that follows, and only then
+ask whether exclusion changes. Tune the waist until exclusion moves and the result is the tuning.**
+[detail](2026-08-07-placement-reachability.md)
+
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
 question sits exactly there: placement selection in one panmictic population is positively
@@ -623,6 +647,15 @@ project's value scales with mechanism classes rather than polish.
   downstream number, but only the two experiments re-run at the time were annotated. The carryover
   result kept its pre-fix figures — and one of its conclusions — for a day, and was caught only
   incidentally. A superseded contact model supersedes every result that used it.
+- **An empty bin is not a hole — a real gap is STATIONARY.** Finite sampling leaves gaps in sparse
+  tails, so a single-sample verdict found "discreteness" in three of four body plans that have none.
+  The test is whether the gap stays in place when the sample grows: one vanished, one migrated with
+  its tail, and only the constructed control held still. Any claim that something is ABSENT from a
+  sampled set needs the same treatment — absence at one sample size is a fact about the draw.
+- **A positive control can be blind to the filter that consumes it.** The pinched body plan proves
+  the probe can find a gap, but a stability filter hard-wired to accept would keep every artefact,
+  invert the verdict, and leave that control passing. Whatever sits DOWNSTREAM of a control needs its
+  own check — and confirm it by breaking it, not by reasoning that it works.
 - **A shuffle control cannot falsify a claim when one arm has zero items to permute.** Hybrid-gap
   occupancy survived its own label permutation because `one lost` replicates contain exactly zero
   hybrids, so the statistic could not move however the labels were shuffled — the control was
