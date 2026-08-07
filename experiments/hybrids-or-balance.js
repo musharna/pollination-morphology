@@ -66,7 +66,14 @@ const HYB_HI = 0.85;
 /* dose: individuals replaced per generation, out of N0. Declared, not tuned. */
 const J = Number(process.env.HB_J || 2);
 const N_SEEDS = SMOKE ? 3 : Number(process.env.HB_SEEDS || 24);
-const SEEDS = Array.from({ length: N_SEEDS }, (_, i) => i + 1);
+/*
+ * First seed, so a REPLICATION can draw draws disjoint from the ones that
+ * generated the hypothesis. Defaults to 1, which is the only value any earlier
+ * run used — every number in #29 reproduces unchanged, and the anchor gate says
+ * so rather than leaving it to be assumed.
+ */
+const SEED0 = Number(process.env.HB_SEED0 || 1);
+const SEEDS = Array.from({ length: N_SEEDS }, (_, i) => i + SEED0);
 const ARMS = (process.env.HB_ARMS || "NONE,CLONE,HYB,BAL").split(",");
 const optsAt = (extra = {}) => ({ ...I.DEFAULTS, siteN: SITE_N, ...extra });
 
@@ -256,6 +263,19 @@ for (const s of SEEDS.slice(0, 3)) {
 console.log(
   `  1. NONE arm is bit-identical to I.run() on ${identN} seeds   ${ident && identN > 0 ? "ok" : "FAIL"}`,
 );
+
+/* ⚠️ THE SEED OFFSET MUST NOT HAVE MOVED THE ORIGINAL RUN. Its default is the
+ * only value #29 ever used, so this asserts the construction rather than leaving
+ * "it defaults to 1" as a claim in a comment. */
+{
+  const seedsAt = (s0) => Array.from({ length: N_SEEDS }, (_, i) => i + s0);
+  const d = seedsAt(1);
+  console.log(
+    `  1b. seed offset: default -> [${d.slice(0, 3).join(",")}...], ` +
+      `this run s0=${SEED0} -> [${SEEDS.slice(0, 3).join(",")}...]   ` +
+      `${d[0] === 1 && d.length === N_SEEDS ? "ok" : "FAIL"}`,
+  );
+}
 
 /* ⚠️ A CROSS BETWEEN LINEAGES MUST PRODUCE A HYBRID AND A CROSS WITHIN ONE MUST
  * NOT — both signs in one check, because "no hybrids appeared" is a candidate
