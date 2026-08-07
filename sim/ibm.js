@@ -697,23 +697,55 @@ function spreadOf(places) {
  * clusters MIGRATING together drain the cores into the middle. Those are
  * different mechanisms and the pair of numbers separates them.
  */
-function gapOccupancy(places, pA, pB, { ell = 1.3, core = 0.3 } = {}) {
-  const pts = places.filter(Boolean);
+/*
+ * WHICH plants occupy the gap, by index into `places`. This is the SINGLE
+ * definition of the predicate; `gapOccupancy` below is a thin wrapper that
+ * counts what this returns.
+ *
+ * ⚠️ It was not always so. This predicate lived twice — once here returning
+ * fractions and once in `experiments/fusion-vs-exclusion.js` returning indices,
+ * because crossing gap membership with ancestry needs to know WHICH plant, not
+ * how many. The two copies were kept in step by a runtime anchor that compared
+ * them on real clouds. An anchor detects drift; it does not prevent it, and it
+ * only ran when that one experiment ran. Single-sourcing removes the drift
+ * rather than watching for it.
+ *
+ * ⚠️ INDICES ARE INTO THE ORIGINAL ARRAY, nulls included. `places` is parallel
+ * to the traced `anc` array, so filtering before indexing would shift every
+ * index past the first unplaced plant and silently cross gap membership with
+ * the WRONG plant's ancestry — which is the whole quantity this feeds.
+ */
+function gapMembers(places, pA, pB, { ell = 1.3, core = 0.3 } = {}) {
+  const gap = [];
+  const coreA = [];
+  const coreB = [];
   const d0 = dist(pA, pB);
-  if (!(d0 > 0) || pts.length === 0)
-    return { gap: 0, coreA: 0, coreB: 0, n: pts.length };
-  let gap = 0,
-    ca = 0,
-    cb = 0;
-  for (const p of pts) {
+  let n = 0;
+  for (let i = 0; i < places.length; i++) {
+    const p = places[i];
+    if (!p) continue;
+    n++;
+    /* Coincident reference points cannot define a gap. Counting continues so
+     * that `n` still reports the cloud size rather than claiming it is empty. */
+    if (!(d0 > 0)) continue;
     const a = dist(p, pA);
     const b = dist(p, pB);
-    if (a < core * d0) ca++;
-    else if (b < core * d0) cb++;
-    else if (a + b <= ell * d0) gap++;
+    if (a < core * d0) coreA.push(i);
+    else if (b < core * d0) coreB.push(i);
+    else if (a + b <= ell * d0) gap.push(i);
   }
-  const n = pts.length;
-  return { gap: gap / n, coreA: ca / n, coreB: cb / n, n };
+  return { gap, coreA, coreB, n };
+}
+
+function gapOccupancy(places, pA, pB, opts = {}) {
+  const m = gapMembers(places, pA, pB, opts);
+  if (m.n === 0) return { gap: 0, coreA: 0, coreB: 0, n: 0 };
+  return {
+    gap: m.gap.length / m.n,
+    coreA: m.coreA.length / m.n,
+    coreB: m.coreB.length / m.n,
+    n: m.n,
+  };
 }
 
 // ------------------------------------------------------------------- step
@@ -1053,6 +1085,7 @@ module.exports = {
   allocWeights,
   dist,
   twoClusterSeparation,
+  gapMembers,
   gapOccupancy,
   spreadOf,
   step,

@@ -81,33 +81,15 @@ const placeOfGenome = (g) =>
   I.sitesOf([{ h1: g, h2: g }], optsAt(), 0).map(I.placementOf)[0];
 
 /*
- * ⚠️ PER-PLANT GAP MEMBERSHIP, AND IT MUST NOT DRIFT FROM THE MODEL'S OWN
- * STATISTIC. `gapOccupancy` returns fractions, and this run needs to cross gap
- * membership with each plant's ancestry, which needs INDICES. Rather than trust
- * that this predicate stays in step with the model's, PART 0 asserts that the
- * fractions derived from these indices equal `I.gapOccupancy` EXACTLY, on real
- * traced clouds. If the model's predicate is ever edited, that anchor fails
- * rather than this experiment quietly measuring a different gap.
+ * ⚠️ PER-PLANT GAP MEMBERSHIP NOW COMES FROM THE MODEL ITSELF (`I.gapMembers`).
+ * It used to be reimplemented here, because `gapOccupancy` returns fractions and
+ * this run needs to cross gap membership with each plant's ancestry, which needs
+ * INDICES — and PART 0 asserted the two agreed on real clouds. That anchor could
+ * only ever DETECT drift, and only when this experiment was run. The predicate
+ * is single-sourced in `sim/ibm.js` now, so `gapOccupancy` and the membership
+ * indices cannot disagree: there is only one of them.
  */
-function gapMembers(places, pA, pB, { ell = 1.3, core = 0.3 } = {}) {
-  const gap = [];
-  const coreA = [];
-  const coreB = [];
-  const d0 = I.dist(pA, pB);
-  let n = 0;
-  if (!(d0 > 0)) return { gap, coreA, coreB, n };
-  for (let i = 0; i < places.length; i++) {
-    const p = places[i];
-    if (!p) continue;
-    n++;
-    const a = I.dist(p, pA);
-    const b = I.dist(p, pB);
-    if (a < core * d0) coreA.push(i);
-    else if (b < core * d0) coreB.push(i);
-    else if (a + b <= ell * d0) gap.push(i);
-  }
-  return { gap, coreA, coreB, n };
-}
+const gapMembers = I.gapMembers;
 
 const isHyb = (x) => x != null && x > HYB_LO && x < HYB_HI;
 const ancMean = (xs) => (xs.length ? mean(xs) : 0);
@@ -176,6 +158,7 @@ function replicate(seed, { shuffleAnc = false, extra = {} } = {}) {
       minority: h.minorityFrac,
       ancVar: h.ancVar,
       _places: h.places,
+      _anc: anc,
       _pA: pA,
       _pB: pB,
     };
@@ -280,24 +263,38 @@ console.log(
   `  1. traced model still reproduces the pre-alloc golden   ${a1 ? "ok" : "FAIL"}`,
 );
 
-/* ⚠️ THE TIE TO THE MODEL'S OWN PREDICATE, checked on real traced clouds. */
+/*
+ * ⚠️ THIS ANCHOR REPLACED AN EQUALITY THAT CAN NO LONGER FAIL. It used to assert
+ * that per-plant membership agreed with `I.gapOccupancy` on real clouds; the
+ * predicate is single-sourced now, so that comparison would assert 1 === 1 and
+ * would keep printing "ok" forever no matter what broke.
+ *
+ * What CAN still go wrong is ALIGNMENT. These indices are read against the
+ * traced `anc` array (`anc[i]`, below), so an index out of range, an index
+ * pointing at an unplaced plant, or an `anc` array of a different length would
+ * cross gap membership with the WRONG plant's ancestry — silently, and in the
+ * direction of the headline result. ⚠️ It must also BITE: a run that classified
+ * nobody would satisfy every check above vacuously, so a nonzero classified
+ * count is part of the pass condition.
+ */
 const probe = replicate(SEEDS[0]);
-let tie = true;
+let aligned = true;
 let tieN = 0;
+let classified = 0;
 for (const r of (probe ? probe.rows : []).filter(Boolean)) {
-  const g = I.gapOccupancy(r._places, r._pA, r._pB);
   const m = gapMembers(r._places, r._pA, r._pB);
-  const n = m.n || 1;
-  if (
-    Math.abs(g.gap - m.gap.length / n) > 1e-12 ||
-    Math.abs(g.coreA - m.coreA.length / n) > 1e-12 ||
-    Math.abs(g.coreB - m.coreB.length / n) > 1e-12
-  )
-    tie = false;
+  const idx = [...m.gap, ...m.coreA, ...m.coreB];
+  if (r._anc.length !== r._places.length) aligned = false;
+  if (new Set(idx).size !== idx.length) aligned = false;
+  for (const i of idx) {
+    if (!Number.isInteger(i) || i < 0 || i >= r._places.length) aligned = false;
+    else if (!r._places[i]) aligned = false;
+  }
+  classified += idx.length;
   tieN++;
 }
 console.log(
-  `  2. per-plant membership == I.gapOccupancy on ${String(tieN).padStart(2)} clouds  ${tie && tieN > 0 ? "ok" : "FAIL"}`,
+  `  2. membership indices align with traced ancestry on ${String(tieN).padStart(2)} clouds  ${aligned && tieN > 0 && classified > 0 ? "ok" : "FAIL"}`,
 );
 
 /* ⚠️ THE HYBRID CLASSIFIER NEEDS BOTH SIGNS IN ONE CHECK. "no hybrids in the
