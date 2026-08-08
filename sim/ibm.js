@@ -388,6 +388,42 @@ const DEFAULTS = {
    * is read off placement rather than off ancestry. */
   allocExponent: null,
 
+  /* ---- reproductive assurance. null = off, and off draws NO random numbers, so
+   * every result published before this existed is bit-identical.
+   *
+   * {rate, cost, ancNull, always, floorOnly}. `rate` sets a maternal weight
+   * FLOOR of `rate x mean(received)` that every plant gets on identical terms,
+   * with no reference to lineage and no quota; a mother then selfs with
+   * probability floor / (her own weight). So a plant nobody visited reproduces
+   * almost entirely by selfing while a well-visited one barely does, and the
+   * frequency-dependence is a CONSEQUENCE of the mate-finding constraint this
+   * model already measured rather than a parameter of it.
+   *
+   * ⚠️ It attaches to the MOTHER DRAW, not the sire draw, because mate
+   * limitation here is never being CHOSEN — see the long note in step().
+   *
+   * `cost` is inbreeding depression: a selfed offspring fails to establish with
+   * this probability, so the mechanism can FAIL and must be shown to.
+   *
+   * ⚠️ `floorOnly` is the control for the floor itself. The floor flattens the
+   * maternal weight distribution, which could change who reproduces on its own —
+   * so this applies the floor and still demands an outcross sire. Any effect
+   * surviving it is weight-flattening, not selfing.
+   *
+   * ⚠️ `always` is a CONTROL, not a mechanism — every mother selfs regardless of
+   * whether she was pollinated. It exists so the triviality arm ("if everyone
+   * selfs, isolation is manufactured") can be run and MUST report isolation; an
+   * isolation statistic that stays flat under it is broken.
+   *
+   * ⚠️ `ancNull` is the MECHANICAL-NULL control for the tracer. A selfed
+   * offspring normally inherits the mother's `anc` UNAVERAGED, while an
+   * outcrossed one takes the parental mean — so selfing raises ancestry variance,
+   * and therefore HELD, BY CONSTRUCTION rather than by biology. Set true and a
+   * selfed offspring's `anc` is averaged with a RANDOM individual instead: same
+   * genetics, same selfing, averaging restored. The HELD difference between the
+   * two is the artefact, measured rather than argued about. */
+  selfing: null,
+
   /*
    * ⚠️ THE TWO CONSTANTS THAT MAKE THIS MODEL ZERO-SUM, AND THEY ARE MODELLING
    * ASSUMPTIONS RATHER THAN BIOLOGY. Both default to off, so every result
@@ -880,6 +916,47 @@ function step(pop, opts, rng, gen, srng = null) {
   }
 
   /*
+   * ---- REPRODUCTIVE ASSURANCE, and it has to attach HERE rather than at the
+   * sire draw, which is where the obvious version would put it.
+   *
+   * ⚠️ A mother is drawn in proportion to `received`, and `received[j]` sums
+   * T[i][j] over every i != j. So a mother can only be PICKED if somebody
+   * already delivered to her, which guarantees `sires` holds a positive entry.
+   * The "nobody delivered to her" branch below is therefore UNREACHABLE on the
+   * default path — measured, not assumed: `unmated` is 0 across a 100x range of
+   * visit budgets. Mate limitation in this model is not "chosen and left without
+   * a sire", it is NEVER BEING CHOSEN AT ALL, and assurance that hooks the sire
+   * draw would be silently inert.
+   *
+   * So selfing enters as a maternal weight FLOOR that does not require a
+   * partner: every plant gets `rate x mean(received)` worth of selfed seed, on
+   * identical terms and with no reference to lineage. A plant then selfs with
+   * probability floor / (its own weight), so a plant nobody visited reproduces
+   * almost entirely by selfing while a well-visited one barely does. The
+   * frequency-dependence is a CONSEQUENCE of that, not a parameter of it.
+   *
+   * ⚠️ The floor also flattens the maternal weight distribution, which could by
+   * itself change who reproduces — so `floorOnly` applies the floor and still
+   * demands an outcross sire, isolating "flattened weights" from "selfed
+   * offspring". Under it the unreachable branch above becomes reachable, which
+   * is the point.
+   */
+  let selfW = null;
+  if (opts.selfing && (opts.selfing.rate > 0 || opts.selfing.always)) {
+    if (opts.selfing.always) {
+      /* control arm: reproduction is entirely selfed, so maternal weight stops
+       * depending on pollination at all */
+      selfW = new Array(n).fill(1);
+      weight = new Array(n).fill(1);
+    } else {
+      const floor =
+        (opts.selfing.rate * received.reduce((a, b) => a + b, 0)) / n;
+      selfW = new Array(n).fill(floor);
+      weight = weight.map((w) => w + floor);
+    }
+  }
+
+  /*
    * ⚠️ HOW MANY OFFSPRING THIS GENERATION MAKES — the fixed-N assumption, and
    * the whole of it. Null demography reproduces `target = n` exactly, so this
    * line is the difference between soft and hard selection.
@@ -927,6 +1004,51 @@ function step(pop, opts, rng, gen, srng = null) {
       failed++;
       break;
     }
+    const gopts = {
+      linkSignal: opts.linkSignal,
+      signalMut: opts.signalMut,
+      srng,
+    };
+    const S = opts.selfing;
+
+    /* A selfed offspring, and the tracer question that comes with it. Returns
+     * false when inbreeding depression kills it, so the caller counts a failure
+     * exactly as it would for an unpollinated mother. */
+    const setSelfedSeed = () => {
+      if (S.cost > 0 && rng() < S.cost) return false;
+      /* ⚠️ Selfing normally SKIPS the averaging that outcrossing performs, which
+       * inflates ancestry variance — and HELD with it — for reasons that are
+       * arithmetic rather than biological. ancNull restores the averaging
+       * against a random individual so the inflation can be measured. */
+      const anc = S.ancNull
+        ? ((pop[mother].anc || 0) + (pop[Math.floor(rng() * n)].anc || 0)) / 2
+        : pop[mother].anc || 0;
+      next.push({
+        h1: gamete(pop[mother], rng, opts.mutRate, gopts),
+        h2: gamete(pop[mother], rng, opts.mutRate, gopts),
+        anc,
+      });
+      return true;
+    };
+
+    /* Does this mother set selfed seed? Her floor share against her own total,
+     * so a plant nobody visited selfs almost always and a well-visited one
+     * almost never. `floorOnly` keeps the floor but refuses the selfing, which
+     * is the control that separates the two. ⚠️ No rng is drawn when the knob is
+     * off, so `selfing: null` leaves the random stream — and every result
+     * published before this existed — bit-identical. */
+    if (
+      selfW !== null &&
+      !S.floorOnly &&
+      rng() * weight[mother] < selfW[mother]
+    ) {
+      if (!setSelfedSeed()) {
+        failed++;
+        if (failed > 40 * n) break;
+      }
+      continue;
+    }
+
     const sires = [];
     for (let i = 0; i < n; i++)
       sires.push(i === mother ? 0 : opts.randomMating ? 1 : r.T[i][mother]);
@@ -935,16 +1057,20 @@ function step(pop, opts, rng, gen, srng = null) {
     if (father < 0) {
       /* nobody delivered to her: she sets no outcrossed seed. Not silently
        * replaced by a self, because that would manufacture the very isolation
-       * the run is trying to detect. */
+       * the run is trying to detect.
+       *
+       * ⚠️ UNREACHABLE on the default path — a mother is drawn in proportion to
+       * `received`, so being picked at all proves a sire exists. It can fire
+       * only under `floorOnly`, where the weight floor may select a mother
+       * nobody pollinated and this then correctly refuses her a seed — and even
+       * then only under severe pollen limitation, since a plant with ZERO
+       * receipt exists only when visits are scarce. Measured for n=24: fires at
+       * 20-60 visits, never at 400+. That is the point of the control: the floor
+       * ALONE rescues nothing. */
       failed++;
       if (failed > 40 * n) break;
       continue;
     }
-    const gopts = {
-      linkSignal: opts.linkSignal,
-      signalMut: opts.signalMut,
-      srng,
-    };
     next.push({
       h1: gamete(pop[mother], rng, opts.mutRate, gopts),
       h2: gamete(pop[father], rng, opts.mutRate, gopts),
