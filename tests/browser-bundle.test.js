@@ -119,6 +119,109 @@ test("a traced run gives the renderer aligned, in-range points to draw", () => {
   assert.ok(drawnMin > 0, "some generation had nothing to draw at all");
 });
 
+/* ------------------------------- the page drives step() — prove it IS run() */
+
+/* ⚠️ population.html cannot use run(): it needs every generation's GENOMES to
+ * draw the flowers, and run() returns only summary history. So it drives step()
+ * in its own loop — which means the picture could quietly diverge from every
+ * published number in docs/. This asserts the two loops are the same loop.
+ *
+ * The renderer's claim is that you are watching the model the experiments
+ * measured. That claim is only worth what this test is worth. */
+test("the page's own generation loop reproduces run() exactly", () => {
+  const win = loadInFakeBrowser();
+  const I = win.IBM;
+  const E = win.Evolve;
+
+  const n = 20;
+  const seed = 5;
+  const gens = 10;
+  const opts = { ...I.DEFAULTS };
+
+  const built = I.foundTwoLineages(
+    n,
+    E.makeRng(seed),
+    I.signalRng(seed),
+    8,
+    opts,
+  );
+  assert.ok(built, "fixture failed");
+
+  /* the page's loop, verbatim in structure */
+  const rng = E.makeRng(seed);
+  const srng = I.signalRng(seed);
+  let pop = built.pop;
+  const mine = [];
+  for (let g = 0; g < gens; g++) {
+    if (pop.length < 2) break;
+    const res = I.step(pop, opts, rng, g, srng);
+    mine.push({
+      sep: res.cluster ? res.cluster.separation : null,
+      ancVar: res.ancVar,
+      spread: res.spread,
+    });
+    pop = res.pop;
+  }
+
+  /* the published path */
+  const out = I.run({ n, generations: gens, seed, found: built.pop });
+
+  assert.equal(mine.length, out.history.length, "generation counts differ");
+  out.history.forEach((h, i) => {
+    assert.equal(mine[i].ancVar, h.ancVar, `ancVar differs at generation ${i}`);
+    assert.equal(mine[i].spread, h.spread, `spread differs at generation ${i}`);
+    assert.equal(
+      mine[i].sep,
+      h.separation,
+      `separation differs at generation ${i} — the picture has drifted from the numbers`,
+    );
+  });
+});
+
+/* --------------------- the flowers the page draws are the model's own flowers */
+
+test("every individual yields a drawable flower with real organ positions", () => {
+  const win = loadInFakeBrowser();
+  const I = win.IBM;
+  const E = win.Evolve;
+  const P = win.Placement;
+
+  const seed = 5;
+  const built = I.foundTwoLineages(
+    18,
+    E.makeRng(seed),
+    I.signalRng(seed),
+    8,
+    I.DEFAULTS,
+  );
+  assert.ok(built, "fixture failed");
+
+  /* ⚠️ A flower that fails to build renders as nothing, and one missing flower
+   * in a field of eighteen is not noticeable by eye. */
+  for (const ind of built.pop) {
+    const f = E.toFlower(I.shapeOf(ind));
+    const a = P.antherPoint(f);
+    const s = P.stigmaPoint(f);
+    const surf = P.surfacePoint(f, 0.5, 0.7);
+    for (const [name, v] of [
+      ["anther", a],
+      ["stigma", s],
+      ["surface", surf],
+    ]) {
+      assert.ok(
+        Array.isArray(v) && v.length === 3,
+        `${name} is not a 3-vector`,
+      );
+      for (const c of v)
+        assert.ok(Number.isFinite(c), `${name} has a non-finite coordinate`);
+    }
+    assert.ok(
+      P.bodyRadius(I.DEFAULTS.bee, 0.3) > 0,
+      "bee body radius is not positive — pollen would draw at the centreline",
+    );
+  }
+});
+
 /* ⚠️ A renderer showing a population that never changes is indistinguishable
  * from a renderer that is not stepping the model. This asserts the thing the
  * page exists to show actually moves. */

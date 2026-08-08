@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Two lineages on one bee — watching the split fail</title>
+    <title>
+      The field — a population of flowers, one bee, and a split that fails
+    </title>
     <style>
       :root {
         --bg: #16181c;
@@ -51,6 +53,12 @@
         background: #101216;
         border: 1px solid var(--rule);
         border-radius: 3px;
+      }
+      #field {
+        cursor: grab;
+      }
+      #field:active {
+        cursor: grabbing;
       }
       .row {
         display: flex;
@@ -122,6 +130,7 @@
         font-size: 12px;
         color: var(--ink-2);
         margin-top: 8px;
+        flex-wrap: wrap;
       }
       .dot {
         display: inline-block;
@@ -141,26 +150,32 @@
       .warn {
         color: var(--bad);
       }
-      code {
-        background: #12141a;
-        padding: 1px 5px;
-        border-radius: 3px;
-        font-size: 13px;
+      .side {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+      @media (max-width: 860px) {
+        .side {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
     <div id="wrap">
       <header>
-        <h1>Two lineages on one bee — watching the split fail</h1>
+        <h1>
+          The field — a population of flowers, one bee, and a split that fails
+        </h1>
         <p>
-          Every plant is drawn where
-          <em>its pollen actually lands on the animal</em>. Two lineages are
-          founded a chosen distance apart on the body and then left alone.
-          Placement is never a gene — it is computed from flower shape each
-          generation, so what you are watching is the model's own geometry, not
-          a scripted animation. The question the whole project turns on is
-          visible here: do the two clouds stay apart, or drift together?
+          Every flower here is drawn from <em>its own genome</em>, through the
+          same contact model the experiments use — the shape you see is the
+          shape that decides where its pollen lands. Two lineages start a chosen
+          distance apart on the animal's body. Watch the field across
+          generations: if the split held, the flowers would stay visibly two
+          kinds.
         </p>
       </header>
 
@@ -175,12 +190,12 @@
             ><input type="number" id="d" value="8" step="1" />
           </div>
           <div class="ctl">
-            <label for="n">plants</label
-            ><input type="number" id="n" value="24" />
+            <label for="n">flowers</label
+            ><input type="number" id="n" value="18" />
           </div>
           <div class="ctl">
             <label for="gens">generations</label
-            ><input type="number" id="gens" value="30" />
+            ><input type="number" id="gens" value="24" />
           </div>
           <div class="ctl">
             <label for="mode">mating</label>
@@ -195,26 +210,18 @@
         </div>
       </div>
 
-      <canvas id="map" width="1180" height="420"></canvas>
+      <canvas id="field" width="1180" height="560"></canvas>
       <div class="key">
         <span><i class="dot" style="background: #e8b23a"></i>lineage A</span>
         <span><i class="dot" style="background: #cc6699"></i>lineage B</span>
         <span
-          ><i class="dot" style="background: #e8e6e1"></i>intermediate ancestry
-          (hybrids)</span
+          ><i class="dot" style="background: #e8e6e1"></i>mixed ancestry</span
         >
         <span
-          >x = along the body (nose → tail) · y = around the body (dorsal /
-          lateral / ventral)</span
+          >drag to orbit · the pollen on the bee sits where the contact model
+          puts it</span
         >
       </div>
-
-      <canvas
-        id="body"
-        width="1180"
-        height="190"
-        style="margin-top: 14px"
-      ></canvas>
 
       <div class="panel">
         <input type="range" id="scrub" min="0" max="0" value="0" disabled />
@@ -226,239 +233,463 @@
           <div class="stat">
             <b id="sAnc">—</b><span>ancestry variance</span>
           </div>
-          <div class="stat">
-            <b id="sSpread">—</b><span>placement spread</span>
-          </div>
           <div class="stat"><b id="sFate">—</b><span>fate</span></div>
         </div>
       </div>
 
-      <canvas id="trace" width="1180" height="180"></canvas>
-      <p class="note" style="margin-top: 8px">
-        Ancestry variance is the honest read on whether the lineages are still
-        distinct: it starts high with two pure founders and falls as they
-        interbreed. Separation can stay high while ancestry collapses — two
-        clusters made of the same mixed stock. That gap is exactly what the
-        tracer was added to catch.
-      </p>
+      <div class="side">
+        <canvas id="map" width="760" height="260"></canvas>
+        <div>
+          <p class="note" style="margin-top: 0">
+            <strong>Where the pollen actually goes.</strong> The same
+            population, plotted on the animal's body: along the body left to
+            right, around it top to bottom. This is the abstract view — it is
+            what the model measures, and the field above is what it means.
+          </p>
+          <p class="note">
+            ⚠️ The bee visits a <strong>handful</strong> of flowers per
+            generation here. A real bout in this model is ~24,000 visits;
+            showing them literally is impossible, so this is a
+            <em>sample</em> of the bout, not the bout.
+          </p>
+        </div>
+      </div>
       <p id="selfcheck" class="note"></p>
     </div>
 
-    <!-- ⚠️ ONE bundle, not six <script> tags. Classic scripts share a single
-         global lexical scope and the sim modules collide on twelve top-level
-         names, so loading them individually is a SyntaxError before anything
-         runs. The bundle gives each module its own scope; the model files are
-         untouched. Regenerate with `node tools/build-browser-bundle.js`;
-         tests/browser-bundle.test.js fails if it goes stale. -->
     <script src="sim/browser-bundle.js"></script>
     <script>
-      const I = window.IBM;
-      const P = window.Placement;
-      const E = window.Evolve;
-
+      const I = window.IBM,
+        P = window.Placement,
+        E = window.Evolve;
       const $ = (id) => document.getElementById(id);
-      const map = $("map").getContext("2d");
-      const body = $("body").getContext("2d");
-      const trace = $("trace").getContext("2d");
-
-      const REGIONS = P.DEFAULT_BEE.regions;
+      const cv = $("field"),
+        ctx = cv.getContext("2d");
+      const mapC = $("map").getContext("2d");
+      const bee = P.DEFAULT_BEE;
       const TAU = Math.PI * 2;
 
-      /* radius profile, read off the SAME region table the contact model uses rather
-       * than redrawn by hand — if the body plan changes, this follows it */
-      function radiusAt(s) {
-        const c = Math.min(Math.max(s, 0), 1);
-        for (const r of REGIONS)
-          if (c >= r.s0 && c <= r.s1) {
-            const k = (c - r.s0) / (r.s1 - r.s0);
-            return r.r0 + (r.r1 - r.r0) * k;
+      /* ---------------------------------------------------------- vector ops */
+      const vAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+      const vSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+      const vMul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+      const vDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const vCrs = (a, b) => [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+      ];
+      const vUnit = (a) => {
+        const n = Math.hypot(a[0], a[1], a[2]) || 1;
+        return [a[0] / n, a[1] / n, a[2] / n];
+      };
+      const lerp3 = (a, b, k) => [
+        a[0] + (b[0] - a[0]) * k,
+        a[1] + (b[1] - a[1]) * k,
+        a[2] + (b[2] - a[2]) * k,
+      ];
+      const ease = (x) =>
+        x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+
+      /* ⚠️ A basis with V fixed at world-up is DEGENERATE for a flower whose axis
+       * is vertical — the cross product collapses to zero and the flower renders
+       * as nothing. visit.html never hit this because both its flowers point
+       * sideways. Here they point up, so the up-vector is chosen away from the axis. */
+      function basis(axisDir, origin) {
+        const W = vUnit(axisDir);
+        const V0 = Math.abs(vDot(W, [0, 1, 0])) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+        const U = vUnit(vCrs(V0, W));
+        const V = vUnit(vCrs(W, U));
+        return { U, V, W, origin };
+      }
+      const toWorld = (b, p) =>
+        vAdd(b.origin, [
+          p[0] * b.U[0] + p[1] * b.V[0] + p[2] * b.W[0],
+          p[0] * b.U[1] + p[1] * b.V[1] + p[2] * b.W[1],
+          p[0] * b.U[2] + p[1] * b.V[2] + p[2] * b.W[2],
+        ]);
+      const dirWorld = (b, p) => [
+        p[0] * b.U[0] + p[1] * b.V[0] + p[2] * b.W[0],
+        p[0] * b.U[1] + p[1] * b.V[1] + p[2] * b.W[1],
+        p[0] * b.U[2] + p[1] * b.V[2] + p[2] * b.W[2],
+      ];
+
+      /* ------------------------------------------------------------- camera */
+      let yaw = 0.5,
+        pitch = 0.42,
+        camDist = 26;
+      const camTarget = [0, 1.2, 0];
+      function project(p) {
+        const d = vSub(p, camTarget);
+        const cy = Math.cos(yaw),
+          sy = Math.sin(yaw);
+        let x = d[0] * cy + d[2] * sy;
+        let z = -d[0] * sy + d[2] * cy;
+        const cp = Math.cos(pitch),
+          sp = Math.sin(pitch);
+        const y = d[1] * cp - z * sp;
+        z = d[1] * sp + z * cp;
+        const zv = z + camDist;
+        if (zv < 0.05) return null;
+        const scale = 900;
+        return {
+          x: cv.width / 2 + (scale * x) / zv,
+          y: cv.height / 2 - (scale * y) / zv,
+          z: zv,
+          s: scale / zv,
+        };
+      }
+      const camForward = () => {
+        const cy = Math.cos(yaw),
+          sy = Math.sin(yaw),
+          cp = Math.cos(pitch),
+          sp = Math.sin(pitch);
+        return [-cp * sy, sp, cp * cy];
+      };
+
+      /* --------------------------------------------------- painter's algorithm */
+      let items = [];
+      function poly(pts, col, opts = {}) {
+        const ps = pts.map(project);
+        if (ps.some((q) => !q)) return;
+        items.push({
+          z: ps.reduce((a, q) => a + q.z, 0) / ps.length,
+          kind: "poly",
+          ps,
+          col,
+          ...opts,
+        });
+      }
+      function ball(c, r, col, opts = {}) {
+        const q = project(c);
+        if (!q) return;
+        items.push({
+          z: q.z,
+          kind: "ball",
+          x: q.x,
+          y: q.y,
+          r: Math.max(0.6, r * q.s),
+          col,
+          ...opts,
+        });
+      }
+      function flush() {
+        items.sort((a, b) => b.z - a.z);
+        for (const it of items) {
+          if (it.kind === "poly") {
+            ctx.beginPath();
+            it.ps.forEach((q, i) =>
+              i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y),
+            );
+            ctx.closePath();
+            ctx.fillStyle = it.col;
+            ctx.fill();
+            if (it.stroke) {
+              ctx.strokeStyle = it.stroke;
+              ctx.lineWidth = it.sw || 1;
+              ctx.stroke();
+            }
+          } else {
+            ctx.beginPath();
+            ctx.arc(it.x, it.y, it.r, 0, TAU);
+            ctx.fillStyle = it.col;
+            ctx.fill();
           }
-        return REGIONS[REGIONS.length - 1].r1;
+        }
+        items = [];
       }
+      const shade = (hex, k) => {
+        const n = parseInt(hex.slice(1), 16);
+        const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+        return `rgb(${f((n >> 16) & 255)},${f((n >> 8) & 255)},${f(n & 255)})`;
+      };
 
-      /* ancestry 0 = lineage A (gold), 1 = lineage B (magenta), between = hybrid.
-       * Intermediates are deliberately pale rather than a blend, so a population
-       * going uniformly grey READS as fusion instead of as a third colour. */
-      function ancColour(a, alpha = 1) {
-        const A = [232, 178, 58];
-        const B = [204, 102, 153];
-        const mixToWhite = 1 - Math.abs(a - 0.5) * 2; // 0 at pure, 1 at 50/50
+      /* ancestry → corolla tint. Pure lineages read gold and magenta; mixed
+       * ancestry washes toward bone, so a field going uniformly pale IS fusion. */
+      function ancHex(a) {
+        const A = [232, 178, 58],
+          B = [204, 102, 153];
+        const toWhite = 1 - Math.abs(a - 0.5) * 2;
         const base = a < 0.5 ? A : B;
-        const c = base.map((v) =>
-          Math.round(v + (232 - v) * mixToWhite * 0.85),
-        );
-        return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+        const c = base.map((v) => Math.round(v + (226 - v) * toWhite * 0.8));
+        return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
       }
 
-      let RUN = null; // {history, realised}
-      let frame = 0;
-      let playing = false;
-      let timer = null;
+      /* ------------------------------------------------------------- flowers */
+      const T_STEPS = 9,
+        TH_STEPS = 14;
+      function drawFlower(f, b, tint) {
+        const view = camForward();
+        for (let i = 0; i < T_STEPS; i++) {
+          const t0 = i / T_STEPS,
+            t1 = (i + 1) / T_STEPS;
+          for (let j = 0; j < TH_STEPS; j++) {
+            const a0 = (j / TH_STEPS) * TAU,
+              a1 = ((j + 1) / TH_STEPS) * TAU;
+            const am = (a0 + a1) / 2,
+              tm = (t0 + t1) / 2;
+            const fr = P.axisFrame(f, tm);
+            const nLocal = [
+              fr.dorsal[0] * Math.cos(am) + fr.lateral[0] * Math.sin(am),
+              fr.dorsal[1] * Math.cos(am) + fr.lateral[1] * Math.sin(am),
+              fr.dorsal[2] * Math.cos(am) + fr.lateral[2] * Math.sin(am),
+            ];
+            /* longitudinal section: drop the near half so the throat is visible */
+            if (vDot(dirWorld(b, nLocal), view) < 0.02) continue;
+            const k = 0.58 + 0.34 * ((1 + Math.cos(am)) / 2) - 0.14 * tm;
+            const cq = shade(tint, k);
+            poly(
+              [
+                toWorld(b, P.surfacePoint(f, t0, a0)),
+                toWorld(b, P.surfacePoint(f, t1, a0)),
+                toWorld(b, P.surfacePoint(f, t1, a1)),
+                toWorld(b, P.surfacePoint(f, t0, a1)),
+              ],
+              cq,
+              { stroke: cq, sw: 1 },
+            );
+          }
+        }
+        /* the two organs, which are the whole point — where pollen leaves and lands */
+        ball(toWorld(b, P.antherPoint(f)), 0.15, "#f4e08a");
+        ball(toWorld(b, P.stigmaPoint(f)), 0.13, "#8fd694");
+        /* a stem, so it reads as a plant standing in a field rather than a shape */
+        const mouth = toWorld(b, [0, 0, 0]);
+        poly(
+          [
+            vAdd(mouth, [-0.05, 0, 0]),
+            vAdd(mouth, [0.05, 0, 0]),
+            vAdd([mouth[0] + 0.05, 0, mouth[2]], [0, 0, 0]),
+            vAdd([mouth[0] - 0.05, 0, mouth[2]], [0, 0, 0]),
+          ],
+          "#4a5a3e",
+        );
+      }
 
-      // ------------------------------------------------------------- drawing
+      /* ---------------------------------------------------------------- bee */
+      function bodyPoint(pose, s, phi) {
+        const r = P.bodyRadius(bee, s);
+        const lat = vCrs(pose.f, pose.u);
+        return vAdd(
+          vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen)),
+          vAdd(vMul(pose.u, r * Math.cos(phi)), vMul(lat, r * Math.sin(phi))),
+        );
+      }
+      function drawBee(pose, pollen, t) {
+        for (let i = 0; i <= 26; i++) {
+          const s = i / 26;
+          const r = P.bodyRadius(bee, s);
+          const c = vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen));
+          const dark = s < 0.16 ? 0.5 : Math.floor(s * 7) % 2 ? 0.42 : 0.95;
+          ball(c, r, shade("#c8a24a", dark));
+        }
+        // wings — a blur pair, beating
+        const lat = vCrs(pose.f, pose.u);
+        const beat = Math.sin(t * 34) * 0.5;
+        for (const sgn of [-1, 1]) {
+          const root = vAdd(pose.p, vMul(pose.f, -0.3 * bee.bodyLen));
+          const tip = vAdd(
+            vAdd(root, vMul(lat, sgn * 1.15)),
+            vMul(pose.u, 0.35 + beat * 0.5),
+          );
+          poly(
+            [
+              root,
+              tip,
+              vAdd(tip, vMul(pose.f, -0.42)),
+              vAdd(root, vMul(pose.f, -0.16)),
+            ],
+            "rgba(226,236,246,0.20)",
+          );
+        }
+        /* pollen sits at the model's own (s, phi) — this is the whole claim of
+         * the project, drawn rather than tabulated */
+        for (const g of pollen) ball(bodyPoint(pose, g.s, g.phi), 0.075, g.col);
+      }
+
+      // ------------------------------------------------------------ the model
+      let GENS = []; // per generation: {pop, flowers, bases, sites, anc, places, sep, ancVar}
+      let frame = 0,
+        playing = false,
+        raf = null,
+        t0 = 0;
+
+      const RING_R = 7.4;
+      function baseFor(i, n) {
+        const th = (i / n) * TAU;
+        const origin = [Math.cos(th) * RING_R, 0, Math.sin(th) * RING_R];
+        /* flowers lean outward from vertical: upright enough to read as standing,
+         * tilted enough that the camera sees into the throat */
+        const axis = vUnit([Math.cos(th) * 0.42, -1, Math.sin(th) * 0.42]);
+        return basis(axis, origin);
+      }
+
+      function buildRun() {
+        const n = Math.max(4, +$("n").value | 0);
+        const seed = +$("seed").value | 0;
+        const gens = Math.max(2, +$("gens").value | 0);
+        const targetD = +$("d").value;
+        const randomMating = $("mode").value === "random";
+
+        const opts = { ...I.DEFAULTS, randomMating };
+        const rng = E.makeRng(seed);
+        const srng = I.signalRng(seed);
+        const built = I.foundTwoLineages(n, rng, srng, targetD, opts);
+        if (!built)
+          throw new Error(
+            "could not found two lineages at that separation — try a smaller d or another seed",
+          );
+
+        /* ⚠️ The generation loop is driven HERE rather than through run(), because
+         * run() returns only summary history and this page needs every generation's
+         * GENOMES to draw the flowers. It is the same loop — same step(), same rng
+         * order — and tests/browser-bundle.test.js asserts it reproduces run()
+         * exactly, so the picture cannot drift from the published numbers. */
+        let pop = built.pop;
+        const out = [];
+        for (let g = 0; g < gens; g++) {
+          if (pop.length < 2) break;
+          const anc = pop.map((ind) => (ind.anc === undefined ? 0 : ind.anc));
+          const res = I.step(pop, opts, rng, g, srng);
+          out.push({
+            pop,
+            anc,
+            flowers: pop.map((ind) => E.toFlower(I.shapeOf(ind))),
+            sites: I.sitesOf(pop, opts, g),
+            places: res.places,
+            sep: res.cluster ? res.cluster.separation : 0,
+            ancVar: res.ancVar,
+          });
+          pop = res.pop;
+        }
+        return { gens: out, realised: built.realised, n };
+      }
+
+      // ----------------------------------------------------------- rendering
+      function draw(ts) {
+        const G = GENS[frame];
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        if (!G) return;
+        const t = (ts - t0) / 1000;
+
+        // ground ring
+        for (let i = 0; i < 64; i++) {
+          const a0 = (i / 64) * TAU,
+            a1 = ((i + 1) / 64) * TAU;
+          poly(
+            [
+              [
+                Math.cos(a0) * RING_R * 1.28,
+                -0.02,
+                Math.sin(a0) * RING_R * 1.28,
+              ],
+              [
+                Math.cos(a1) * RING_R * 1.28,
+                -0.02,
+                Math.sin(a1) * RING_R * 1.28,
+              ],
+              [
+                Math.cos(a1) * RING_R * 0.55,
+                -0.02,
+                Math.sin(a1) * RING_R * 0.55,
+              ],
+              [
+                Math.cos(a0) * RING_R * 0.55,
+                -0.02,
+                Math.sin(a0) * RING_R * 0.55,
+              ],
+            ],
+            "rgba(255,255,255,0.022)",
+          );
+        }
+
+        const n = G.flowers.length;
+        for (let i = 0; i < n; i++)
+          drawFlower(G.flowers[i], baseFor(i, n), ancHex(G.anc[i]));
+
+        /* the bee works a SAMPLE of the bout: a few flowers per generation, in
+         * order round the ring, carrying pollen picked up from each */
+        const VISITS = Math.min(6, n);
+        const period = 1.15;
+        const k = Math.floor(t / period) % VISITS;
+        const frac = (t % period) / period;
+        const stride = Math.max(1, Math.floor(n / VISITS));
+        const from = baseFor((k * stride) % n, n);
+        const to = baseFor(((k + 1) * stride) % n, n);
+        const hoverA = vAdd(from.origin, [0, 2.6, 0]);
+        const hoverB = vAdd(to.origin, [0, 2.6, 0]);
+        const e = ease(frac);
+        const pos = vAdd(lerp3(hoverA, hoverB, e), [
+          0,
+          Math.sin(frac * Math.PI) * 1.5,
+          0,
+        ]);
+        const fwd = vUnit(vSub(hoverB, hoverA));
+        const pose = { p: pos, f: fwd, u: [0, 1, 0] };
+
+        /* pollen carried: the anther sites of the flowers already worked this
+         * pass, coloured by the donor's ancestry */
+        const pollen = [];
+        for (let v = 0; v <= k; v++) {
+          const idx = (v * stride) % n;
+          const ss = G.sites[idx];
+          if (!ss || !ss.anther) continue;
+          const col = ancHex(G.anc[idx]);
+          for (
+            let q = 0;
+            q < ss.anther.length;
+            q += Math.ceil(ss.anther.length / 14) || 1
+          )
+            pollen.push({ s: ss.anther[q].s, phi: ss.anther[q].phi, col });
+        }
+        drawBee(pose, pollen, t);
+        flush();
+
+        ctx.fillStyle = "#9aa0a8";
+        ctx.font = "12px system-ui";
+        ctx.fillText(
+          `generation ${frame} · bee working flower ${((k * stride) % n) + 1} of ${n} (a sample of the bout)`,
+          14,
+          cv.height - 14,
+        );
+
+        if (playing) raf = requestAnimationFrame(draw);
+      }
 
       function drawMap(g) {
-        const W = 1180,
-          H = 420,
-          L = 54,
-          R = 18,
-          T = 16,
-          B = 34;
-        map.clearRect(0, 0, W, H);
-        const x = (s) => L + ((s + 0.08) / 1.16) * (W - L - R);
-        const y = (phi) => T + ((phi + Math.PI) / TAU) * (H - T - B);
-
-        // region bands
-        map.font = "11px system-ui";
-        REGIONS.forEach((r, i) => {
-          map.fillStyle =
-            i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.015)";
-          map.fillRect(x(r.s0), T, x(r.s1) - x(r.s0), H - T - B);
-          map.fillStyle = "#6a7078";
-          map.fillText(r.name, x(r.s0) + 5, H - B + 14);
-        });
-
-        // dorsal / lateral / ventral guides — the faces the model actually names
-        [
-          [-Math.PI, "ventral"],
-          [-Math.PI / 4, ""],
-          [0, "dorsal"],
-          [Math.PI / 4, ""],
-          [Math.PI, "ventral"],
-        ].forEach(([phi, label]) => {
-          map.strokeStyle = label
-            ? "rgba(255,255,255,0.16)"
-            : "rgba(255,255,255,0.06)";
-          map.beginPath();
-          map.moveTo(L, y(phi));
-          map.lineTo(W - R, y(phi));
-          map.stroke();
-          if (label) {
-            map.fillStyle = "#6a7078";
-            map.fillText(label, 6, y(phi) + 4);
-          }
-        });
-
-        if (!RUN) return;
-        const h = RUN.history[g];
-        if (!h || !h.places) return;
-
-        // faint trail of the previous generation, so movement is visible at a glance
-        const prev = g > 0 ? RUN.history[g - 1] : null;
-        if (prev && prev.places)
-          prev.places.forEach((p, i) => {
-            if (!p) return;
-            map.fillStyle = ancColour(prev.anc[i] ?? 0, 0.18);
-            map.beginPath();
-            map.arc(x(p.s), y(p.phi), 3, 0, TAU);
-            map.fill();
-          });
-
-        h.places.forEach((p, i) => {
-          if (!p) return;
-          map.fillStyle = ancColour(h.anc[i] ?? 0, 0.95);
-          map.beginPath();
-          map.arc(x(p.s), y(p.phi), 5.2, 0, TAU);
-          map.fill();
-        });
-      }
-
-      function drawBody(g) {
-        const W = 1180,
-          H = 190,
-          L = 54,
-          R = 18,
-          MID = H / 2;
-        body.clearRect(0, 0, W, H);
-        const x = (s) => L + ((s + 0.08) / 1.16) * (W - L - R);
-        const SC = 150; // body radii are in bodyLen units; scale to pixels
-
-        // silhouette from the region table
-        body.beginPath();
-        for (let s = 0; s <= 1.0001; s += 0.005)
-          body.lineTo(x(s), MID - radiusAt(s) * SC);
-        for (let s = 1; s >= -0.0001; s -= 0.005)
-          body.lineTo(x(s), MID + radiusAt(s) * SC);
-        body.closePath();
-        body.fillStyle = "rgba(255,255,255,0.05)";
-        body.fill();
-        body.strokeStyle = "rgba(255,255,255,0.20)";
-        body.stroke();
-
-        body.fillStyle = "#6a7078";
-        body.font = "11px system-ui";
-        body.fillText("dorsal", 6, MID - 52);
-        body.fillText("ventral", 6, MID + 58);
-
-        if (!RUN) return;
-        const h = RUN.history[g];
-        if (!h || !h.places) return;
-        h.places.forEach((p, i) => {
-          if (!p) return;
-          // phi = 0 is dorsal, so cos(phi) puts it at the top of the silhouette
-          const yy = MID - Math.cos(p.phi) * radiusAt(p.s) * SC;
-          body.fillStyle = ancColour(h.anc[i] ?? 0, 0.9);
-          body.beginPath();
-          body.arc(x(p.s), yy, 4, 0, TAU);
-          body.fill();
-        });
-      }
-
-      function drawTrace(g) {
-        const W = 1180,
-          H = 180,
-          L = 54,
-          R = 18,
+        const W = 760,
+          H = 260,
+          L = 46,
+          R = 12,
           T = 12,
           B = 26;
-        trace.clearRect(0, 0, W, H);
-        if (!RUN) return;
-        const hs = RUN.history;
-        const x = (i) => L + (i / Math.max(1, hs.length - 1)) * (W - L - R);
-
-        const maxSep = Math.max(1e-6, ...hs.map((r) => r.separation || 0));
-        const maxAnc = Math.max(1e-6, ...hs.map((r) => r.ancVar || 0));
-        const yFor = (v, max) => T + (1 - v / max) * (H - T - B);
-
-        const series = [
-          ["separation", (r) => r.separation || 0, maxSep, "#6fbf73"],
-          ["ancestry variance", (r) => r.ancVar || 0, maxAnc, "#cc6699"],
-        ];
-        series.forEach(([label, get, max, col], k) => {
-          trace.strokeStyle = col;
-          trace.lineWidth = 1.6;
-          trace.beginPath();
-          hs.forEach((r, i) => {
-            const xx = x(i),
-              yy = yFor(get(r), max);
-            i ? trace.lineTo(xx, yy) : trace.moveTo(xx, yy);
-          });
-          trace.stroke();
-          trace.fillStyle = col;
-          trace.font = "11px system-ui";
-          trace.fillText(label, L + 6 + k * 130, T + 12);
+        mapC.clearRect(0, 0, W, H);
+        const x = (s) => L + ((s + 0.08) / 1.16) * (W - L - R);
+        const y = (phi) => T + ((phi + Math.PI) / TAU) * (H - T - B);
+        mapC.font = "10px system-ui";
+        P.DEFAULT_BEE.regions.forEach((r, i) => {
+          mapC.fillStyle =
+            i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.014)";
+          mapC.fillRect(x(r.s0), T, x(r.s1) - x(r.s0), H - T - B);
+          mapC.fillStyle = "#6a7078";
+          mapC.fillText(r.name, x(r.s0) + 4, H - B + 13);
         });
-
-        trace.strokeStyle = "rgba(255,255,255,0.45)";
-        trace.lineWidth = 1;
-        trace.beginPath();
-        trace.moveTo(x(g), T);
-        trace.lineTo(x(g), H - B);
-        trace.stroke();
-        trace.fillStyle = "#6a7078";
-        trace.fillText("generation →", L, H - 8);
+        const G = GENS[g];
+        if (!G) return;
+        G.places.forEach((p, i) => {
+          if (!p) return;
+          mapC.fillStyle = ancHex(G.anc[i]);
+          mapC.beginPath();
+          mapC.arc(x(p.s), y(p.phi), 4.4, 0, TAU);
+          mapC.fill();
+        });
       }
 
-      /* the fate classes the experiments use, so the words on screen match the words
-       * in the docs rather than being invented for the renderer */
       function fateOf(g) {
-        const h = RUN.history[g];
-        const v0 = RUN.history[0].ancVar;
-        const m =
-          h.anc && h.anc.length
-            ? h.anc.reduce((a, b) => a + b, 0) / h.anc.length
-            : 0.5;
-        if (h.ancVar > 0.4 * v0) return ["HELD", "var(--ok)"];
+        const G = GENS[g],
+          v0 = GENS[0].ancVar;
+        const m = G.anc.reduce((a, b) => a + b, 0) / G.anc.length;
+        if (G.ancVar > 0.4 * v0) return ["HELD", "var(--ok)"];
         if (m < 0.15 || m > 0.85) return ["one lineage lost", "var(--bad)"];
         return ["FUSED", "var(--bad)"];
       }
@@ -466,113 +697,102 @@
       function show(g) {
         frame = g;
         drawMap(g);
-        drawBody(g);
-        drawTrace(g);
-        const h = RUN.history[g];
-        $("sGen").textContent = `${g} / ${RUN.history.length - 1}`;
-        $("sSep").textContent = (h.separation ?? 0).toFixed(2);
-        $("sAnc").textContent = (h.ancVar ?? 0).toFixed(4);
-        $("sSpread").textContent = (h.spread ?? 0).toFixed(2);
-        const [word, col] = fateOf(g);
-        $("sFate").textContent = word;
-        $("sFate").style.color = col;
+        const G = GENS[g];
+        $("sGen").textContent = `${g} / ${GENS.length - 1}`;
+        $("sSep").textContent = G.sep.toFixed(2);
+        $("sAnc").textContent = G.ancVar.toFixed(4);
+        const [w, c] = fateOf(g);
+        $("sFate").textContent = w;
+        $("sFate").style.color = c;
         $("scrub").value = g;
+        if (!playing) {
+          t0 = performance.now();
+          draw(performance.now());
+        }
       }
 
-      // ------------------------------------------------------------- running
+      function stopPlay() {
+        playing = false;
+        $("play").textContent = "Play";
+        if (raf) cancelAnimationFrame(raf);
+        raf = null;
+      }
 
-      function doRun() {
+      $("run").onclick = () => {
         $("status").textContent = "running…";
         $("run").disabled = true;
-        stop();
-        // yield so the status paints before the synchronous run blocks the thread
+        stopPlay();
         setTimeout(() => {
           try {
-            const n = Math.max(4, +$("n").value | 0);
-            const seed = +$("seed").value | 0;
-            const gens = Math.max(2, +$("gens").value | 0);
-            const targetD = +$("d").value;
-            const randomMating = $("mode").value === "random";
-
-            const rng = E.makeRng(seed);
-            const srng = I.signalRng(seed);
-            const built = I.foundTwoLineages(n, rng, srng, targetD, I.DEFAULTS);
-            if (!built)
-              throw new Error(
-                "could not found two lineages at that separation — try a smaller d or another seed",
-              );
-            const out = I.run({
-              n,
-              generations: gens,
-              seed,
-              found: built.pop,
-              trace: true,
-              randomMating,
-            });
-            RUN = { history: out.history, realised: built.realised };
-
-            $("scrub").max = out.history.length - 1;
+            const R = buildRun();
+            GENS = R.gens;
+            $("scrub").max = GENS.length - 1;
             $("scrub").disabled = false;
             $("play").disabled = false;
             $("status").textContent =
-              `realised separation ${built.realised.toFixed(2)} (asked ${targetD})` +
-              (randomMating ? " · random-mating null" : "");
-            selfCheck();
+              `realised separation ${R.realised.toFixed(2)}` +
+              ($("mode").value === "random" ? " · random-mating null" : "");
+            const drawn = GENS.map((G) => G.places.filter(Boolean).length);
+            const mis = GENS.filter(
+              (G) => G.places.length !== G.anc.length,
+            ).length;
+            $("selfcheck").innerHTML =
+              `${GENS.length} generations · flowers drawn ${GENS[0].flowers.length}` +
+              ` · placements ${Math.min(...drawn)}–${Math.max(...drawn)}` +
+              (mis
+                ? ` · <span class="warn">${mis} generations misaligned</span>`
+                : " · placement/ancestry aligned throughout");
+            t0 = performance.now();
             show(0);
           } catch (err) {
             $("status").innerHTML = `<span class="warn">${err.message}</span>`;
-            RUN = null;
+            GENS = [];
           } finally {
             $("run").disabled = false;
           }
         }, 30);
-      }
+      };
 
-      /* ⚠️ A renderer that silently draws nothing looks identical to a population that
-       * legitimately has nothing to draw. This reports what actually reached the
-       * canvas, so an empty frame is visibly an empty frame. */
-      function selfCheck() {
-        const hs = RUN.history;
-        const drawn = hs.map((h) => (h.places || []).filter(Boolean).length);
-        const anc = hs.map((h) => (h.anc || []).length);
-        const bad = hs.filter(
-          (h, i) => (h.places || []).length !== (h.anc || []).length,
-        ).length;
-        $("selfcheck").innerHTML =
-          `Drawn per generation: min ${Math.min(...drawn)}, max ${Math.max(...drawn)} placements` +
-          ` · ancestry labels ${Math.min(...anc)}–${Math.max(...anc)}` +
-          (bad
-            ? ` · <span class="warn">${bad} generations where placements and ancestry labels are not aligned — colours would be wrong</span>`
-            : " · placement/ancestry indices aligned in every generation");
-      }
-
-      function stop() {
-        playing = false;
-        $("play").textContent = "Play";
-        if (timer) clearInterval(timer);
-        timer = null;
-      }
-
-      $("run").onclick = doRun;
       $("scrub").oninput = (e) => {
-        stop();
         show(+e.target.value);
       };
       $("play").onclick = () => {
-        if (!RUN) return;
-        if (playing) return stop();
+        if (!GENS.length) return;
+        if (playing) return stopPlay();
         playing = true;
         $("play").textContent = "Pause";
-        timer = setInterval(() => {
-          if (!RUN) return stop();
-          const next = frame + 1;
-          if (next >= RUN.history.length) return stop();
-          show(next);
-        }, 260);
+        t0 = performance.now();
+        raf = requestAnimationFrame(draw);
+        clearInterval(window.__gen);
+        window.__gen = setInterval(() => {
+          if (!playing) return clearInterval(window.__gen);
+          if (frame + 1 >= GENS.length) {
+            stopPlay();
+            clearInterval(window.__gen);
+            return;
+          }
+          show(frame + 1);
+        }, 1600);
       };
 
-      drawMap(0);
-      drawBody(0);
+      // orbit
+      let drag = null;
+      cv.onpointerdown = (e) => {
+        drag = { x: e.clientX, y: e.clientY };
+        cv.setPointerCapture(e.pointerId);
+      };
+      cv.onpointermove = (e) => {
+        if (!drag) return;
+        yaw += (e.clientX - drag.x) * 0.006;
+        pitch = Math.max(
+          -0.15,
+          Math.min(1.2, pitch + (e.clientY - drag.y) * 0.004),
+        );
+        drag = { x: e.clientX, y: e.clientY };
+        if (!playing) draw(performance.now());
+      };
+      cv.onpointerup = () => (drag = null);
+
       $("status").textContent = "press Run";
     </script>
   </body>
