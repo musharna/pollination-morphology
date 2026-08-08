@@ -119,6 +119,32 @@ test("a traced run gives the renderer aligned, in-range points to draw", () => {
   assert.ok(drawnMin > 0, "some generation had nothing to draw at all");
 });
 
+/* ------------------------------------------- the page's own script parses */
+
+/* ⚠️ A syntax error in population.html's inline script is a BLANK PAGE with the
+ * message only in the devtools console — the exact failure mode that shipped
+ * twice already. `new Function` parses without executing, so this catches it
+ * without needing a browser or a DOM. */
+test("population.html's inline script parses", () => {
+  const html = fs.readFileSync(
+    path.join(__dirname, "..", "population.html"),
+    "utf8",
+  );
+  const blocks = [
+    ...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g),
+  ];
+  assert.ok(
+    blocks.length > 0,
+    "no inline script found — did the page change shape?",
+  );
+  for (const [, src] of blocks) {
+    assert.doesNotThrow(
+      () => new Function(src),
+      "population.html's inline script does not parse — the page would be blank",
+    );
+  }
+});
+
 /* ------------------------------- the page drives step() — prove it IS run() */
 
 /* ⚠️ population.html cannot use run(): it needs every generation's GENOMES to

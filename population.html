@@ -315,10 +315,16 @@
       ];
 
       /* ------------------------------------------------------------- camera */
+      /* ⚠️ PITCH IS LOAD-BEARING, not taste. Near side-on the corolla tube sits
+       * NEARER the camera than the lobes behind it, so painter's ordering draws
+       * the tube over every near petal and each flower loses half its bloom —
+       * it reads as a barrel with three far-side petals stuck on. Looking down
+       * into the flowers puts the whole ring of lobes around the mouth, which is
+       * how a flower bed is actually seen. Found by rendering it and looking. */
       let yaw = 0.5,
-        pitch = 0.42,
-        camDist = 26;
-      const camTarget = [0, 1.2, 0];
+        pitch = 0.86,
+        camDist = 24;
+      const camTarget = [0, 0.6, 0];
       function project(p) {
         const d = vSub(p, camTarget);
         const cy = Math.cos(yaw),
@@ -418,6 +424,96 @@
       /* ------------------------------------------------------------- flowers */
       const T_STEPS = 9,
         TH_STEPS = 14;
+      const LIGHT = vUnit([-0.35, 0.8, 0.5]);
+      const U_STEPS = 6,
+        V_STEPS = 7;
+
+      /* ⚠️⚠️ THE PETALS, AND THEIR ABSENCE IS WHY THE FIRST FIELD DID NOT LOOK
+       * LIKE FLOWERS AT ALL. visit.html's drawFlower calls FOUR more things
+       * after the tube loop — nectarGuides, corollaLobes, platform, organs — and
+       * I copied only the tube. A bare corolla tube is a horn. The lobes are the
+       * flower.
+       *
+       * Six narrower lobes with about half visit.html's backward reflex, because
+       * its five strongly-reflexed lobes read correctly SIDE-ON — the only view
+       * that page ever uses — but present as two raised arms and a round head
+       * when seen from above, which is the only way a field can be shown. */
+      function corollaLobes(f, b, tint) {
+        const N = 6;
+        const fr = P.axisFrame(f, 0);
+        const base = P.axisAt(f, 0);
+        const wOf = (v) =>
+          Math.pow(Math.sin(Math.PI * (0.16 + 0.84 * v)), 0.62);
+        const pt = (ang, v) => {
+          const rr = P.tubeRadius(f, 0, ang);
+          const flare = 1 + 1.35 * v * (0.55 + 0.45 * v);
+          const back = -(0.12 * v + 0.34 * v * v);
+          const cup = 0.13 * Math.sin(Math.PI * v);
+          const loc = [0, 0, 0];
+          for (let k = 0; k < 3; k++)
+            loc[k] =
+              base[k] +
+              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) *
+                rr *
+                (flare + cup) +
+              fr.fwd[k] * back;
+          return toWorld(b, loc);
+        };
+        for (let i = 0; i < N; i++) {
+          const c = (i / N) * TAU + 0.3;
+          const halfw = Math.PI / N - 0.045;
+          for (let vi = 0; vi < V_STEPS; vi++) {
+            const v0 = vi / V_STEPS,
+              v1 = (vi + 1) / V_STEPS;
+            const w0 = halfw * wOf(v0),
+              w1 = halfw * wOf(v1);
+            for (let ui = 0; ui < U_STEPS; ui++) {
+              const u0 = -1 + (2 * ui) / U_STEPS,
+                u1 = -1 + (2 * (ui + 1)) / U_STEPS;
+              const q = [
+                pt(c + u0 * w0, v0),
+                pt(c + u0 * w1, v1),
+                pt(c + u1 * w1, v1),
+                pt(c + u1 * w0, v0),
+              ];
+              const nrm = vUnit(vCrs(vSub(q[1], q[0]), vSub(q[3], q[0])));
+              const lam = 0.55 + 0.45 * Math.abs(vDot(nrm, LIGHT));
+              const col = shade(tint, lam * (1 - 0.12 * v0));
+              poly(q, col, { stroke: col, sw: 1 });
+            }
+          }
+        }
+      }
+
+      /* the landing platform — the ventral lip a bee actually sets down on */
+      function platform(f, b) {
+        const { platformLen, platformAngle } = P.polarityTraits(f);
+        if (platformLen < 0.03) return;
+        const fr = P.axisFrame(f, 0);
+        const base = P.axisAt(f, 0);
+        const point = (ang, ext) => {
+          const rr = P.tubeRadius(f, 0, ang) * (1 - 0.25 * ext);
+          const loc = [0, 0, 0];
+          for (let k = 0; k < 3; k++)
+            loc[k] =
+              base[k] +
+              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) *
+                rr -
+              fr.dorsal[k] * ext * platformAngle -
+              fr.fwd[k] * ext * platformLen;
+          return toWorld(b, loc);
+        };
+        const N = 10;
+        for (let j = 0; j < N; j++) {
+          const a0 = Math.PI - 1.15 + (2.3 * j) / N,
+            a1 = Math.PI - 1.15 + (2.3 * (j + 1)) / N;
+          poly(
+            [point(a0, 0), point(a0, 1), point(a1, 1), point(a1, 0)],
+            "#c3b18e",
+          );
+        }
+      }
+
       function drawFlower(f, b, tint) {
         const view = camForward();
         for (let i = 0; i < T_STEPS; i++) {
@@ -436,7 +532,13 @@
             ];
             /* longitudinal section: drop the near half so the throat is visible */
             if (vDot(dirWorld(b, nLocal), view) < 0.02) continue;
-            const k = 0.58 + 0.34 * ((1 + Math.cos(am)) / 2) - 0.14 * tm;
+            /* ⚠️ THE THROAT MUST BE DARKER THAN THE LOBES. visit.html uses two
+             * colours — pale #d9cdb0 lobes against a #b9a583 throat — and that
+             * contrast is the only thing separating them. Painting both with one
+             * ancestry tint made every near petal dissolve into the tube it
+             * overlaps, so the bloom looked half-missing. */
+            const k =
+              (0.58 + 0.34 * ((1 + Math.cos(am)) / 2) - 0.14 * tm) * 0.62;
             const cq = shade(tint, k);
             poly(
               [
@@ -450,20 +552,11 @@
             );
           }
         }
+        platform(f, b);
+        corollaLobes(f, b, tint);
         /* the two organs, which are the whole point — where pollen leaves and lands */
         ball(toWorld(b, P.antherPoint(f)), 0.15, "#f4e08a");
         ball(toWorld(b, P.stigmaPoint(f)), 0.13, "#8fd694");
-        /* a stem, so it reads as a plant standing in a field rather than a shape */
-        const mouth = toWorld(b, [0, 0, 0]);
-        poly(
-          [
-            vAdd(mouth, [-0.05, 0, 0]),
-            vAdd(mouth, [0.05, 0, 0]),
-            vAdd([mouth[0] + 0.05, 0, mouth[2]], [0, 0, 0]),
-            vAdd([mouth[0] - 0.05, 0, mouth[2]], [0, 0, 0]),
-          ],
-          "#4a5a3e",
-        );
       }
 
       /* ---------------------------------------------------------------- bee */
@@ -514,14 +607,24 @@
         raf = null,
         t0 = 0;
 
-      const RING_R = 7.4;
+      /* ⚠️ A RING WAS WRONG TWICE OVER. It leaves a dead hole in the middle of
+       * the frame, and it implies spatial structure the default IBM does not
+       * have — this population is PANMICTIC, every plant equally able to
+       * exchange with every other. A filled patch on golden-angle spacing reads
+       * as a stand of plants without asserting a geometry the model never used.
+       *
+       * The flowers also stand UPRIGHT. Leaning them outward tipped the near
+       * half away from the camera so their own tubes hid their own lobes. */
+      const PATCH_R = 8.6;
+      const GOLDEN = Math.PI * (3 - Math.sqrt(5));
       function baseFor(i, n) {
-        const th = (i / n) * TAU;
-        const origin = [Math.cos(th) * RING_R, 0, Math.sin(th) * RING_R];
-        /* flowers lean outward from vertical: upright enough to read as standing,
-         * tilted enough that the camera sees into the throat */
-        const axis = vUnit([Math.cos(th) * 0.42, -1, Math.sin(th) * 0.42]);
-        return basis(axis, origin);
+        const th = i * GOLDEN;
+        const rad = PATCH_R * Math.sqrt((i + 0.5) / n);
+        return basis(vUnit([0, -1, 0]), [
+          Math.cos(th) * rad,
+          0,
+          Math.sin(th) * rad,
+        ]);
       }
 
       function buildRun() {
@@ -572,34 +675,18 @@
         if (!G) return;
         const t = (ts - t0) / 1000;
 
-        // ground ring
-        for (let i = 0; i < 64; i++) {
-          const a0 = (i / 64) * TAU,
-            a1 = ((i + 1) / 64) * TAU;
+        // ground — a disc under the patch, not a ring
+        for (let i = 0; i < 48; i++) {
+          const a0 = (i / 48) * TAU,
+            a1 = ((i + 1) / 48) * TAU;
+          const rr = PATCH_R * 1.22;
           poly(
             [
-              [
-                Math.cos(a0) * RING_R * 1.28,
-                -0.02,
-                Math.sin(a0) * RING_R * 1.28,
-              ],
-              [
-                Math.cos(a1) * RING_R * 1.28,
-                -0.02,
-                Math.sin(a1) * RING_R * 1.28,
-              ],
-              [
-                Math.cos(a1) * RING_R * 0.55,
-                -0.02,
-                Math.sin(a1) * RING_R * 0.55,
-              ],
-              [
-                Math.cos(a0) * RING_R * 0.55,
-                -0.02,
-                Math.sin(a0) * RING_R * 0.55,
-              ],
+              [0, -0.02, 0],
+              [Math.cos(a0) * rr, -0.02, Math.sin(a0) * rr],
+              [Math.cos(a1) * rr, -0.02, Math.sin(a1) * rr],
             ],
-            "rgba(255,255,255,0.022)",
+            "rgba(255,255,255,0.020)",
           );
         }
 
