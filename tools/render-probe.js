@@ -62,7 +62,7 @@ const dirWorld = (b, p) => [
  * into the flowers puts the whole ring of lobes around the mouth, which is how
  * a flower bed is actually seen. */
 let yaw = 0.5,
-  pitch = 0.86,
+  pitch = 0.62,
   camDist = 26,
   camTarget = [0, 1.2, 0],
   scale = 900;
@@ -95,11 +95,16 @@ const camForward = () => {
 };
 
 const items = [];
-function poly(pts, col) {
+function poly(pts, col, zForce) {
   const ps = pts.map(project);
   if (ps.some((q) => !q)) return;
+  /* ⚠️ zForce exists because painter's algorithm FAILS on the ground plane. A
+   * triangle running from the centre to the far rim spans enormous depth, so its
+   * average z lands NEARER than the flowers standing on it and it paints over
+   * the entire scene. Large background geometry has to be pinned behind
+   * everything rather than sorted with it. */
   items.push({
-    z: ps.reduce((a, q) => a + q.z, 0) / ps.length,
+    z: zForce == null ? ps.reduce((a, q) => a + q.z, 0) / ps.length : zForce,
     pts: ps.map((q) => [q.x, q.y]),
     fill: col,
   });
@@ -302,7 +307,8 @@ if (mode === "one") {
   const f = { ...P.DEFAULT_FLOWER };
   drawFlower(f, basis([-1, 0, 0], [0, 0, 0]), "#e8b23a", 22, 30);
 } else {
-  /* the ring exactly as population.html lays it out */
+  /* the whole composed scene, as the page draws it: ground, the patch, and the
+   * bee carrying pollen — so the COMPOSITION can be judged, not just a flower */
   const seed = 3,
     n = 18;
   const built = I.foundTwoLineages(
@@ -322,14 +328,67 @@ if (mode === "one") {
    * away from the camera so their tubes hid their own lobes. */
   const R = 8.6;
   const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+
+  /* ⚠️ GROUND FIRST, AND AT THE RIGHT HEIGHT. The corolla hangs BELOW its mouth,
+   * so a ground plane at y=0 with the mouths at y=0 puts every flower
+   * underground. Plants stand ON the ground: mouth at STEM_H, corolla hanging to
+   * STEM_H - axisLen, stem from there to zero. */
+  const GROUND = "#20281c";
+  for (let i = 0; i < 40; i++) {
+    const a0 = (i / 40) * 2 * Math.PI,
+      a1 = ((i + 1) / 40) * 2 * Math.PI;
+    const rr = R * 1.5;
+    poly(
+      [
+        [0, 0, 0],
+        [Math.cos(a0) * rr, 0, Math.sin(a0) * rr],
+        [Math.cos(a1) * rr, 0, Math.sin(a1) * rr],
+      ],
+      GROUND,
+      1e9,
+    );
+  }
+
+  const stemAt = (x, z, top, tint) => {
+    /* a stem, and two leaves — SCENE DRESSING, not model output. The model has
+     * no stem; plants do. Drawn so the flowers stand in a place instead of
+     * floating in a void, and labelled as dressing wherever it is described. */
+    const w = 0.075;
+    poly(
+      [
+        [x - w, 0, z],
+        [x + w, 0, z],
+        [x + w, top, z],
+        [x - w, top, z],
+      ],
+      "#3f5a35",
+    );
+    for (const sgn of [-1, 1]) {
+      const y0 = top * (0.34 + 0.16 * (sgn > 0 ? 1 : 0));
+      poly(
+        [
+          [x, y0, z],
+          [x + sgn * 0.75, y0 + 0.3, z + sgn * 0.3],
+          [x + sgn * 1.05, y0 + 0.12, z + sgn * 0.1],
+          [x + sgn * 0.55, y0 - 0.16, z - sgn * 0.06],
+        ],
+        "#4a6b3c",
+      );
+    }
+  };
+
   built.pop.forEach((ind, i) => {
     const th = i * GOLDEN;
     const rad = R * Math.sqrt((i + 0.5) / n);
-    const b = basis(vUnit([0, -1, 0]), [
-      Math.cos(th) * rad,
-      0,
-      Math.sin(th) * rad,
-    ]);
+    const f0 = E.toFlower(I.shapeOf(ind));
+    /* ⚠️ HEIGHT IS DERIVED FROM A REAL GENE (axisLen), not sprinkled randomly —
+     * a longer corolla stands taller. Random jitter would be inventing variation
+     * the model does not have. */
+    const H = 3.6 + 0.9 * (f0.axisLen - 1.8);
+    const x = Math.cos(th) * rad,
+      z = Math.sin(th) * rad;
+    stemAt(x, z, Math.max(0.4, H - f0.axisLen * 0.92));
+    const b = basis(vUnit([0, -1, 0]), [x, H, z]);
     drawFlower(
       E.toFlower(I.shapeOf(ind)),
       b,
@@ -338,6 +397,74 @@ if (mode === "one") {
       14,
     );
   });
+
+  /* the bee, hovering over one flower with a load of that flower's pollen */
+  const bee = P.DEFAULT_BEE;
+  const idx = 4;
+  const th = idx * GOLDEN;
+  const rad = R * Math.sqrt((idx + 0.5) / n);
+  /* ⚠️ Hovering INSIDE the patch the animal was invisible — a speck occluded by
+   * every bloom around it. It has to clear the canopy to read at all. */
+  const pose = {
+    p: [-5.4, 8.2, 5.6],
+    f: vUnit([0.72, -0.5, -0.48]),
+    u: [0, 1, 0],
+  };
+  const bodyPoint = (s, phi) => {
+    const rr = P.bodyRadius(bee, s);
+    const lat = vCrs(pose.f, pose.u);
+    return vAdd(
+      vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen)),
+      vAdd(vMul(pose.u, rr * Math.cos(phi)), vMul(lat, rr * Math.sin(phi))),
+    );
+  };
+  for (let i = 0; i <= 26; i++) {
+    const s = i / 26;
+    const rr = P.bodyRadius(bee, s);
+    const c = vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen));
+    const dark = s < 0.16 ? 0.5 : Math.floor(s * 7) % 2 ? 0.42 : 0.95;
+    ball(c, rr, shade("#c8a24a", dark));
+  }
+  /* ⚠️ ONE grey quad per side did not read as an animal at all — it looked like
+   * a paper tag stuck to a bean. Bees have TWO wings a side, and it is the pale
+   * fan against a dark body that says "insect". Plus antennae, which are most of
+   * what makes a head read as a head. */
+  const lat = vCrs(pose.f, pose.u);
+  for (const sgn of [-1, 1]) {
+    for (const [off, len, spread, col] of [
+      [0.22, 1.45, 0.55, "#cfe0ee"],
+      [0.34, 1.05, 0.95, "#b9cddd"],
+    ]) {
+      const root = vAdd(pose.p, vMul(pose.f, -off * bee.bodyLen));
+      const tip = vAdd(
+        vAdd(root, vMul(lat, sgn * len)),
+        vAdd(vMul(pose.u, 0.42), vMul(pose.f, -spread * 0.5)),
+      );
+      poly(
+        [
+          root,
+          vAdd(tip, vMul(pose.f, 0.16)),
+          tip,
+          vAdd(root, vMul(pose.f, -0.3)),
+        ],
+        col,
+      );
+    }
+    /* antennae */
+    const head = vAdd(pose.p, vMul(pose.f, 0.02));
+    const atip = vAdd(
+      vAdd(head, vMul(pose.f, 0.55)),
+      vAdd(vMul(lat, sgn * 0.3), vMul(pose.u, 0.34)),
+    );
+    poly([head, atip, vAdd(atip, vMul(pose.u, -0.07))], "#2b2b2b");
+  }
+  const ss = I.sitesOf(built.pop, I.DEFAULTS, 0)[idx];
+  for (
+    let q = 0;
+    q < ss.anther.length;
+    q += Math.ceil(ss.anther.length / 14) || 1
+  )
+    ball(bodyPoint(ss.anther[q].s, ss.anther[q].phi), 0.075, "#f4e08a");
 }
 
 items.sort((a, b) => b.z - a.z);

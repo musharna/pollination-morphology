@@ -322,9 +322,11 @@
        * into the flowers puts the whole ring of lobes around the mouth, which is
        * how a flower bed is actually seen. Found by rendering it and looking. */
       let yaw = 0.5,
-        pitch = 0.86,
-        camDist = 24;
-      const camTarget = [0, 0.6, 0];
+        pitch = 0.62,
+        camDist = 26;
+      /* the plants now STAND, so the camera looks at the canopy rather than at
+       * the ground the mouths used to sit on */
+      const camTarget = [0, 3.0, 0];
       function project(p) {
         const d = vSub(p, camTarget);
         const cy = Math.cos(yaw),
@@ -576,24 +578,41 @@
           const dark = s < 0.16 ? 0.5 : Math.floor(s * 7) % 2 ? 0.42 : 0.95;
           ball(c, r, shade("#c8a24a", dark));
         }
-        // wings — a blur pair, beating
+        /* ⚠️ ONE translucent quad per side did not read as an animal — it looked
+         * like a paper tag stuck to a bean. Bees have TWO wings a side, and it
+         * is the pale fan against a dark striped body that says "insect".
+         * Antennae do most of the rest of the work of making a head a head. */
         const lat = vCrs(pose.f, pose.u);
         const beat = Math.sin(t * 34) * 0.5;
         for (const sgn of [-1, 1]) {
-          const root = vAdd(pose.p, vMul(pose.f, -0.3 * bee.bodyLen));
-          const tip = vAdd(
-            vAdd(root, vMul(lat, sgn * 1.15)),
-            vMul(pose.u, 0.35 + beat * 0.5),
+          for (const [off, len, sweep, col] of [
+            [0.22, 1.45, 0.55, "rgba(214,230,244,0.62)"],
+            [0.34, 1.05, 0.95, "rgba(186,208,226,0.52)"],
+          ]) {
+            const root = vAdd(pose.p, vMul(pose.f, -off * bee.bodyLen));
+            const tip = vAdd(
+              vAdd(root, vMul(lat, sgn * len)),
+              vAdd(
+                vMul(pose.u, 0.34 + beat * 0.35),
+                vMul(pose.f, -sweep * 0.5),
+              ),
+            );
+            poly(
+              [
+                root,
+                vAdd(tip, vMul(pose.f, 0.16)),
+                tip,
+                vAdd(root, vMul(pose.f, -0.3)),
+              ],
+              col,
+            );
+          }
+          const head = vAdd(pose.p, vMul(pose.f, 0.02));
+          const atip = vAdd(
+            vAdd(head, vMul(pose.f, 0.55)),
+            vAdd(vMul(lat, sgn * 0.3), vMul(pose.u, 0.34)),
           );
-          poly(
-            [
-              root,
-              tip,
-              vAdd(tip, vMul(pose.f, -0.42)),
-              vAdd(root, vMul(pose.f, -0.16)),
-            ],
-            "rgba(226,236,246,0.20)",
-          );
+          poly([head, atip, vAdd(atip, vMul(pose.u, -0.07))], "#2b2b2b");
         }
         /* pollen sits at the model's own (s, phi) — this is the whole claim of
          * the project, drawn rather than tabulated */
@@ -617,14 +636,53 @@
        * half away from the camera so their own tubes hid their own lobes. */
       const PATCH_R = 8.6;
       const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-      function baseFor(i, n) {
+
+      /* ⚠️ THE COROLLA HANGS BELOW ITS MOUTH, so putting the mouths at ground
+       * level buries every flower. Plants stand ON the ground: the mouth sits at
+       * a height, the corolla hangs from it, and a stem runs from there down to
+       * zero. Height is derived from axisLen — a REAL GENE, so a longer corolla
+       * stands taller — rather than random jitter, which would invent variation
+       * the model does not have. */
+      function baseFor(i, n, f) {
         const th = i * GOLDEN;
         const rad = PATCH_R * Math.sqrt((i + 0.5) / n);
+        const H = 3.6 + 0.9 * ((f ? f.axisLen : 2.2) - 1.8);
         return basis(vUnit([0, -1, 0]), [
           Math.cos(th) * rad,
-          0,
+          H,
           Math.sin(th) * rad,
         ]);
+      }
+
+      /* ⚠️ SCENE DRESSING, NOT MODEL OUTPUT. The model has no stem and no leaf;
+       * plants have both, and without them the flowers float in a void and the
+       * whole thing reads as a diagram of specimens rather than a stand of
+       * plants. Drawn because it is true of plants, and flagged here so nobody
+       * later mistakes it for something the simulation computed. */
+      function stemUnder(origin, top) {
+        const [x, , z] = origin;
+        const w = 0.075;
+        poly(
+          [
+            [x - w, 0, z],
+            [x + w, 0, z],
+            [x + w, top, z],
+            [x - w, top, z],
+          ],
+          "#3f5a35",
+        );
+        for (const sgn of [-1, 1]) {
+          const y0 = top * (sgn > 0 ? 0.5 : 0.34);
+          poly(
+            [
+              [x, y0, z],
+              [x + sgn * 0.75, y0 + 0.3, z + sgn * 0.3],
+              [x + sgn * 1.05, y0 + 0.12, z + sgn * 0.1],
+              [x + sgn * 0.55, y0 - 0.16, z - sgn * 0.06],
+            ],
+            "#4a6b3c",
+          );
+        }
       }
 
       function buildRun() {
@@ -675,24 +733,33 @@
         if (!G) return;
         const t = (ts - t0) / 1000;
 
-        // ground — a disc under the patch, not a ring
-        for (let i = 0; i < 48; i++) {
-          const a0 = (i / 48) * TAU,
-            a1 = ((i + 1) / 48) * TAU;
-          const rr = PATCH_R * 1.22;
+        /* ⚠️ GROUND IS PINNED BEHIND EVERYTHING. Painter's algorithm FAILS on it:
+         * a triangle running from the centre to the far rim spans enormous
+         * depth, so its average z lands NEARER than the flowers standing on it
+         * and it paints over the whole scene. Measured — the first attempt
+         * rendered a dark ellipse and nothing else. */
+        for (let i = 0; i < 44; i++) {
+          const a0 = (i / 44) * TAU,
+            a1 = ((i + 1) / 44) * TAU;
+          const rr = PATCH_R * 1.5;
           poly(
             [
-              [0, -0.02, 0],
-              [Math.cos(a0) * rr, -0.02, Math.sin(a0) * rr],
-              [Math.cos(a1) * rr, -0.02, Math.sin(a1) * rr],
+              [0, 0, 0],
+              [Math.cos(a0) * rr, 0, Math.sin(a0) * rr],
+              [Math.cos(a1) * rr, 0, Math.sin(a1) * rr],
             ],
-            "rgba(255,255,255,0.020)",
+            "#20281c",
+            { z: 1e9 },
           );
         }
 
         const n = G.flowers.length;
-        for (let i = 0; i < n; i++)
-          drawFlower(G.flowers[i], baseFor(i, n), ancHex(G.anc[i]));
+        for (let i = 0; i < n; i++) {
+          const f = G.flowers[i];
+          const b = baseFor(i, n, f);
+          stemUnder(b.origin, Math.max(0.4, b.origin[1] - f.axisLen * 0.92));
+          drawFlower(f, b, ancHex(G.anc[i]));
+        }
 
         /* the bee works a SAMPLE of the bout: a few flowers per generation, in
          * order round the ring, carrying pollen picked up from each */
@@ -701,10 +768,14 @@
         const k = Math.floor(t / period) % VISITS;
         const frac = (t % period) / period;
         const stride = Math.max(1, Math.floor(n / VISITS));
-        const from = baseFor((k * stride) % n, n);
-        const to = baseFor(((k + 1) * stride) % n, n);
-        const hoverA = vAdd(from.origin, [0, 2.6, 0]);
-        const hoverB = vAdd(to.origin, [0, 2.6, 0]);
+        const iFrom = (k * stride) % n,
+          iTo = ((k + 1) * stride) % n;
+        const from = baseFor(iFrom, n, G.flowers[iFrom]);
+        const to = baseFor(iTo, n, G.flowers[iTo]);
+        /* ⚠️ Hovering inside the canopy the animal is a speck occluded by every
+         * bloom around it. It has to clear the flower tops to read at all. */
+        const hoverA = vAdd(from.origin, [0, 2.0, 0]);
+        const hoverB = vAdd(to.origin, [0, 2.0, 0]);
         const e = ease(frac);
         const pos = vAdd(lerp3(hoverA, hoverB, e), [
           0,
