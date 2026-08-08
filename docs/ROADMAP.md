@@ -217,15 +217,23 @@ placement-mediated mating is untouched by BAL and exclusion still vanishes.
 [detail](2026-08-07-bal-replication.md)
 
 ⬜ **THE NORTHSTAR QUESTION THIS LEAVES: can a minority advantage be DERIVED from pollination rather
-than IMPOSED?** Both routes this roadmap named at the head of section B are now spent — a second
-limiting factor is **not available by the pollinator route**, and NFD on placement is **self-defeating
-on a CONTINUOUS axis** because rare-bias pours visits onto the intermediate that bridges the clusters.
-The live candidate is the discrete-vs-continuous distinction this roadmap already drew when deception
-split the ADVERTISEMENT and not the plant: **make the placement axis discrete from the animal's own body
-geometry** — pollinaria attach to head, thorax and abdomen with real gaps between them — which removes
-the intermediate that defeats rare-bias **without imposing the split**. ⚠️ The trap to avoid is the one
-the per-lineage quota fell into: discreteness must EMERGE from the body morphology already in
-`sim/placement.js`, not be imposed as two bins, or it assumes the answer.
+than IMPOSED?** ⚠️ **FIVE ROUTES ARE NOW SPENT, not the two this paragraph used to claim** — and the
+first four all attacked the SAME THING, visitation or attraction:
+
+| route                                | attacked     | outcome                                             |
+| ------------------------------------ | ------------ | --------------------------------------------------- |
+| second limiting factor (#24/#26)     | visitation   | not available by the pollinator route               |
+| NFD on placement (#25/#27)           | visitation   | self-defeating — rare-bias subsidises the bridge    |
+| learned avoidance (#22)              | attraction   | splits the ADVERTISEMENT, not the plant             |
+| discreteness from geometry (#33/#37) | the axis     | axis CONNECTED; and the morphology premise refuted  |
+| reproductive assurance (#38)         | MATE-FINDING | INADMISSIBLE — indistinguishable from total selfing |
+
+The candidate this paragraph used to name as live — **make the placement axis discrete from the
+animal's own body geometry** — is CLOSED, twice over: the axis is connected (below), and the
+morphology that would justify a constricted plan does not hold for the pollinator being modelled.
+⚠️ The trap it was written to avoid still stands for anything that replaces it: discreteness must
+EMERGE from the body morphology already in `sim/placement.js`, not be imposed as two bins, or it
+assumes the answer.
 
 ⚠️⚠️ **THE PREMISE OF THAT PROPOSAL WAS MEASURED 2026-08-07, AND IT FAILS: THE AXIS IS CONNECTED.**
 The cheap version — that the existing geometry already supplies discreteness, since `DEFAULT_BEE` is a
@@ -266,6 +274,32 @@ Sphecidae and be read as an answer about the orchid system. Unblocked by a thynn
 Zootaxa revision (not accessed), a micro-CT radius profile, or an explicit re-scope to Sphecidae with
 the orchid framing dropped. ⚠️ NOT established: that a thynnine waist leaves the axis connected — there
 is no measurement either way. [detail](2026-08-07-wasp-waist-premise.md)
+
+⚠️⚠️ **REPRODUCTIVE ASSURANCE — THE FIRST CANDIDATE TO ATTACK MATE-FINDING ITSELF, AND IT IS
+INADMISSIBLE (2026-08-07).** The four routes above all attacked visitation or attraction, but `:111`
+already localised the constraint in MATE-FINDING. Selfing removes the need for a partner: offered to
+both morphs on identical terms with no quota, it can only pay where partners are missing, which is
+more often the rare morph, and it carries inbreeding depression so it can fail.
+✅ **The specificity control passed exactly** — receipt exponent 0.828 ± 0.506, IDENTICAL across all
+seven arms, since selfing acts at the mother draw strictly downstream of the bout.
+❌ On the pre-registered unpaired comparison the intervals overlap (baseline 0.366 ± 0.152 against
+0.019 ± 0.312). The PAIRED delta does exclude 0 at −0.347 ± 0.286 — ⚠️ but that test was chosen AFTER
+seeing the overlap, so it is post hoc.
+⛔ **AND IT FAILS BOTH GATES THE PRE-REGISTRATION WROTE BEFORE THE RUN.** Admissibility: selfing vs the
+full-selfing control is **0.013 ± 0.251, INDISTINGUISHABLE** — a rate-0.5 arm that behaves like total
+selfing IS total selfing. Attribution: selfing vs `floorOnly` is **−0.175 ± 0.263, spanning 0** — about
+half the movement is maternal-weight FLATTENING, not selfing.
+⚠️⚠️ **Both gates were in the prereg and NEITHER was implemented in the first verdict**, which would
+have printed the paired delta and walked past them. The prereg is the only reason an inadmissible
+positive became visible rather than publishable.
+⚠️ **The published 0.70 screen COULD NOT have scored this**: `perCapita` stops at receipt and selfing is
+strictly downstream, so reusing it would have guaranteed a null for reasons unrelated to the biology.
+Any future candidate acting at or after mating needs its own realised-reproduction estimator.
+⚠️ POST HOC and UNTESTED: single-generation lineage extinction runs 8/40 baseline, 1/40 selfing, 6/40
+floorOnly, 14/40 at full cost. Suggestive of a selfing-specific rescue; no significance test applied.
+⬜ **Open:** whether a SMALLER rate sits in a window that is both admissible and effective. The prereg
+asked for a sweep and this run tested ONE rate — ⚠️ but the two gates squeeze from opposite directions,
+so the window may not exist. [detail](2026-08-07-selfing.md) · [prereg](2026-08-07-selfing-prereg.md)
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
