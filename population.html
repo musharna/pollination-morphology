@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Two lineages on one bee — watching the split fail</title>
+    <style>
+      :root {
+        --bg: #16181c;
+        --panel: #1e2127;
+        --rule: #2f343d;
+        --ink: #e8e6e1;
+        --ink-2: #9aa0a8;
+        --gold: #e8b23a;
+        --mag: #cc6699;
+        --ok: #6fbf73;
+        --bad: #d9704f;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.5 "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        padding: 22px 20px 60px;
+      }
+      #wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.42rem;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      header p {
+        margin: 0 0 16px;
+        color: var(--ink-2);
+        max-width: 82ch;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        background: #101216;
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+      }
+      .row {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+      }
+      .ctl {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .ctl label {
+        font-size: 12px;
+        color: var(--ink-2);
+        letter-spacing: 0.02em;
+      }
+      input[type="number"],
+      select {
+        background: #12141a;
+        color: var(--ink);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        padding: 5px 7px;
+        font: inherit;
+        width: 92px;
+      }
+      button {
+        background: #262a32;
+        color: var(--ink);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        padding: 6px 14px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #2f343d;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        padding: 12px 14px;
+        margin: 14px 0;
+      }
+      .stats {
+        display: flex;
+        gap: 26px;
+        flex-wrap: wrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat b {
+        display: block;
+        font-size: 1.22rem;
+        font-weight: 600;
+      }
+      .stat span {
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .key {
+        display: flex;
+        gap: 18px;
+        font-size: 12px;
+        color: var(--ink-2);
+        margin-top: 8px;
+      }
+      .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 5px;
+      }
+      #scrub {
+        width: 100%;
+      }
+      .note {
+        font-size: 13px;
+        color: var(--ink-2);
+        max-width: 82ch;
+      }
+      .warn {
+        color: var(--bad);
+      }
+      code {
+        background: #12141a;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrap">
+      <header>
+        <h1>Two lineages on one bee — watching the split fail</h1>
+        <p>
+          Every plant is drawn where
+          <em>its pollen actually lands on the animal</em>. Two lineages are
+          founded a chosen distance apart on the body and then left alone.
+          Placement is never a gene — it is computed from flower shape each
+          generation, so what you are watching is the model's own geometry, not
+          a scripted animation. The question the whole project turns on is
+          visible here: do the two clouds stay apart, or drift together?
+        </p>
+      </header>
+
+      <div class="panel">
+        <div class="row">
+          <div class="ctl">
+            <label for="seed">seed</label
+            ><input type="number" id="seed" value="3" />
+          </div>
+          <div class="ctl">
+            <label for="d">separation d</label
+            ><input type="number" id="d" value="8" step="1" />
+          </div>
+          <div class="ctl">
+            <label for="n">plants</label
+            ><input type="number" id="n" value="24" />
+          </div>
+          <div class="ctl">
+            <label for="gens">generations</label
+            ><input type="number" id="gens" value="30" />
+          </div>
+          <div class="ctl">
+            <label for="mode">mating</label>
+            <select id="mode">
+              <option value="real">placement-mediated</option>
+              <option value="random">random (the null)</option>
+            </select>
+          </div>
+          <button id="run">Run</button>
+          <button id="play" disabled>Play</button>
+          <span id="status" class="note"></span>
+        </div>
+      </div>
+
+      <canvas id="map" width="1180" height="420"></canvas>
+      <div class="key">
+        <span><i class="dot" style="background: #e8b23a"></i>lineage A</span>
+        <span><i class="dot" style="background: #cc6699"></i>lineage B</span>
+        <span
+          ><i class="dot" style="background: #e8e6e1"></i>intermediate ancestry
+          (hybrids)</span
+        >
+        <span
+          >x = along the body (nose → tail) · y = around the body (dorsal /
+          lateral / ventral)</span
+        >
+      </div>
+
+      <canvas
+        id="body"
+        width="1180"
+        height="190"
+        style="margin-top: 14px"
+      ></canvas>
+
+      <div class="panel">
+        <input type="range" id="scrub" min="0" max="0" value="0" disabled />
+        <div class="stats" style="margin-top: 10px">
+          <div class="stat"><b id="sGen">—</b><span>generation</span></div>
+          <div class="stat">
+            <b id="sSep">—</b><span>cluster separation</span>
+          </div>
+          <div class="stat">
+            <b id="sAnc">—</b><span>ancestry variance</span>
+          </div>
+          <div class="stat">
+            <b id="sSpread">—</b><span>placement spread</span>
+          </div>
+          <div class="stat"><b id="sFate">—</b><span>fate</span></div>
+        </div>
+      </div>
+
+      <canvas id="trace" width="1180" height="180"></canvas>
+      <p class="note" style="margin-top: 8px">
+        Ancestry variance is the honest read on whether the lineages are still
+        distinct: it starts high with two pure founders and falls as they
+        interbreed. Separation can stay high while ancestry collapses — two
+        clusters made of the same mixed stock. That gap is exactly what the
+        tracer was added to catch.
+      </p>
+      <p id="selfcheck" class="note"></p>
+    </div>
+
+    <!-- ⚠️ ONE bundle, not six <script> tags. Classic scripts share a single
+         global lexical scope and the sim modules collide on twelve top-level
+         names, so loading them individually is a SyntaxError before anything
+         runs. The bundle gives each module its own scope; the model files are
+         untouched. Regenerate with `node tools/build-browser-bundle.js`;
+         tests/browser-bundle.test.js fails if it goes stale. -->
+    <script src="sim/browser-bundle.js"></script>
+    <script>
+      const I = window.IBM;
+      const P = window.Placement;
+      const E = window.Evolve;
+
+      const $ = (id) => document.getElementById(id);
+      const map = $("map").getContext("2d");
+      const body = $("body").getContext("2d");
+      const trace = $("trace").getContext("2d");
+
+      const REGIONS = P.DEFAULT_BEE.regions;
+      const TAU = Math.PI * 2;
+
+      /* radius profile, read off the SAME region table the contact model uses rather
+       * than redrawn by hand — if the body plan changes, this follows it */
+      function radiusAt(s) {
+        const c = Math.min(Math.max(s, 0), 1);
+        for (const r of REGIONS)
+          if (c >= r.s0 && c <= r.s1) {
+            const k = (c - r.s0) / (r.s1 - r.s0);
+            return r.r0 + (r.r1 - r.r0) * k;
+          }
+        return REGIONS[REGIONS.length - 1].r1;
+      }
+
+      /* ancestry 0 = lineage A (gold), 1 = lineage B (magenta), between = hybrid.
+       * Intermediates are deliberately pale rather than a blend, so a population
+       * going uniformly grey READS as fusion instead of as a third colour. */
+      function ancColour(a, alpha = 1) {
+        const A = [232, 178, 58];
+        const B = [204, 102, 153];
+        const mixToWhite = 1 - Math.abs(a - 0.5) * 2; // 0 at pure, 1 at 50/50
+        const base = a < 0.5 ? A : B;
+        const c = base.map((v) =>
+          Math.round(v + (232 - v) * mixToWhite * 0.85),
+        );
+        return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+      }
+
+      let RUN = null; // {history, realised}
+      let frame = 0;
+      let playing = false;
+      let timer = null;
+
+      // ------------------------------------------------------------- drawing
+
+      function drawMap(g) {
+        const W = 1180,
+          H = 420,
+          L = 54,
+          R = 18,
+          T = 16,
+          B = 34;
+        map.clearRect(0, 0, W, H);
+        const x = (s) => L + ((s + 0.08) / 1.16) * (W - L - R);
+        const y = (phi) => T + ((phi + Math.PI) / TAU) * (H - T - B);
+
+        // region bands
+        map.font = "11px system-ui";
+        REGIONS.forEach((r, i) => {
+          map.fillStyle =
+            i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.015)";
+          map.fillRect(x(r.s0), T, x(r.s1) - x(r.s0), H - T - B);
+          map.fillStyle = "#6a7078";
+          map.fillText(r.name, x(r.s0) + 5, H - B + 14);
+        });
+
+        // dorsal / lateral / ventral guides — the faces the model actually names
+        [
+          [-Math.PI, "ventral"],
+          [-Math.PI / 4, ""],
+          [0, "dorsal"],
+          [Math.PI / 4, ""],
+          [Math.PI, "ventral"],
+        ].forEach(([phi, label]) => {
+          map.strokeStyle = label
+            ? "rgba(255,255,255,0.16)"
+            : "rgba(255,255,255,0.06)";
+          map.beginPath();
+          map.moveTo(L, y(phi));
+          map.lineTo(W - R, y(phi));
+          map.stroke();
+          if (label) {
+            map.fillStyle = "#6a7078";
+            map.fillText(label, 6, y(phi) + 4);
+          }
+        });
+
+        if (!RUN) return;
+        const h = RUN.history[g];
+        if (!h || !h.places) return;
+
+        // faint trail of the previous generation, so movement is visible at a glance
+        const prev = g > 0 ? RUN.history[g - 1] : null;
+        if (prev && prev.places)
+          prev.places.forEach((p, i) => {
+            if (!p) return;
+            map.fillStyle = ancColour(prev.anc[i] ?? 0, 0.18);
+            map.beginPath();
+            map.arc(x(p.s), y(p.phi), 3, 0, TAU);
+            map.fill();
+          });
+
+        h.places.forEach((p, i) => {
+          if (!p) return;
+          map.fillStyle = ancColour(h.anc[i] ?? 0, 0.95);
+          map.beginPath();
+          map.arc(x(p.s), y(p.phi), 5.2, 0, TAU);
+          map.fill();
+        });
+      }
+
+      function drawBody(g) {
+        const W = 1180,
+          H = 190,
+          L = 54,
+          R = 18,
+          MID = H / 2;
+        body.clearRect(0, 0, W, H);
+        const x = (s) => L + ((s + 0.08) / 1.16) * (W - L - R);
+        const SC = 150; // body radii are in bodyLen units; scale to pixels
+
+        // silhouette from the region table
+        body.beginPath();
+        for (let s = 0; s <= 1.0001; s += 0.005)
+          body.lineTo(x(s), MID - radiusAt(s) * SC);
+        for (let s = 1; s >= -0.0001; s -= 0.005)
+          body.lineTo(x(s), MID + radiusAt(s) * SC);
+        body.closePath();
+        body.fillStyle = "rgba(255,255,255,0.05)";
+        body.fill();
+        body.strokeStyle = "rgba(255,255,255,0.20)";
+        body.stroke();
+
+        body.fillStyle = "#6a7078";
+        body.font = "11px system-ui";
+        body.fillText("dorsal", 6, MID - 52);
+        body.fillText("ventral", 6, MID + 58);
+
+        if (!RUN) return;
+        const h = RUN.history[g];
+        if (!h || !h.places) return;
+        h.places.forEach((p, i) => {
+          if (!p) return;
+          // phi = 0 is dorsal, so cos(phi) puts it at the top of the silhouette
+          const yy = MID - Math.cos(p.phi) * radiusAt(p.s) * SC;
+          body.fillStyle = ancColour(h.anc[i] ?? 0, 0.9);
+          body.beginPath();
+          body.arc(x(p.s), yy, 4, 0, TAU);
+          body.fill();
+        });
+      }
+
+      function drawTrace(g) {
+        const W = 1180,
+          H = 180,
+          L = 54,
+          R = 18,
+          T = 12,
+          B = 26;
+        trace.clearRect(0, 0, W, H);
+        if (!RUN) return;
+        const hs = RUN.history;
+        const x = (i) => L + (i / Math.max(1, hs.length - 1)) * (W - L - R);
+
+        const maxSep = Math.max(1e-6, ...hs.map((r) => r.separation || 0));
+        const maxAnc = Math.max(1e-6, ...hs.map((r) => r.ancVar || 0));
+        const yFor = (v, max) => T + (1 - v / max) * (H - T - B);
+
+        const series = [
+          ["separation", (r) => r.separation || 0, maxSep, "#6fbf73"],
+          ["ancestry variance", (r) => r.ancVar || 0, maxAnc, "#cc6699"],
+        ];
+        series.forEach(([label, get, max, col], k) => {
+          trace.strokeStyle = col;
+          trace.lineWidth = 1.6;
+          trace.beginPath();
+          hs.forEach((r, i) => {
+            const xx = x(i),
+              yy = yFor(get(r), max);
+            i ? trace.lineTo(xx, yy) : trace.moveTo(xx, yy);
+          });
+          trace.stroke();
+          trace.fillStyle = col;
+          trace.font = "11px system-ui";
+          trace.fillText(label, L + 6 + k * 130, T + 12);
+        });
+
+        trace.strokeStyle = "rgba(255,255,255,0.45)";
+        trace.lineWidth = 1;
+        trace.beginPath();
+        trace.moveTo(x(g), T);
+        trace.lineTo(x(g), H - B);
+        trace.stroke();
+        trace.fillStyle = "#6a7078";
+        trace.fillText("generation →", L, H - 8);
+      }
+
+      /* the fate classes the experiments use, so the words on screen match the words
+       * in the docs rather than being invented for the renderer */
+      function fateOf(g) {
+        const h = RUN.history[g];
+        const v0 = RUN.history[0].ancVar;
+        const m =
+          h.anc && h.anc.length
+            ? h.anc.reduce((a, b) => a + b, 0) / h.anc.length
+            : 0.5;
+        if (h.ancVar > 0.4 * v0) return ["HELD", "var(--ok)"];
+        if (m < 0.15 || m > 0.85) return ["one lineage lost", "var(--bad)"];
+        return ["FUSED", "var(--bad)"];
+      }
+
+      function show(g) {
+        frame = g;
+        drawMap(g);
+        drawBody(g);
+        drawTrace(g);
+        const h = RUN.history[g];
+        $("sGen").textContent = `${g} / ${RUN.history.length - 1}`;
+        $("sSep").textContent = (h.separation ?? 0).toFixed(2);
+        $("sAnc").textContent = (h.ancVar ?? 0).toFixed(4);
+        $("sSpread").textContent = (h.spread ?? 0).toFixed(2);
+        const [word, col] = fateOf(g);
+        $("sFate").textContent = word;
+        $("sFate").style.color = col;
+        $("scrub").value = g;
+      }
+
+      // ------------------------------------------------------------- running
+
+      function doRun() {
+        $("status").textContent = "running…";
+        $("run").disabled = true;
+        stop();
+        // yield so the status paints before the synchronous run blocks the thread
+        setTimeout(() => {
+          try {
+            const n = Math.max(4, +$("n").value | 0);
+            const seed = +$("seed").value | 0;
+            const gens = Math.max(2, +$("gens").value | 0);
+            const targetD = +$("d").value;
+            const randomMating = $("mode").value === "random";
+
+            const rng = E.makeRng(seed);
+            const srng = I.signalRng(seed);
+            const built = I.foundTwoLineages(n, rng, srng, targetD, I.DEFAULTS);
+            if (!built)
+              throw new Error(
+                "could not found two lineages at that separation — try a smaller d or another seed",
+              );
+            const out = I.run({
+              n,
+              generations: gens,
+              seed,
+              found: built.pop,
+              trace: true,
+              randomMating,
+            });
+            RUN = { history: out.history, realised: built.realised };
+
+            $("scrub").max = out.history.length - 1;
+            $("scrub").disabled = false;
+            $("play").disabled = false;
+            $("status").textContent =
+              `realised separation ${built.realised.toFixed(2)} (asked ${targetD})` +
+              (randomMating ? " · random-mating null" : "");
+            selfCheck();
+            show(0);
+          } catch (err) {
+            $("status").innerHTML = `<span class="warn">${err.message}</span>`;
+            RUN = null;
+          } finally {
+            $("run").disabled = false;
+          }
+        }, 30);
+      }
+
+      /* ⚠️ A renderer that silently draws nothing looks identical to a population that
+       * legitimately has nothing to draw. This reports what actually reached the
+       * canvas, so an empty frame is visibly an empty frame. */
+      function selfCheck() {
+        const hs = RUN.history;
+        const drawn = hs.map((h) => (h.places || []).filter(Boolean).length);
+        const anc = hs.map((h) => (h.anc || []).length);
+        const bad = hs.filter(
+          (h, i) => (h.places || []).length !== (h.anc || []).length,
+        ).length;
+        $("selfcheck").innerHTML =
+          `Drawn per generation: min ${Math.min(...drawn)}, max ${Math.max(...drawn)} placements` +
+          ` · ancestry labels ${Math.min(...anc)}–${Math.max(...anc)}` +
+          (bad
+            ? ` · <span class="warn">${bad} generations where placements and ancestry labels are not aligned — colours would be wrong</span>`
+            : " · placement/ancestry indices aligned in every generation");
+      }
+
+      function stop() {
+        playing = false;
+        $("play").textContent = "Play";
+        if (timer) clearInterval(timer);
+        timer = null;
+      }
+
+      $("run").onclick = doRun;
+      $("scrub").oninput = (e) => {
+        stop();
+        show(+e.target.value);
+      };
+      $("play").onclick = () => {
+        if (!RUN) return;
+        if (playing) return stop();
+        playing = true;
+        $("play").textContent = "Pause";
+        timer = setInterval(() => {
+          if (!RUN) return stop();
+          const next = frame + 1;
+          if (next >= RUN.history.length) return stop();
+          show(next);
+        }, 260);
+      };
+
+      drawMap(0);
+      drawBody(0);
+      $("status").textContent = "press Run";
+    </script>
+  </body>
+</html>
