@@ -243,13 +243,29 @@ accept would flip all four plans and still pass it — so the filter has its own
 FAIL at a relaxed threshold rather than assumed to work.
 ⚠️ The four plans could not have differed: `checks.js` builds them all with `scaleBee`, so they share
 s-boundaries by construction. The enumeration is EXHAUSTED, not sampled.
-⬜ **So a discrete axis is now a MODELLING CHOICE, not a measurement.** The control shows a genuine
-constriction does produce a disconnected axis, and that is defensible morphology (Apocrita are named
-for the wasp waist; _Platanthera_ uses proboscis vs eyes). But choosing a constricted body BECAUSE it
-delivers the needed discreteness is the per-lineage quota again. **The honest form: fix the constriction
-from published wasp morphometry, treat the reachability gap as a PREDICTION that follows, and only then
-ask whether exclusion changes. Tune the waist until exclusion moves and the result is the tuning.**
-[detail](2026-08-07-placement-reachability.md)
+⬜ **So a discrete axis is now a MODELLING CHOICE, not a measurement.** Choosing a constricted body
+BECAUSE it delivers the needed discreteness is the per-lineage quota again. The honest form: fix the
+constriction from published wasp morphometry, treat the reachability gap as a PREDICTION that follows,
+and only then ask whether exclusion changes. Tune the waist until exclusion moves and the result is the
+tuning. [detail](2026-08-07-placement-reachability.md)
+⚠️⚠️ **AND THE MORPHOLOGY CLAIM ABOVE WAS WRONG — CHECKED 2026-08-07 BEFORE BUILDING ANYTHING.** The
+line justifying the plan read _"that is defensible morphology (Apocrita are named for the wasp
+waist)"_. True, and it does not license the plan. **Every apocritan has the propodeal–metasomal
+constriction — that is what the name means — but an ELONGATED, thread-like petiole is a FAMILY-level
+character.** Sphecidae are literally thread-waisted wasps; **Thynninae, the pollinators this project
+models, are reported to LACK an elongated petiole.** The `PINCHED` control is r=0.02 against
+neighbours of ~0.42, a ~20:1 pinch — a sphecid caricature, not a thynnine. The sentence generalised
+from the name of the SUBORDER to the geometry of ONE FAMILY, and the taxon in between — the actual
+pollinator — was never checked.
+⚠️ **I could not source a published waist measurement for ANY flower-visiting wasp** (this repo, four
+searches, OpenAlex, and the full text of the two candidate measurement papers — which turn out to
+report petiole height/length and head width respectively, never waist width). Same wall as
+`2026-08-03-platanthera.md:127`: taxonomy does not publish the radius profile this model needs.
+**So: do NOT add the constricted plan to make the axis discrete** — it would answer a question about
+Sphecidae and be read as an answer about the orchid system. Unblocked by a thynnine waist from Brown's
+Zootaxa revision (not accessed), a micro-CT radius profile, or an explicit re-scope to Sphecidae with
+the orchid framing dropped. ⚠️ NOT established: that a thynnine waist leaves the axis connected — there
+is no measurement either way. [detail](2026-08-07-wasp-waist-premise.md)
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
