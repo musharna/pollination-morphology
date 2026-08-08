@@ -85,6 +85,17 @@ defensible morphology — Apocrita are named for the wasp waist, and _Platanther
 attaches pollinaria to proboscis versus eyes, which are discrete structures, not
 points on a continuum.
 
+⚠️⚠️ **RETRACTED 2026-08-07 — the middle clause of that paragraph does not hold.**
+"Apocrita are named for the wasp waist" is true of the constriction and NOT of the
+pinch this control uses. Every apocritan has the propodeal–metasomal articulation;
+an **elongated, thread-like petiole is a family-level character** — Sphecidae have
+it, and **Thynninae, the pollinators modelled here, are reported to lack it**. The
+`PINCHED` plan is r=0.02 against ~0.42 neighbours, a ~20:1 pinch: a sphecid
+caricature, not a thynnine. The argument generalised from the name of the suborder
+to the geometry of one family, skipping the taxon in between. The _Platanthera_
+half of the sentence stands — proboscis versus eyes really are discrete.
+[detail](2026-08-07-wasp-waist-premise.md)
+
 ⚠️⚠️ **But it is a MODELLING CHOICE, and the trap is the one #30 already fell
 into.** Choosing a constricted body _because_ it delivers the discreteness the
 mechanism needs is close to the per-lineage quota #25 ruled out as
