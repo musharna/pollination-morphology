@@ -371,10 +371,25 @@ above ±0.2, after an earlier draft printed "✅ PREDICTION HELD" off ±0.417.
 the identical-morph control drift 0.976 → 1.133 → 1.228, and a control that cannot vary by
 construction but does is a broken harness. A locally foraging bee DIFFUSES, so mixing time scales as
 (ring/step)²; scaling visits accordingly flattens the control to 1.009/1.071.
-⬜ **Better next move than brute force:** measure boundary and interior plants SEPARATELY. The
-prediction is specifically about boundary dilution and interior plants should already sit at parity,
-so that tests the mechanism at 4/24 without needing large rings — brute force costs 9× per row.
-[detail](2026-08-02-patch-size.md)
+✅ **THE PENALTY IS COMPOSITION, NOT RARITY — measured separately 2026-08-07.** Boundary dilution
+depends on STRUCTURAL POSITION, not on which morph you carry, so it predicts BOTH sub-ratios at
+parity while the pooled ratio sits below 1 — refuted if either sub-ratio is clearly below 1. At 4/24,
+24 draws × 3 bout seeds: boundary **1.172 ± 0.457** and interior **0.878 ± 0.298** both span parity
+against a pooled **0.754 ± 0.234** that EXCLUDES 1. A rare plant and a common plant in the same
+structural position do equally well; the rare patch is penalised for being mostly boundary, since an
+arc of any length on a ring has exactly TWO boundary members (2 of 4 against 2 of 20).
+⚠️ **The control is a result in its own right** — boundary plants receive **0.570 ± 0.118** of
+interior per-capita transfer under local foraging and **1.085 ± 0.191** under global. That is the
+premise the whole patch-size prediction rested on, measured directly for the first time.
+⚠️⚠️ **Two guards would have passed on nothing.** The control first used the IDENTICAL-morph layout —
+but with no other morph present there is nothing to be diluted BY, so it had removed the mechanism it
+was certifying. And at 6 draws the verdict printed "✅ HELD" because _"both sub-ratios span 1"_ is
+satisfied automatically by intervals wide enough to span everything; a pooled ratio that does not
+exclude 1 now routes to UNDERPOWERED.
+⚠️ Spanning 1.0 is NOT proving parity — an interior penalty of ~10–15% would not have been detected,
+and nothing here says spatial structure produces an ADVANTAGE. It says the residual penalty is
+boundary composition, consistent with the ratio approaching 1 from below without crossing.
+[detail](2026-08-07-boundary-interior.md) · [patch-size](2026-08-02-patch-size.md)
 
 ⚠️ **THE COEXISTENCE DISCREPANCY IS NOT POLLINATOR NUMBER (2026-08-04).** The exclusion result
 predicts a pair past d=8 ends with ONE MEMBER LOST, yet orchid communities contain coexisting
