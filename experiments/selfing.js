@@ -43,7 +43,18 @@ const SEEDS = SMOKE ? [1, 2] : [1, 2, 3, 4, 5, 6, 7, 8];
 const SITE_N = SMOKE ? 50 : 160;
 const FREQS = SMOKE ? [0.25, 0.5, 0.75] : [0.1, 0.25, 0.5, 0.75, 0.9];
 const D_EXCL = 8;
-const RATE = 0.5;
+/*
+ * ⚠️ THE RATE IS NOW AN INPUT, defaulting to the 0.5 this experiment published.
+ * The pre-registration asked for a SWEEP and the 2026-08-07 run tested exactly
+ * one rate; roadmap :300 has carried that as an open item since. Rather than
+ * writing a second experiment that re-implements this one's estimator — the
+ * failure this project has already recorded, where a helper that recomputes the
+ * behaviour under test ends up testing the recomputation —
+ * experiments/selfing-sweep.js drives THIS file once per rate.
+ *
+ * The default is unchanged, so the published run reproduces bit-for-bit.
+ */
+const RATE = Number(process.env.SELF_RATE || 0.5);
 
 const optsAt = (extra = {}) => ({ ...I.DEFAULTS, siteN: SITE_N, ...extra });
 
@@ -466,3 +477,28 @@ console.log(
   "\n  ⚠️ The ALWAYS arm is a CONTROL, not a candidate: it severs mating from\n" +
     "  pollination entirely, so an exponent near 0 there is arithmetic, not biology.",
 );
+
+/*
+ * ---- machine-readable line, for experiments/selfing-sweep.js.
+ *
+ * ⚠️ EMITTED FROM THE SAME OBJECTS THE VERDICT ABOVE READS, so the sweep cannot
+ * disagree with a single-rate run of this file. The alternative — a sweep that
+ * re-implements the estimator and the gates — would be testing its own copy,
+ * which is exactly how this project once had two green tests over a step() that
+ * ignored the flag they claimed to exercise.
+ */
+if (process.env.SELF_JSON === "1") {
+  const pack = (d) => (d ? { m: d.m, h: d.h, n: d.n } : null);
+  console.log(
+    "##JSON## " +
+      JSON.stringify({
+        rate: RATE,
+        admissible: pack(admissible),
+        attribution: pack(attribution),
+        realised: pack(pairedDelta(`selfing rate=${RATE}`)),
+        lostTreat: treat ? treat.lost : null,
+        lostDead: dead ? dead.lost : null,
+        cells: CELLS,
+      }),
+  );
+}
