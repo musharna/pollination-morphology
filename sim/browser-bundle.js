@@ -2359,6 +2359,36 @@ const SIGNAL_GENE = "signal";
 const ALL_KEYS = [...GENE_KEYS, ANGLE_GENE, SIGNAL_GENE];
 
 /*
+ * FLOWERING TIME — the one assortment axis in this project that is genuinely
+ * INDEPENDENT OF PLACEMENT, and the roadmap has named it as such since the
+ * mechanism list was written.
+ *
+ * Every other candidate acted on where pollen lands or on what the animal wants
+ * to visit. Two plants that never flower together cannot exchange pollen
+ * whatever their shapes are, so this is assortment by a completely different
+ * route — and it is the textbook allochronic-speciation mechanism rather than
+ * something invented here.
+ *
+ * ⚠️ IT IS A GENE, and it is allowed to be one for the same reason the
+ * advertisement is: flowering time IS a floral trait with known genetics, not
+ * an outcome of two geometries meeting. `shapeOf` keeps it out of the contact
+ * model exactly as it keeps the signal out, and the same test applies — two
+ * individuals differing only in bloom must produce byte-identical placements.
+ *
+ * ⚠️ IT LIVES ON A RING. A season with ends would make the earliest and latest
+ * flowerers extreme by position rather than by biology, the same edge artefact
+ * the ring layout exists to avoid elsewhere. An annual cycle genuinely is
+ * circular, so this is the honest coordinate rather than a convenience.
+ *
+ * ⚠️ AND IT IS NOT IN ALL_KEYS. Adding a locus there would change the number of
+ * random draws every gamete makes and move every published IBM number. The
+ * bloom locus segregates from its OWN stream, only when phenology is switched
+ * on, so the default model is untouched — the same discipline the advertisement
+ * already uses one level up.
+ */
+const BLOOM_GENE = "bloom";
+
+/*
  * The linkage group for the supergene arm. Free recombination is the
  * conservative default everywhere in this model, but it is ALSO the thing most
  * likely to stop deception from ever reaching placement — a signal allele and an
@@ -2369,6 +2399,10 @@ const ALL_KEYS = [...GENE_KEYS, ANGLE_GENE, SIGNAL_GENE];
  * polytes), so the arm is a hypothesis about orchids, not a modelling flourish.
  */
 const LINK_GROUP = ["antherT", ANGLE_GENE, "antherProject", SIGNAL_GENE];
+
+/* The same three anther loci WITHOUT the advertisement — the group a flowering
+ * time can be tied to without also tying the signal to it. See gamete(). */
+const BLOOM_LINK_GROUP = ["antherT", ANGLE_GENE, "antherProject"];
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
@@ -2440,6 +2474,15 @@ function signalRng(seed) {
   return E.makeRng((seed * 2654435761) >>> 0 || 1);
 }
 
+/* The bloom locus's own stream, for the same reason the advertisement has one:
+ * switching phenology on must not silently re-roll every subsequent shape
+ * mutation and site draw, or the phenology arm and the control would differ in
+ * two things at once. A different multiplier so the two streams do not run in
+ * lockstep. */
+function bloomRng(seed) {
+  return E.makeRng((seed * 40503 + 12345) >>> 0 || 1);
+}
+
 /* Circular mean of two angles. A plain average is wrong at the wrap and would
  * put the offspring of two individuals straddling +/-pi at zero — i.e. exactly
  * opposite both parents, which is not what blending means. */
@@ -2501,19 +2544,32 @@ function gamete(ind, rng, rate, opts = {}) {
    * arm's rng stream is byte-identical to what it was before linkage existed and
    * every earlier IBM number still reproduces.
    */
-  const linked = opts.linkSignal ? LINK_GROUP : null;
+  /*
+   * ⚠️ TWO SUPERGENE ARMS, AND THEY MUST NOT DRAG EACH OTHER IN. `linkSignal`
+   * ties the ADVERTISEMENT to the anther loci; `linkBloom` ties FLOWERING TIME
+   * to them. Reusing one group for both would mean switching phenology's linked
+   * arm on silently linked the advertisement as well, so an experiment about
+   * flowering time would be running a deception arm it never asked for.
+   * BLOOM_LINK_GROUP is therefore the anther loci WITHOUT the signal.
+   */
+  const linked = opts.linkSignal
+    ? LINK_GROUP
+    : opts.linkBloom
+      ? BLOOM_LINK_GROUP
+      : null;
   /* Drawn up front rather than lazily: the signal locus is last in ALL_KEYS, and
    * a coin that only exists once an earlier group member has been visited would
-   * make correctness depend on key order. Only the supergene arm draws it, so
+   * make correctness depend on key order. Only the supergene arms draw it, so
    * the free arm's stream is untouched. */
   let linkCoin = linked ? rng() < 0.5 : null;
   for (const k of ALL_KEYS) {
     let fromH1;
     if (k === SIGNAL_GENE) {
       /* The advertisement's own segregation coin comes from the advertisement's
-       * own stream — unless it is LINKED, in which case it must by definition
-       * take the shape loci's coin, which is the whole content of linkage. */
-      fromH1 = linked ? linkCoin : srng() < 0.5;
+       * own stream — unless IT is linked, in which case it must by definition
+       * take the shape loci's coin, which is the whole content of linkage. A
+       * bloom supergene must NOT capture it. */
+      fromH1 = opts.linkSignal ? linkCoin : srng() < 0.5;
     } else if (linked && linked.includes(k)) {
       fromH1 = linkCoin;
     } else {
@@ -2529,6 +2585,29 @@ function gamete(ind, rng, rate, opts = {}) {
   const m = E.mutate(g, rng, rate);
   const sRate = opts.signalMut === undefined ? rate : opts.signalMut;
   m[SIGNAL_GENE] = wrap01(m[SIGNAL_GENE] + gauss(srng) * sRate);
+
+  /*
+   * The bloom locus, segregating and mutating on its own stream. Guarded by
+   * `opts.bloom`, so with phenology off not a single extra draw is taken from
+   * any stream and every published IBM number reproduces bit-for-bit.
+   *
+   * ⚠️ FREE RECOMBINATION IS THE CONSERVATIVE DEFAULT AND ALSO THE HARDEST CASE
+   * FOR THIS MECHANISM, which is the whole interest of it. An unlinked bloom
+   * allele is torn away from whatever placement allele it arose beside in a
+   * single generation, so temporal assortment should sort BLOOM TIMES without
+   * ever sorting SHAPES. `linkBloom` is the supergene arm that tests exactly
+   * that — the same arm structure the advertisement already has, and real
+   * supergenes of this kind exist.
+   */
+  if (opts.bloom) {
+    const brng = opts.brng || rng;
+    const fromH1 =
+      opts.linkBloom && linkCoin !== null ? linkCoin : brng() < 0.5;
+    const bRate = opts.bloomMut === undefined ? rate : opts.bloomMut;
+    m[BLOOM_GENE] = wrap01(
+      (fromH1 ? ind.h1[BLOOM_GENE] : ind.h2[BLOOM_GENE]) + gauss(brng) * bRate,
+    );
+  }
   return m;
 }
 
@@ -2589,6 +2668,32 @@ function ancestryVar(pop) {
   const xs = pop.map((i) => (i.anc === undefined ? 0 : i.anc));
   const m = mean(xs);
   return mean(xs.map((x) => (x - m) * (x - m)));
+}
+
+/*
+ * The fate of a founded pair, at the end of a run.
+ *
+ * ⚠️ SINGLE-SOURCED HERE BECAUSE A NEW EXPERIMENT MUST NOT BRING ITS OWN. This
+ * predicate decides every headline in roadmap B, and five experiments currently
+ * hold their own byte-identical copy of it (`fusion-vs-exclusion.js` and
+ * friends). Copies cannot disagree while nobody edits them and will disagree
+ * silently the moment somebody does — and a run that classifies outcomes by its
+ * own slightly different rule is not comparable to the results it is quoted
+ * against. New work uses this one. The existing copies are left alone rather
+ * than rewritten in a commit that is about something else.
+ *
+ * HELD    ancestry variance is still a substantial fraction of the founding
+ *         value — two lineages, still distinct.
+ * one lost  the tracer has gone to one end: a lineage was excluded.
+ * FUSED   variance collapsed with the mean in the middle: they merged.
+ */
+function fateOf(finalPop, ancVar0, extinct) {
+  if (extinct || !finalPop || finalPop.length < 2) return "BOTH LOST";
+  const v = ancestryVar(finalPop);
+  const m = mean(finalPop.map((i) => (i.anc === undefined ? 0 : i.anc)));
+  if (v > 0.4 * ancVar0) return "HELD";
+  if (m < 0.15 || m > 0.85) return "one lost";
+  return "FUSED";
 }
 
 /*
@@ -2657,6 +2762,25 @@ const DEFAULTS = {
   optimaK: 0,
   /* Sever placement from mating, for the null. */
   randomMating: false,
+
+  /*
+   * ---- FLOWERING TIME. null = off, drawing no random numbers from any stream,
+   * so every published IBM result is bit-identical.
+   *
+   * `{width, slices, mut, link}`. Each plant carries a heritable bloom allele
+   * on a ring and is in flower for `width` of the season around it; the season
+   * runs as `slices` successive bouts and a plant not in flower has an
+   * abundance of zero in that slice. See the long note in step().
+   *
+   * `link` is the SUPERGENE ARM. Free recombination is the default and is also
+   * the hardest case for this mechanism, which is exactly why it is the
+   * default: an unlinked bloom allele is torn away from whatever placement
+   * allele it arose beside within one generation, so temporal assortment should
+   * sort FLOWERING TIMES while never sorting SHAPES. With `link` the bloom
+   * locus co-segregates with the three anther loci — and NOT with the
+   * advertisement, which has its own arm.
+   */
+  phenology: null,
 
   /* More than one pollinator. null = the single `bee` above. Separate bouts are
    * summed and the visit budget is SPLIT, so arms differ in geometry rather than
@@ -3076,9 +3200,27 @@ function gapOccupancy(places, pA, pB, opts = {}) {
  * One generation. The whole point is between the two marked lines: parentage
  * comes out of the transfer matrix.
  */
-function step(pop, opts, rng, gen, srng = null) {
+function step(pop, opts, rng, gen, srng = null, brng = null) {
   const n = pop.length;
   const signals = pop.map(signalOf);
+
+  /*
+   * ---- FLOWERING TIME. Founders that have never carried a bloom allele get
+   * one at random, INDEPENDENT OF LINEAGE — assigning the two lineages
+   * different flowering times would impose the assortment whose consequences
+   * this is meant to measure, the same error the 2026-08-02 spatial run made by
+   * placing the morphs in arcs.
+   */
+  const PH = opts.phenology || null;
+  const brn = brng || (PH ? bloomRng(7) : null);
+  let blooms = null;
+  if (PH) {
+    for (const ind of pop) {
+      if (ind.h1[BLOOM_GENE] === undefined) ind.h1[BLOOM_GENE] = brn();
+      if (ind.h2[BLOOM_GENE] === undefined) ind.h2[BLOOM_GENE] = brn();
+    }
+    blooms = pop.map((ind) => meanRing(ind.h1[BLOOM_GENE], ind.h2[BLOOM_GENE]));
+  }
 
   /*
    * ⚠️ MORE THAN ONE POLLINATOR, and three things about it are load-bearing.
@@ -3141,17 +3283,63 @@ function step(pop, opts, rng, gen, srng = null) {
      * memory persists across the whole bout, which is where learning happens.
      */
     const learner = opts.learn ? D.makeLearner(opts.learn) : null;
-    const rb = C.runBout(ss, allocWeights(ss, opts.allocExponent, n), {
-      visits: per,
+    const base = allocWeights(ss, opts.allocExponent, n);
+    const boutOpts = {
       seed: 7 + gen + 100000 * bi,
       learner,
       signals: learner ? signals : null,
       rewardP: learner
         ? new Array(n).fill(opts.deceptive ? 0 : opts.honestP)
         : null,
-    });
-    for (let i = 0; i < n; i++)
-      for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
+    };
+
+    if (!PH) {
+      const rb = C.runBout(ss, base, { ...boutOpts, visits: per });
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
+    } else {
+      /*
+       * ---- THE SEASON, RUN AS A SEQUENCE OF BOUTS.
+       *
+       * ⚠️ NO NEW BOUT MECHANISM. A plant that is not in flower is simply not
+       * available to be visited, which is an ABUNDANCE of zero — and runBout
+       * has always taken abundance as an argument. The season is therefore a
+       * sequence of ordinary bouts with a time-varying abundance vector, which
+       * is the same convention two pollinators already use: separate bouts,
+       * summed. Nothing inside the bout knows what time it is.
+       *
+       * ⚠️ AND THE VISIT BUDGET IS SPLIT, not duplicated. Giving each slice the
+       * full budget would mean the phenology arm also received more
+       * pollination, and "temporal assortment helps" would be
+       * indistinguishable from "more visits help" — the trap the two-pollinator
+       * control was built to avoid and which its own splitting later turned
+       * out to have half-caused.
+       *
+       * ⚠️ WHAT IT COSTS, stated rather than hidden: the animal starts each
+       * slice with an EMPTY BODY, so pollen does not carry from one slice to
+       * the next. Between days that is right; within what would otherwise be
+       * one continuous bout it is a real loss of carryover, and it applies
+       * equally to every arm including the controls.
+       */
+      const S = Math.max(2, PH.slices | 0 || 8);
+      const half = (PH.width === undefined ? 0.25 : PH.width) / 2;
+      const perSlice = Math.max(1, Math.round(per / S));
+      for (let k = 0; k < S; k++) {
+        const t = k / S;
+        const w = base.map((b, i) => (ringDist(blooms[i], t) <= half ? b : 0));
+        /* A slice in which nothing is in flower is a slice with no visits, not
+         * a crash and not a redistribution — the pollinator's effort in that
+         * part of the season is simply lost. */
+        if (!w.some((x) => x > 0)) continue;
+        const rb = C.runBout(ss, w, {
+          ...boutOpts,
+          visits: perSlice,
+          seed: boutOpts.seed + 7919 * (k + 1),
+        });
+        for (let i = 0; i < n; i++)
+          for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
+      }
+    }
     /* Placement is defined RELATIVE TO A BODY, so with two animals a plant has
      * two of them. The bimodality statistic is reported on the FIRST animal, so
      * it stays the same quantity it was in every earlier run; the fate of the
@@ -3160,6 +3348,40 @@ function step(pop, opts, rng, gen, srng = null) {
     if (bi === 0) sites = ss;
   });
   const r = { T };
+
+  /*
+   * ⚠️ DID THE TEMPORAL ASSORTMENT ACTUALLY HAPPEN? The positive control for
+   * phenology, and it is measured from the TRANSFER MATRIX rather than from the
+   * parameters — "plants have flowering windows" is an input, "pollen actually
+   * moved between plants that flower together" is the outcome. A window wide
+   * enough that everything overlaps everything leaves the arms differing in a
+   * parameter and in nothing else, and every downstream comparison would then be
+   * measuring an intervention that never landed.
+   *
+   * Mean bloom-time distance between donor and recipient, weighted by grains
+   * delivered, over the same quantity across all pairs. Below 1 means pollen
+   * moved between plants closer in flowering time than chance.
+   */
+  let bloomAssort = null;
+  if (PH) {
+    let wsum = 0,
+      wtot = 0,
+      asum = 0,
+      acnt = 0;
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const d = ringDist(blooms[i], blooms[j]);
+        asum += d;
+        acnt++;
+        if (T[i][j] > 0) {
+          wsum += T[i][j] * d;
+          wtot += T[i][j];
+        }
+      }
+    const allMean = acnt ? asum / acnt : 0;
+    bloomAssort = wtot > 0 && allMean > 1e-12 ? wsum / wtot / allMean : null;
+  }
 
   const received = new Array(n).fill(0);
   for (let i = 0; i < n; i++)
@@ -3294,6 +3516,11 @@ function step(pop, opts, rng, gen, srng = null) {
       linkSignal: opts.linkSignal,
       signalMut: opts.signalMut,
       srng,
+      /* the bloom locus segregates only when phenology is on; see gamete() */
+      bloom: !!PH,
+      brng: brn,
+      bloomMut: PH ? PH.mut : undefined,
+      linkBloom: PH ? !!PH.link : false,
     };
     const S = opts.selfing;
 
@@ -3388,6 +3615,11 @@ function step(pop, opts, rng, gen, srng = null) {
     /* measured on the population that PRODUCED this generation, so it pairs with
      * the placements above rather than with the offspring */
     ancVar: ancestryVar(pop),
+    /* the positive control for phenology — null when it is off. See above. */
+    bloomAssort,
+    /* the flowering times themselves, so an experiment can ask whether the
+     * SEASON split even when the shapes did not */
+    blooms,
     unmated: failed,
     /* A stall is a generation that could not produce the offspring it was
      * entitled to. With demography off `target` IS n, so this is the same
@@ -3426,6 +3658,9 @@ function run({
   const rng = E.makeRng(seed);
   /* The advertisement's independent stream — see signalRng(). */
   const srng = signalRng(seed);
+  /* The flowering-time stream, created only when phenology is on so the default
+   * model's streams are untouched. See bloomRng(). */
+  const brng = opts.phenology ? bloomRng(seed) : null;
   let pop = found || foundPopulation(n, rng, { srng });
   const history = [];
   let extinct = false;
@@ -3445,7 +3680,7 @@ function run({
     const parentAnc = trace
       ? pop.map((i) => (i.anc === undefined ? 0 : i.anc))
       : null;
-    const out = step(pop, opts, rng, g, srng);
+    const out = step(pop, opts, rng, g, srng, brng);
     pop = out.pop;
     history.push({
       gen: g,
@@ -3475,7 +3710,10 @@ module.exports = {
   GENE_KEYS,
   ALL_KEYS,
   SIGNAL_GENE,
+  BLOOM_GENE,
   LINK_GROUP,
+  BLOOM_LINK_GROUP,
+  bloomRng,
   DEFAULTS,
   meanAngle,
   meanRing,
@@ -3492,6 +3730,7 @@ module.exports = {
   foundPopulation,
   foundTwoLineages,
   ancestryVar,
+  fateOf,
   sitesOf,
   placementOf,
   allocWeights,
