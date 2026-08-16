@@ -2592,6 +2592,78 @@ function ancestryVar(pop) {
 }
 
 /*
+ * ⚠️ DID THE CLUSTERING ACTUALLY HAPPEN? This is the positive control for
+ * space, and it exists because "limited dispersal" is an INPUT while "kin ended
+ * up near each other" is an OUTCOME. Set the kernel wide relative to the ring
+ * and the arms differ in a parameter and in nothing else — every downstream
+ * comparison would then be measuring an intervention that never landed, which
+ * is the failure this project has hit repeatedly: a guard whose predicate
+ * cannot observe its referent.
+ *
+ * Mean |ancestry difference| between ring-ADJACENT plants, over the same
+ * quantity for ALL pairs. Below 1 means neighbours are more alike than the
+ * population at large — kin structure. At 1 there is no structure whatever the
+ * dispersal parameter says.
+ *
+ * Returns null when there is nothing to measure rather than a number that would
+ * read as "no clustering".
+ */
+function ancNeighbour(pop, positions) {
+  const n = pop.length;
+  if (n < 4 || !positions || positions.length !== n) return null;
+  const a = pop.map((i) => (i.anc === undefined ? 0 : i.anc));
+  const order = positions
+    .map((p, i) => [p, i])
+    .sort((x, y) => x[0] - y[0])
+    .map((x) => x[1]);
+
+  let adj = 0;
+  for (let k = 0; k < n; k++)
+    adj += Math.abs(a[order[k]] - a[order[(k + 1) % n]]);
+  adj /= n;
+
+  let all = 0,
+    cnt = 0;
+  for (let i = 0; i < n; i++)
+    for (let j = i + 1; j < n; j++) {
+      all += Math.abs(a[i] - a[j]);
+      cnt++;
+    }
+  all /= cnt;
+
+  /* A population that has already fused or lost a lineage has no ancestry
+   * differences left to structure, so the ratio is undefined rather than 1. */
+  if (!(all > 1e-12)) return null;
+  return adj / all;
+}
+
+/*
+ * The fate of a founded pair, at the end of a run.
+ *
+ * ⚠️ SINGLE-SOURCED HERE BECAUSE A NEW EXPERIMENT MUST NOT BRING ITS OWN. This
+ * predicate decides every headline in roadmap B, and five experiments currently
+ * hold their own byte-identical copy of it (`fusion-vs-exclusion.js` and
+ * friends). Copies cannot disagree while nobody edits them and will disagree
+ * silently the moment somebody does — and a run that classifies outcomes by its
+ * own slightly different rule is not comparable to the results it is quoted
+ * against. New work uses this one. The existing copies are left alone rather
+ * than rewritten in a commit that is about something else.
+ *
+ * HELD    ancestry variance is still a substantial fraction of the founding
+ *         value — two lineages, still distinct.
+ * one lost  the tracer has gone to one end: a lineage was excluded.
+ * FUSED   variance collapsed with the mean in the middle: they merged.
+ */
+function fateOf(finalPop, ancVar0, extinct) {
+  if (extinct || !finalPop || finalPop.length < 2) return "BOTH LOST";
+  const v = ancestryVar(finalPop);
+  const m = mean(finalPop.map((i) => (i.anc === undefined ? 0 : i.anc)));
+  if (v > 0.4 * ancVar0) return "HELD";
+  if (m < 0.15 || m > 0.85) return "one lost";
+  return "FUSED";
+}
+
+/*
  * Found two near-clonal lineages whose placements sit a TARGET distance apart.
  *
  * ⚠️ PLACEMENT IS STILL NEVER A GENE, which is exactly why this is a search. A
@@ -2657,6 +2729,44 @@ const DEFAULTS = {
   optimaK: 0,
   /* Sever placement from mating, for the null. */
   randomMating: false,
+
+  /*
+   * ---- SPACE. null = the panmictic model every earlier IBM result came from,
+   * consuming no random numbers differently.
+   *
+   * `{forageRange, seedRange}`. Plants sit at coordinates on a RING — a ring
+   * rather than a line so no plant is disadvantaged by sitting at an edge, the
+   * same convention sim/carryover.js already uses for the bout.
+   *
+   *   `forageRange`  the width of the Gaussian kernel the bee's next visit is
+   *                  drawn from, around the plant it is standing on. Infinity =
+   *                  the global forager of every previous run. This is NOT a new
+   *                  bout mechanism: `positions`/`forageRange` have existed in
+   *                  runBout since 2026-08-02 and were only ever driven from the
+   *                  v1 harness. This gives the IBM's plants coordinates and
+   *                  passes them down.
+   *
+   *   `seedRange`    the width of the Gaussian an offspring's position is
+   *                  displaced by, FROM ITS MOTHER'S. Infinity = a uniformly
+   *                  redrawn position, i.e. global dispersal.
+   *
+   * ⚠️ CLUSTERING IS NOT IMPOSED, and that is the whole difference from the
+   * 2026-08-02 run. That one PLACED the morphs in arcs, which asserts the
+   * structure whose consequences it then measures. Founders here are scattered
+   * at random and any clustering must EMERGE from limited dispersal over
+   * generations — which is what the roadmap asked for. Whether it emerged is
+   * therefore an OUTCOME to be measured, not an input to be trusted:
+   * `ancNeighbour` in the return is that measurement.
+   *
+   * ⚠️ THE RANDOM DRAWS ARE UNCONDITIONAL WITHIN `space`. Both a uniform and a
+   * gaussian are consumed per offspring whichever dispersal mode is set, so the
+   * four cells of the 2x2 differ in the MECHANISM and not in how they walk the
+   * random stream. Consuming one draw for global dispersal and two for limited
+   * would make every cell a different realisation as well as a different model,
+   * and no difference between them could be attributed. sim/carryover.js draws
+   * its reward coin unconditionally for exactly this reason.
+   */
+  space: null,
 
   /* More than one pollinator. null = the single `bee` above. Separate bouts are
    * summed and the visit budget is SPLIT, so arms differ in geometry rather than
@@ -3081,6 +3191,17 @@ function step(pop, opts, rng, gen, srng = null) {
   const signals = pop.map(signalOf);
 
   /*
+   * Ring coordinates. A founder that has never had one gets a random position —
+   * SCATTERED, not arranged, so any structure downstream has to be built by
+   * dispersal rather than declared here. Offspring carry `pos` forward, so this
+   * only ever fires on the founding generation.
+   */
+  const SP = opts.space || null;
+  const positions = SP
+    ? pop.map((ind) => (ind.pos === undefined ? rng() : ind.pos))
+    : null;
+
+  /*
    * ⚠️ MORE THAN ONE POLLINATOR, and three things about it are load-bearing.
    *
    * 1. SEPARATE BOUTS, SUMMED — never one mixed bout. Pollen is carried on a
@@ -3144,6 +3265,12 @@ function step(pop, opts, rng, gen, srng = null) {
     const rb = C.runBout(ss, allocWeights(ss, opts.allocExponent, n), {
       visits: per,
       seed: 7 + gen + 100000 * bi,
+      /* Local foraging — the bee's next visit drawn from a kernel around the
+       * plant it is standing on. Already implemented inside runBout since
+       * 2026-08-02; this is simply the first time the IBM has had coordinates
+       * to hand it. Null positions leave the bout bit-identical. */
+      positions,
+      forageRange: SP ? SP.forageRange : Infinity,
       learner,
       signals: learner ? signals : null,
       rewardP: learner
@@ -3275,6 +3402,28 @@ function step(pop, opts, rng, gen, srng = null) {
   const next = [];
   let failed = 0;
   const uniform = new Array(n).fill(1);
+
+  /*
+   * Where an offspring lands. See `space` in DEFAULTS for why BOTH draws are
+   * taken whichever dispersal mode is set — the cells of the 2x2 must differ in
+   * the mechanism, not in how they walk the random stream.
+   *
+   * ⚠️ The key is only ATTACHED when space is on. Writing `pos: undefined` onto
+   * every individual would make the offspring of a panmictic run unequal to the
+   * offspring of the same run before this existed — `deepStrictEqual`
+   * distinguishes an absent key from one holding undefined — and the tests that
+   * assert bit-identity would fail for a reason that has nothing to do with the
+   * model.
+   */
+  const withPos = (child, mother) => {
+    if (!SP) return child;
+    const u = rng();
+    const g = gauss(rng);
+    child.pos = Number.isFinite(SP.seedRange)
+      ? wrap01(positions[mother] + g * SP.seedRange)
+      : u;
+    return child;
+  };
   while (next.length < target) {
     // ---- parentage from the transfer matrix ----
     /*
@@ -3309,11 +3458,16 @@ function step(pop, opts, rng, gen, srng = null) {
       const anc = S.ancNull
         ? ((pop[mother].anc || 0) + (pop[Math.floor(rng() * n)].anc || 0)) / 2
         : pop[mother].anc || 0;
-      next.push({
-        h1: gamete(pop[mother], rng, opts.mutRate, gopts),
-        h2: gamete(pop[mother], rng, opts.mutRate, gopts),
-        anc,
-      });
+      next.push(
+        withPos(
+          {
+            h1: gamete(pop[mother], rng, opts.mutRate, gopts),
+            h2: gamete(pop[mother], rng, opts.mutRate, gopts),
+            anc,
+          },
+          mother,
+        ),
+      );
       return true;
     };
 
@@ -3357,12 +3511,17 @@ function step(pop, opts, rng, gen, srng = null) {
       if (failed > 40 * n) break;
       continue;
     }
-    next.push({
-      h1: gamete(pop[mother], rng, opts.mutRate, gopts),
-      h2: gamete(pop[father], rng, opts.mutRate, gopts),
-      /* the tracer: the parental mean, drawing no random numbers */
-      anc: ((pop[mother].anc || 0) + (pop[father].anc || 0)) / 2,
-    });
+    next.push(
+      withPos(
+        {
+          h1: gamete(pop[mother], rng, opts.mutRate, gopts),
+          h2: gamete(pop[father], rng, opts.mutRate, gopts),
+          /* the tracer: the parental mean, drawing no random numbers */
+          anc: ((pop[mother].anc || 0) + (pop[father].anc || 0)) / 2,
+        },
+        mother,
+      ),
+    );
   }
 
   return {
@@ -3388,6 +3547,9 @@ function step(pop, opts, rng, gen, srng = null) {
     /* measured on the population that PRODUCED this generation, so it pairs with
      * the placements above rather than with the offspring */
     ancVar: ancestryVar(pop),
+    /* the positive control for space — null when space is off, or when there is
+     * no ancestry variation left to be structured. See ancNeighbour. */
+    ancNeighbour: SP ? ancNeighbour(pop, positions) : null,
     unmated: failed,
     /* A stall is a generation that could not produce the offspring it was
      * entitled to. With demography off `target` IS n, so this is the same
@@ -3492,6 +3654,8 @@ module.exports = {
   foundPopulation,
   foundTwoLineages,
   ancestryVar,
+  ancNeighbour,
+  fateOf,
   sitesOf,
   placementOf,
   allocWeights,
