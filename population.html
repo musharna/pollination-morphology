@@ -204,6 +204,13 @@
               <option value="random">random (the null)</option>
             </select>
           </div>
+          <div class="ctl">
+            <label for="cam">camera</label>
+            <select id="cam">
+              <option value="patch">the patch — which lineage wins</option>
+              <option value="follow">follow the bee — where pollen goes</option>
+            </select>
+          </div>
           <button id="run">Run</button>
           <button id="play" disabled>Play</button>
           <span id="status" class="note"></span>
@@ -327,6 +334,21 @@
       /* the plants now STAND, so the camera looks at the canopy rather than at
        * the ground the mouths used to sit on */
       const camTarget = [0, 3.0, 0];
+
+      /*
+       * ⚠️ THE PATCH VIEW CANNOT SHOW A POLLINATION, and that is a measurement
+       * rather than an opinion. At the wide camera the animal projects inside
+       * the frame and is still invisible — a speck above one flower, occluded
+       * by whichever bloom stands nearer, with grains of pollen a fraction of a
+       * pixel across. Two cameras are needed because two different things are
+       * being watched: the PATCH (which lineage is winning, over generations)
+       * and the VISIT (where the pollen goes, in seconds).
+       *
+       * `follow` is the second one. It rides the flower being worked, near
+       * enough that a grain crossing from body to stigma is a visible object.
+       */
+      let follow = false;
+      const FOLLOW = { target: [0, 3, 0], dist: 7.6, pitch: 0.22, near: 0 };
       function project(p) {
         const d = vSub(p, camTarget);
         const cy = Math.cos(yaw),
@@ -562,8 +584,14 @@
       }
 
       /* ---------------------------------------------------------------- bee */
-      function bodyPoint(pose, s, phi) {
-        const r = P.bodyRadius(bee, s);
+      /* ⚠️ `lift` IS NOT COSMETIC. A grain sits exactly ON the body surface, so
+       * it shares a depth with the body segment beneath it and painter's
+       * ordering between the two is a coin toss — the load came out invisible,
+       * painted over by the animal carrying it. Standing the grains proud of
+       * the surface makes the ordering unambiguous. The body COORDINATES are
+       * untouched; only the drawing radius moves. */
+      function bodyPoint(pose, s, phi, lift = 1) {
+        const r = P.bodyRadius(bee, s) * lift;
         const lat = vCrs(pose.f, pose.u);
         return vAdd(
           vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen)),
@@ -616,7 +644,8 @@
         }
         /* pollen sits at the model's own (s, phi) — this is the whole claim of
          * the project, drawn rather than tabulated */
-        for (const g of pollen) ball(bodyPoint(pose, g.s, g.phi), 0.075, g.col);
+        for (const g of pollen)
+          ball(bodyPoint(pose, g.s, g.phi, 1.1), 0.085, g.col);
       }
 
       // ------------------------------------------------------------ the model
@@ -711,7 +740,24 @@
         for (let g = 0; g < gens; g++) {
           if (pop.length < 2) break;
           const anc = pop.map((ind) => (ind.anc === undefined ? 0 : ind.anc));
-          const res = I.step(pop, opts, rng, g, srng);
+          /* ⚠️ THE BOUT ITSELF, which is the thing this page exists to show and
+           * the thing it could not previously show. `logBout` records a WINDOW
+           * of real visits — which plant, where on the body the stigma swept,
+           * which grains it took and from whom. It draws no random numbers, so
+           * the generation is identical with it on; asserted by
+           * tests/bout-log.test.js, which was seen to fail against a version
+           * that did draw one.
+           *
+           * The window starts well into the bout on purpose: at visit 0 the
+           * animal is empty by construction, so a window at the start would
+           * honestly show a bee that delivers nothing. */
+          const res = I.step(
+            pop,
+            { ...opts, logBout: { from: BOUT_FROM, count: BOUT_N } },
+            rng,
+            g,
+            srng,
+          );
           out.push({
             pop,
             anc,
@@ -720,10 +766,46 @@
             places: res.places,
             sep: res.cluster ? res.cluster.separation : 0,
             ancVar: res.ancVar,
+            log: res.visitLog || [],
+            carried: replayLoad(res.visitLog || []),
+            visits: opts.visits,
           });
           pop = res.pop;
         }
         return { gens: out, realised: built.realised, n };
+      }
+
+      /* Which slice of the bout gets logged. See the note in buildRun. */
+      const BOUT_FROM = 600,
+        BOUT_N = 60;
+
+      /*
+       * Replay the logged window to get what the animal is CARRYING after each
+       * visit — the pollen on its body, which is what the renderer draws.
+       *
+       * ⚠️ THIS IS A PARTIAL LOAD AND THE PAGE SAYS SO. The log truncates the
+       * per-visit grain detail (see LOG_GRAINS in sim/carryover.js) and the
+       * window opens mid-bout, so grains picked up before it started are not in
+       * here — a stigma taking one of those finds nothing to remove and the
+       * removal is skipped. The COUNTS drawn beside the animal come from the
+       * log's exact tallies rather than from this reconstruction, so the
+       * numbers are the model's even though the specks are a sample.
+       */
+      function replayLoad(log) {
+        let load = [];
+        const out = [];
+        for (const rec of log) {
+          for (const g of rec.took) {
+            const i = load.findIndex(
+              (x) => x.sp === g.sp && x.s === g.s && x.phi === g.phi,
+            );
+            if (i >= 0) load.splice(i, 1);
+          }
+          for (const g of rec.gave)
+            load.push({ s: g.s, phi: g.phi, sp: rec.j, ok: g.ok });
+          out.push(load.slice(-90));
+        }
+        return out;
       }
 
       // ----------------------------------------------------------- rendering
@@ -732,6 +814,51 @@
         ctx.clearRect(0, 0, cv.width, cv.height);
         if (!G) return;
         const t = (ts - t0) / 1000;
+        const n0 = G.flowers.length;
+
+        /*
+         * ⚠️ THE VISIT IS RESOLVED BEFORE ANYTHING IS DRAWN, and getting that
+         * ordering wrong is a bug I shipped once already in the probe. `project`
+         * reads the camera at the moment each point is projected, so moving the
+         * camera after the patch has been drawn leaves the plants projected
+         * through the old camera and the animal through the new one — two
+         * scenes in one frame. Everything the camera depends on is settled here.
+         */
+        const LOG = G.log;
+        if (!LOG.length) return;
+        const period = 1.05;
+        const k = Math.floor(t / period) % LOG.length;
+        const frac = (t % period) / period;
+        const rec = LOG[k];
+        const prev = LOG[(k - 1 + LOG.length) % LOG.length];
+        const iFrom = Math.min(prev.j, n0 - 1),
+          iTo = Math.min(rec.j, n0 - 1);
+
+        if (follow) {
+          const b = baseFor(iTo, n0, G.flowers[iTo]);
+          /* eased so the camera settles onto the next flower rather than
+           * snapping, which at this range is unwatchable */
+          const g = 0.12;
+          FOLLOW.target[0] += (b.origin[0] - 0.5 - FOLLOW.target[0]) * g;
+          FOLLOW.target[1] += (b.origin[1] + 0.9 - FOLLOW.target[1]) * g;
+          FOLLOW.target[2] += (b.origin[2] + 0.4 - FOLLOW.target[2]) * g;
+          camTarget[0] = FOLLOW.target[0];
+          camTarget[1] = FOLLOW.target[1];
+          camTarget[2] = FOLLOW.target[2];
+          camDist = FOLLOW.dist;
+          pitch = FOLLOW.pitch;
+          /* ⚠️ A NEAR CLIP, because moving the camera IN moves it INTO the
+           * patch: whichever plant stands between the lens and the subject
+           * fills the entire frame. An ordinary camera near-plane, nothing to
+           * do with the model. */
+          const q = project(b.origin);
+          FOLLOW.near = q ? q.z - 1.1 : -Infinity;
+        } else {
+          camTarget[0] = 0;
+          camTarget[1] = 3.0;
+          camTarget[2] = 0;
+          FOLLOW.near = -Infinity;
+        }
 
         /* ⚠️ GROUND IS PINNED BEHIND EVERYTHING. Painter's algorithm FAILS on it:
          * a triangle running from the centre to the far rim spans enormous
@@ -757,58 +884,110 @@
         for (let i = 0; i < n; i++) {
           const f = G.flowers[i];
           const b = baseFor(i, n, f);
+          const q = project(b.origin);
+          if (!q || q.z < FOLLOW.near) continue; // nearer than the subject
           stemUnder(b.origin, Math.max(0.4, b.origin[1] - f.axisLen * 0.92));
           drawFlower(f, b, ancHex(G.anc[i]));
         }
 
-        /* the bee works a SAMPLE of the bout: a few flowers per generation, in
-         * order round the ring, carrying pollen picked up from each */
-        const VISITS = Math.min(6, n);
-        const period = 1.15;
-        const k = Math.floor(t / period) % VISITS;
-        const frac = (t % period) / period;
-        const stride = Math.max(1, Math.floor(n / VISITS));
-        const iFrom = (k * stride) % n,
-          iTo = ((k + 1) * stride) % n;
+        /*
+         * ⚠️ THE BEE FOLLOWS THE MODEL'S OWN VISIT ORDER. Everything before this
+         * was a cartoon: the animal toured the ring at a fixed stride and
+         * carried the anther sites of whatever it had passed. It looked like
+         * foraging and was not — the model's bee visits plants drawn from the
+         * abundance weights and its load is grains that were actually picked up,
+         * groomed off and delivered. That sequence now comes out of the bout
+         * itself (`logBout`, see buildRun) and is replayed here.
+         */
         const from = baseFor(iFrom, n, G.flowers[iFrom]);
         const to = baseFor(iTo, n, G.flowers[iTo]);
-        /* ⚠️ Hovering inside the canopy the animal is a speck occluded by every
-         * bloom around it. It has to clear the flower tops to read at all. */
-        const hoverA = vAdd(from.origin, [0, 2.0, 0]);
-        const hoverB = vAdd(to.origin, [0, 2.0, 0]);
-        const e = ease(frac);
+        /* ⚠️ Two heights, because the two cameras need different things. From
+         * the patch view the animal must clear the canopy or it is a speck
+         * occluded by every bloom around it; from the follow view it must be AT
+         * the mouth, because an animal hovering a body-length clear of the
+         * flower is commuting rather than pollinating and the transfer it is
+         * drawn making would be crossing thin air. */
+        const HOV = follow ? [-0.95, 0.72, 0.8] : [0, 2.0, 0];
+        const hoverA = vAdd(from.origin, HOV);
+        const hoverB = vAdd(to.origin, HOV);
+        /* Fly, then STAY. The transfer is the event worth watching and it used
+         * to happen in whatever instant the animal passed the flower, so the
+         * bout read as commuting. The animal now spends the back third of each
+         * beat working the flower it landed on. */
+        const FLY = 0.62;
+        const flying = frac < FLY;
+        const e = ease(Math.min(1, frac / FLY));
         const pos = vAdd(lerp3(hoverA, hoverB, e), [
           0,
-          Math.sin(frac * Math.PI) * 1.5,
+          Math.sin(Math.min(1, frac / FLY) * Math.PI) * 1.5,
           0,
         ]);
         const fwd = vUnit(vSub(hoverB, hoverA));
         const pose = { p: pos, f: fwd, u: [0, 1, 0] };
 
-        /* pollen carried: the anther sites of the flowers already worked this
-         * pass, coloured by the donor's ancestry */
-        const pollen = [];
-        for (let v = 0; v <= k; v++) {
-          const idx = (v * stride) % n;
-          const ss = G.sites[idx];
-          if (!ss || !ss.anther) continue;
-          const col = ancHex(G.anc[idx]);
-          for (
-            let q = 0;
-            q < ss.anther.length;
-            q += Math.ceil(ss.anther.length / 14) || 1
-          )
-            pollen.push({ s: ss.anther[q].s, phi: ss.anther[q].phi, col });
-        }
+        /*
+         * The load on the body — the grains the model says are actually there,
+         * each coloured by the ANCESTRY OF THE PLANT THAT SHED IT. That colour
+         * is the whole point: pollen riding a bee is the only place in this
+         * simulation where the two lineages are physically mixed, and whether a
+         * grain finds a stigma of its own kind is what the entire experiment
+         * turns on. Grains already delivered are gone from this list because
+         * the model removed them, not because the animation moved on.
+         */
+        const carried = G.carried[flying ? Math.max(0, k - 1) : k] || [];
+        const pollen = carried.map((g) => ({
+          s: g.s,
+          phi: g.phi,
+          col: g.ok === false ? "#5a5f52" : ancHex(G.anc[g.sp] ?? 0.5),
+        }));
         drawBee(pose, pollen, t);
+
+        /* The delivery itself: grains leaving the body at the point the stigma
+         * swept. Drawn only while the animal is on the flower, and only the
+         * grains this visit actually transferred. */
+        if (!flying && rec.took.length && rec.stig) {
+          const u = (frac - FLY) / (1 - FLY);
+          for (const g of rec.took) {
+            const a = bodyPoint(pose, g.s, g.phi, 1.25);
+            const b = bodyPoint(pose, rec.stig.s, rec.stig.phi, 1.25);
+            const p = lerp3(a, b, ease(u));
+            ball(p, 0.09 + 0.06 * (1 - u), g.ok ? "#fff4cf" : "#6b6455");
+          }
+          /* the contact the transfer went through */
+          ball(
+            bodyPoint(pose, rec.stig.s, rec.stig.phi, 1.25),
+            0.14,
+            "#8fe3b0",
+          );
+        }
         flush();
 
+        /*
+         * ⚠️ THE TALLIES ARE THE LOG'S EXACT COUNTS, not the drawn specks. The
+         * per-visit grain detail is truncated for memory (LOG_GRAINS), so the
+         * animation shows a sample of the grains while these numbers are the
+         * model's own. `own` is the grain landing on a stigma of the plant that
+         * shed it — self-pollen, which sires nothing here.
+         */
+        let deliv = 0,
+          right = 0;
+        for (let q = 0; q <= k; q++) {
+          deliv += LOG[q].nTook;
+          for (const g of LOG[q].took) if (!g.own) right++;
+        }
         ctx.fillStyle = "#9aa0a8";
         ctx.font = "12px system-ui";
         ctx.fillText(
-          `generation ${frame} · bee working flower ${((k * stride) % n) + 1} of ${n} (a sample of the bout)`,
+          `generation ${frame} · visit ${rec.t} of ${G.visits} · flower ${rec.j + 1}/${n} · ` +
+            `carrying ${rec.carry} grains · ${deliv} delivered in this window (${right} outcrossed)`,
           14,
-          cv.height - 14,
+          cv.height - 30,
+        );
+        ctx.fillStyle = "#6d737b";
+        ctx.fillText(
+          `a ${LOG.length}-visit window from visit ${BOUT_FROM} — the model's own visit order, not a tour`,
+          14,
+          cv.height - 13,
         );
 
         if (playing) raf = requestAnimationFrame(draw);
@@ -909,6 +1088,17 @@
             $("run").disabled = false;
           }
         }, 30);
+      };
+
+      $("cam").onchange = (e) => {
+        follow = e.target.value === "follow";
+        /* the wide camera's framing is restored by draw(); the follow camera
+         * starts on whatever flower is being worked next */
+        if (!follow) {
+          camDist = 26;
+          pitch = 0.62;
+        }
+        if (!playing) show(frame);
       };
 
       $("scrub").oninput = (e) => {

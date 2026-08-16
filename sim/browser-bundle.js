@@ -1150,6 +1150,30 @@ const DEFAULTS = {
   learner: null,
   signals: null,
   rewardP: null,
+
+  /* ---- the visit log, and it exists for the RENDERER rather than for any
+   * measurement.
+   *
+   * Everything this project has drawn so far has been a summary: a placement
+   * cloud, a transfer matrix, a fate class. None of them is a pollination —
+   * they are what is left AFTER the pollination. The event itself happens
+   * inside this loop and has never been observable from outside it, so the
+   * page could only ever animate a plausible-looking bee over real numbers.
+   *
+   * `{from, count}` records that window of visits: which plant, where on the
+   * body the stigma swept, which grains it took and from whom, and where the
+   * fresh load was picked up. null = nothing recorded.
+   *
+   * ⚠️ IT MUST NOT MOVE THE MODEL. Recording is reads only — no rng draw, no
+   * branch on `log` inside anything that consumes randomness — so a logged bout
+   * and an unlogged one are bit-identical. That is asserted by a test, and the
+   * test was seen to fail (an rng() added inside the log path breaks it).
+   *
+   * ⚠️ And it is a WINDOW, not the bout. A default IBM generation is 24,000
+   * visits; logging all of them would allocate hundreds of thousands of grain
+   * records to draw a few seconds of animation. Whatever is drawn from this is
+   * therefore a SAMPLE of the bout and must say so on the canvas. */
+  log: null,
 };
 
 /*
@@ -1182,6 +1206,7 @@ function runBout(sites, abundance, opts = {}) {
     learner,
     signals,
     rewardP,
+    log,
     lastMale = true,
   } = { ...DEFAULTS, ...opts };
   const pollinium = dispersalUnit === "pollinium";
@@ -1316,12 +1341,26 @@ function runBout(sites, abundance, opts = {}) {
     groomedOff = 0;
   const ageOnDeposit = [];
 
+  /* ---- the visit log (see `log` in DEFAULTS). READS ONLY: nothing below draws
+   * a random number, and no branch that consumes randomness tests `rec`. */
+  const logFrom = log ? Math.max(0, log.from | 0) : 0;
+  const logTo = log ? logFrom + Math.max(0, log.count | 0) : -1;
+  const visitLog = [];
+  /* Individual grain records are capped per visit. The COUNTS below stay exact
+   * — only the drawable detail is truncated — so a flower dispensing a large
+   * dose cannot blow up the log to draw a handful of animated specks. */
+  const LOG_GRAINS = 24;
+
   for (let v = 0; v < visits; v++) {
     const j = pick();
     const site = sites[j];
     if (!site.anther.length || !site.stigma.length) continue;
     visitsTo[j] += 1;
     lastSp = j;
+    const rec =
+      v >= logFrom && v < logTo
+        ? { t: v, j, stig: null, took: [], gave: [], nTook: 0, nGave: 0 }
+        : null;
 
     /* The animal finds out whether this flower pays, and time passes.
      *
@@ -1339,6 +1378,7 @@ function runBout(sites, abundance, opts = {}) {
     // --- the stigma sweeps first: a flower cannot pollinate itself with the
     // --- pollen it is about to hand over on the same visit
     const sSite = site.stigma[(rng() * site.stigma.length) | 0];
+    if (rec) rec.stig = { s: sSite.s, phi: sSite.phi };
     if (load.length) {
       const near = [];
       for (let gi = 0; gi < load.length; gi++)
@@ -1363,6 +1403,20 @@ function runBout(sites, abundance, opts = {}) {
          * pollinium, so every count below is in GRAINS regardless of how the
          * pollen is packaged — which is what makes the two units comparable. */
         const m = g.mass || 1;
+        /* Logged BEFORE the viability test, because an inviable grain still
+         * lands — it takes a stigma slot and fails to sire. Drawing only the
+         * live ones would show a cleaner pollination than the model runs. */
+        if (rec) {
+          rec.nTook += m;
+          if (rec.took.length < LOG_GRAINS)
+            rec.took.push({
+              s: g.s,
+              phi: g.phi,
+              sp: g.sp,
+              ok: g.ok !== false,
+              own: g.sp === j,
+            });
+        }
         if (g.ok === false) {
           deadDelivered += m;
           continue;
@@ -1399,6 +1453,10 @@ function runBout(sites, abundance, opts = {}) {
      * spent, so `presentRate` controls the DOSE while the pool controls the
      * TOTAL — the two quantities pollen presentation theory separates.
      */
+    /* Snapshot for the log: everything pushed past this index is pollen THIS
+     * flower handed over on THIS visit. Taken after grooming and before the
+     * anther, which is the only window where that is true. */
+    const loadBefore = load.length;
     let dose = deposit;
     let polSite = null;
     if (finite) {
@@ -1518,6 +1576,16 @@ function runBout(sites, abundance, opts = {}) {
         produced++;
       }
 
+    /* What the flower just handed over — recorded BEFORE harvest and the carry
+     * cap, so this is the anther's output rather than what survived the trip. */
+    if (rec)
+      for (let gi = loadBefore; gi < load.length; gi++) {
+        const g = load[gi];
+        rec.nGave += g.mass || 1;
+        if (rec.gave.length < LOG_GRAINS)
+          rec.gave.push({ s: g.s, phi: g.phi, ok: g.ok !== false });
+      }
+
     /*
      * --- and the animal packs some of it away for itself.
      *
@@ -1549,10 +1617,19 @@ function runBout(sites, abundance, opts = {}) {
       capTruncated += load.length - cap;
       load = load.slice(load.length - cap);
     }
+
+    /* The load AFTER everything, which is what the animal actually carries to
+     * the next flower — the quantity the renderer draws on its body. */
+    if (rec) {
+      rec.carry = load.length;
+      visitLog.push(rec);
+    }
   }
 
   return {
     T,
+    /* Empty unless `log` was set; see DEFAULTS. */
+    visitLog,
     produced,
     landedRight,
     landedWrong,
@@ -3130,6 +3207,7 @@ function step(pop, opts, rng, gen, srng = null) {
 
   const T = Array.from({ length: n }, () => new Float64Array(n));
   let sites = null;
+  let visitLog = null;
   bees.forEach((bee, bi) => {
     const ss = sitesOf(pop, { ...opts, bee }, gen, bi);
     /*
@@ -3149,7 +3227,13 @@ function step(pop, opts, rng, gen, srng = null) {
       rewardP: learner
         ? new Array(n).fill(opts.deceptive ? 0 : opts.honestP)
         : null,
+      /* The renderer's window into the bout. First animal only — a second bee
+       * carries its own pollen on its own body and the two logs cannot be
+       * interleaved into one flight. Reads only; see `log` in carryover's
+       * DEFAULTS for why it cannot move the model. */
+      log: opts.logBout && bi === 0 ? opts.logBout : null,
     });
+    if (bi === 0 && opts.logBout) visitLog = rb.visitLog;
     for (let i = 0; i < n; i++)
       for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
     /* Placement is defined RELATIVE TO A BODY, so with two animals a plant has
@@ -3377,6 +3461,9 @@ function step(pop, opts, rng, gen, srng = null) {
     pop: opts.demography ? next : next.length ? next : pop,
     places,
     signals,
+    /* null unless opts.logBout asked for it — the sampled bout, for drawing. */
+    visitLog,
+    sites,
     target,
     recruits: next.length,
     popN: n,

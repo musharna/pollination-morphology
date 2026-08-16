@@ -844,6 +844,7 @@ function step(pop, opts, rng, gen, srng = null) {
 
   const T = Array.from({ length: n }, () => new Float64Array(n));
   let sites = null;
+  let visitLog = null;
   bees.forEach((bee, bi) => {
     const ss = sitesOf(pop, { ...opts, bee }, gen, bi);
     /*
@@ -863,7 +864,13 @@ function step(pop, opts, rng, gen, srng = null) {
       rewardP: learner
         ? new Array(n).fill(opts.deceptive ? 0 : opts.honestP)
         : null,
+      /* The renderer's window into the bout. First animal only — a second bee
+       * carries its own pollen on its own body and the two logs cannot be
+       * interleaved into one flight. Reads only; see `log` in carryover's
+       * DEFAULTS for why it cannot move the model. */
+      log: opts.logBout && bi === 0 ? opts.logBout : null,
     });
+    if (bi === 0 && opts.logBout) visitLog = rb.visitLog;
     for (let i = 0; i < n; i++)
       for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
     /* Placement is defined RELATIVE TO A BODY, so with two animals a plant has
@@ -1091,6 +1098,9 @@ function step(pop, opts, rng, gen, srng = null) {
     pop: opts.demography ? next : next.length ? next : pop,
     places,
     signals,
+    /* null unless opts.logBout asked for it — the sampled bout, for drawing. */
+    visitLog,
+    sites,
     target,
     recruits: next.length,
     popN: n,

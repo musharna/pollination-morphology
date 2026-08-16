@@ -329,6 +329,103 @@ if (mode === "one") {
   const R = 8.6;
   const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 
+  /*
+   * ⚠️ THE BOUT IS RESOLVED BEFORE ANYTHING IS DRAWN, and that ordering is a
+   * bug I made first. `project` reads the camera at the moment each point is
+   * projected, so moving the camera AFTER the patch is drawn leaves the plants
+   * projected through the old camera and the bee through the new one — two
+   * scenes in one frame. Everything the camera depends on has to be known here.
+   */
+  let LOG = null,
+    REC = null,
+    CARRY = null,
+    IDX = 4;
+  if (mode === "bout") {
+    const res = I.step(
+      built.pop,
+      { ...I.DEFAULTS, logBout: { from: 600, count: 60 } },
+      E.makeRng(seed),
+      0,
+      I.signalRng(seed),
+    );
+    LOG = res.visitLog || [];
+    /*
+     * The BIGGEST transfer in the window, not the first one.
+     *
+     * ⚠️ And that is a choice worth being explicit about, because it is the
+     * kind that quietly flatters a model. Most visits in a real bout deliver
+     * nothing or one grain — the first delivering visit here moved a single
+     * grain, which is honest and shows nothing. Picking the largest transfer
+     * makes the MECHANISM visible in one still frame; it is not the typical
+     * visit and the page never claims it is. The animation shows every visit in
+     * the window, this probe shows the one worth photographing.
+     */
+    let at = -1;
+    for (let q = 0; q < LOG.length; q++)
+      if (
+        LOG[q].stig &&
+        LOG[q].nTook > 0 &&
+        (at < 0 || LOG[q].nTook > LOG[at].nTook)
+      )
+        at = q;
+    if (at < 0) throw new Error("no delivering visit in the logged window");
+    REC = LOG[at];
+    IDX = REC.j;
+    let load = [];
+    for (let q = 0; q <= at; q++) {
+      for (const g of LOG[q].took) {
+        const i = load.findIndex(
+          (x) => x.sp === g.sp && x.s === g.s && x.phi === g.phi,
+        );
+        if (i >= 0) load.splice(i, 1);
+      }
+      if (q < at)
+        for (const g of LOG[q].gave)
+          load.push({ s: g.s, phi: g.phi, sp: LOG[q].j });
+    }
+    CARRY = load;
+    console.log(
+      `bout: visit ${REC.t} at plant ${REC.j}, delivering ${REC.nTook}, carrying ${REC.carry}`,
+    );
+  }
+  const TH = IDX * GOLDEN;
+  const RAD = R * Math.sqrt((IDX + 0.5) / n);
+  const FH = 3.6 + 0.9 * (E.toFlower(I.shapeOf(built.pop[IDX])).axisLen - 1.8);
+  /*
+   * ⚠️ THE BOUT NEEDS ITS OWN CAMERA, and that is a finding rather than a
+   * preference. At the field camera the animal projects INSIDE the frame — the
+   * guard further down confirmed it — and is still invisible: a speck two units
+   * above one flower, occluded by whichever bloom happens to stand nearer. A
+   * wide shot of eighteen plants cannot show a grain of pollen crossing a few
+   * millimetres of insect. So the transfer view moves the camera to the flower
+   * being worked. The patch is still behind it; the subject is now the visit.
+   */
+  if (mode === "bout") {
+    /* Aimed at the MOUTH, where the animal is, rather than at the plant's
+     * midpoint — the first framing spent half the canvas on empty sky. */
+    camTarget = [Math.cos(TH) * RAD - 0.5, FH + 0.9, Math.sin(TH) * RAD + 0.4];
+    camDist = 7.6;
+    pitch = 0.22;
+    yaw = 0.5;
+  }
+  /*
+   * ⚠️ A NEAR CLIP, because moving the camera IN moves it INTO the patch. At
+   * close range the lens sits among the neighbouring plants and whichever one
+   * stands between it and the subject fills the entire frame — the previous
+   * render was a wall of brown corolla with the bee somewhere behind it. This
+   * is an ordinary camera near-plane and nothing to do with the model: plants
+   * closer than the flower being worked are not drawn.
+   */
+  const Z_SUB =
+    mode === "bout"
+      ? project([Math.cos(TH) * RAD, FH, Math.sin(TH) * RAD]).z
+      : -Infinity;
+  const nearClipped = (x, y, z) => {
+    if (mode !== "bout") return false;
+    const q = project([x, y, z]);
+    return !q || q.z < Z_SUB - 1.1;
+  };
+
   /* ⚠️ GROUND FIRST, AND AT THE RIGHT HEIGHT. The corolla hangs BELOW its mouth,
    * so a ground plane at y=0 with the mouths at y=0 puts every flower
    * underground. Plants stand ON the ground: mouth at STEM_H, corolla hanging to
@@ -387,6 +484,7 @@ if (mode === "one") {
     const H = 3.6 + 0.9 * (f0.axisLen - 1.8);
     const x = Math.cos(th) * rad,
       z = Math.sin(th) * rad;
+    if (nearClipped(x, H, z)) return;
     stemAt(x, z, Math.max(0.4, H - f0.axisLen * 0.92));
     const b = basis(vUnit([0, -1, 0]), [x, H, z]);
     drawFlower(
@@ -398,20 +496,53 @@ if (mode === "one") {
     );
   });
 
-  /* the bee, hovering over one flower with a load of that flower's pollen */
+  /*
+   * The bee. In "field" it hovers over one flower with a plausible load; in
+   * "bout" it is placed at a REAL logged visit, carrying the load the model says
+   * is on its body at that moment and delivering the grains that visit
+   * delivered. That second mode is the only way to see the pollination itself
+   * without a browser.
+   */
   const bee = P.DEFAULT_BEE;
-  const idx = 4;
-  const th = idx * GOLDEN;
-  const rad = R * Math.sqrt((idx + 0.5) / n);
-  /* ⚠️ Hovering INSIDE the patch the animal was invisible — a speck occluded by
-   * every bloom around it. It has to clear the canopy to read at all. */
-  const pose = {
-    p: [-5.4, 8.2, 5.6],
-    f: vUnit([0.72, -0.5, -0.48]),
-    u: [0, 1, 0],
-  };
-  const bodyPoint = (s, phi) => {
-    const rr = P.bodyRadius(bee, s);
+  const pose =
+    mode === "bout"
+      ? {
+          /* AT the mouth, not above it — an animal hovering a body-length clear
+           * of the flower is commuting, not pollinating, and the transfer it is
+           * drawn making would be crossing thin air. */
+          p: [Math.cos(TH) * RAD - 0.95, FH + 0.72, Math.sin(TH) * RAD + 0.8],
+          f: vUnit([0.62, -0.42, -0.52]),
+          u: [0, 1, 0],
+        }
+      : {
+          p: [-5.4, 8.2, 5.6],
+          f: vUnit([0.72, -0.5, -0.48]),
+          u: [0, 1, 0],
+        };
+  const idx = IDX;
+  /* ⚠️ A GUARD THAT ACTUALLY OBSERVES ITS REFERENT. The previous probe render
+   * put the animal out of frame and the run reported success anyway — the
+   * script's only check was "did it write a PNG". Whether the subject of the
+   * picture is IN the picture is the one thing this mode exists to show, so it
+   * is asserted rather than eyeballed. */
+  {
+    const q = project(pose.p);
+    if (!q || q.x < 0 || q.x > W || q.y < 0 || q.y > H)
+      console.log(
+        `⚠️ BEE OFF-FRAME: ${q ? `${q.x | 0},${q.y | 0}` : "behind the camera"}`,
+      );
+    else console.log(`bee projects to ${q.x | 0},${q.y | 0} of ${W}x${H}`);
+  }
+  /*
+   * ⚠️ `lift` IS NOT COSMETIC. A grain sits exactly ON the body surface, so it
+   * shares a depth with the body segment under it and painter's ordering
+   * between the two is a coin toss — the load was invisible in the first bout
+   * render, painted over by the very animal carrying it. Standing the grains
+   * slightly proud of the surface makes the ordering unambiguous. The body
+   * COORDINATES are untouched; only the drawing radius moves.
+   */
+  const bodyPoint = (s, phi, lift = 1) => {
+    const rr = P.bodyRadius(bee, s) * lift;
     const lat = vCrs(pose.f, pose.u);
     return vAdd(
       vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen)),
@@ -458,13 +589,37 @@ if (mode === "one") {
     );
     poly([head, atip, vAdd(atip, vMul(pose.u, -0.07))], "#2b2b2b");
   }
-  const ss = I.sitesOf(built.pop, I.DEFAULTS, 0)[idx];
-  for (
-    let q = 0;
-    q < ss.anther.length;
-    q += Math.ceil(ss.anther.length / 14) || 1
-  )
-    ball(bodyPoint(ss.anther[q].s, ss.anther[q].phi), 0.075, "#f4e08a");
+  if (mode === "bout") {
+    /* the load actually on the body, each grain coloured by the ancestry of the
+     * plant that shed it — the only place the two lineages physically mix */
+    for (const g of CARRY)
+      ball(
+        bodyPoint(g.s, g.phi, 1.1),
+        0.085,
+        built.pop[g.sp] && built.pop[g.sp].anc ? "#cc6699" : "#e8b23a",
+      );
+    /* and the transfer: grains part-way from the body to the stigma that swept
+     * them off. Drawn at mid-flight, which is where the animation shows them. */
+    for (const g of REC.took) {
+      const a = bodyPoint(g.s, g.phi, 1.25);
+      const b = bodyPoint(REC.stig.s, REC.stig.phi, 1.25);
+      ball(
+        [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2],
+        0.13,
+        "#fff4cf",
+      );
+    }
+    /* where the stigma actually swept — the contact the transfer went through */
+    ball(bodyPoint(REC.stig.s, REC.stig.phi, 1.25), 0.16, "#8fe3b0");
+  } else {
+    const ss = I.sitesOf(built.pop, I.DEFAULTS, 0)[idx];
+    for (
+      let q = 0;
+      q < ss.anther.length;
+      q += Math.ceil(ss.anther.length / 14) || 1
+    )
+      ball(bodyPoint(ss.anther[q].s, ss.anther[q].phi), 0.075, "#f4e08a");
+  }
 }
 
 items.sort((a, b) => b.z - a.z);
