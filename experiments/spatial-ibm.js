@@ -430,6 +430,43 @@ console.log(
     "     registered direction, not for it.",
 );
 
+/*
+ * ⚠️⚠️ THE LAST UNTESTED QUANTITY, AND IT IS THE ONE STILL SEPARATING.
+ *
+ * Loss time came back -0.421 [-1.053, 0.263] and -0.447 [-1.289, 0.421] — both
+ * spanning zero, so "3.6 against 4.1" is not a finding. But retained ancestry
+ * variance over the CONTESTED WINDOW (generations 1-5, where this model resolves)
+ * separated in the same pattern and had no interval on it: 0.519 in both
+ * global-foraging cells against 0.437 and 0.398 where foraging is local.
+ *
+ * It tracks FORAGING, not dispersal, in every readout that has moved at all —
+ * which is itself worth stating, because limited dispersal is the half of the
+ * intervention roadmap :530 actually argued for.
+ *
+ * ⚠️ AND THE SIGN IS AGAINST THE HYPOTHESIS. LESS retained variance means the
+ * lineages collapsed toward one another FASTER. If this clears zero, local
+ * foraging does not merely fail to rescue a rare morph — it costs it. That is a
+ * different roadmap sentence from "no effect", so it gets a real interval
+ * rather than an eyeball.
+ */
+const earlyVar = (rows) => {
+  const v = rows.map((r) => r.ancRelEarly).filter((x) => x !== null);
+  return v.length ? mean(v) : 0;
+};
+console.log(
+  "\n  retained ancestry variance over gens 1-5, paired against global·global:",
+);
+[1, 2, 3].forEach((i) => {
+  console.log(
+    `  ${CELLS[i][0].padEnd(30)}${flatOrCI(arm[i], arm[0], earlyVar)}`,
+  );
+});
+console.log(
+  "  ⚠️ NEGATIVE means LESS ancestry variance retained than baseline — the\n" +
+    "     lineages collapsed toward each other sooner, again against the\n" +
+    "     registered direction.",
+);
+
 /* the interaction: does the pair pay more than the sum of its parts? */
 const mainForage = HELD(arm[1]) - HELD(arm[0]);
 const mainSeed = HELD(arm[2]) - HELD(arm[0]);
