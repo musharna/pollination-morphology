@@ -166,9 +166,19 @@ function replicate(seed, forageRange, seedRange, randomMating) {
     clustering: mean(clustering.slice(0, Math.min(10, clustering.length))),
     /* the continuous readouts the categorical fate cannot express */
     ancRelFinal: ancTrace.length ? ancTrace[ancTrace.length - 1] : null,
-    ancRelMid: ancTrace.length
-      ? ancTrace[Math.floor(ancTrace.length / 2)]
-      : null,
+    /*
+     * ⚠️⚠️ "MID-RUN" SAMPLED A POPULATION THAT HAD RESOLVED THIRTEEN GENERATIONS
+     * EARLIER. The first version took ancTrace[length/2] — the midpoint of the
+     * ARRAY. But the run's own loss times say exclusion completes by about
+     * generation 4 of 35, so the array midpoint sits at ~gen 17, long after
+     * every arm has settled, and it read 0.000 in all four cells BY
+     * CONSTRUCTION. A sampling point chosen by position in a buffer rather
+     * than by where the dynamics live cannot see the dynamics.
+     *
+     * The contested window is the first few generations, so that is what is
+     * sampled.
+     */
+    ancRelEarly: ancTrace.length ? mean(ancTrace.slice(0, 5)) : null,
     ancMeanFinal,
     skew,
     /* ⚠️ null means the lineage was NEVER lost inside GENS — that is the
@@ -364,10 +374,10 @@ console.log(
   "\n  cell                          ancVar/ancVar0  ancVar/ancVar0   lineage skew  lost by gen",
 );
 console.log(
-  "                                  (mid-run)        (final)       (0=even,1=fixed) (censored)",
+  "                                 (gens 1-5)        (final)       (0=even,1=fixed) (censored)",
 );
 arm.forEach((rows, i) => {
-  const mid = rows.map((r) => r.ancRelMid).filter((x) => x !== null);
+  const mid = rows.map((r) => r.ancRelEarly).filter((x) => x !== null);
   const fin = rows.map((r) => r.ancRelFinal).filter((x) => x !== null);
   const sk = rows.map((r) => r.skew).filter((x) => x !== null);
   const lost = rows.map((r) => r.lostAt).filter((x) => x !== null);
@@ -382,6 +392,42 @@ console.log(
   "\n  ⚠️ 'lost by gen' averages ONLY the runs that resolved; the censored count is\n" +
     "     printed beside it because averaging a right-censored run as if it had been\n" +
     "     lost on the last generation would bias every arm toward the run length.",
+);
+
+/*
+ * ⚠️⚠️ AND THE ONE COLUMN THAT MOVED NEEDS AN INTERVAL, OR IT IS JUST A NUMBER.
+ * The first continuous run came back with loss time 3.6 in both LOCAL-foraging
+ * cells against 4.1 in both global ones — the categorical fate was 0/38 HELD
+ * everywhere, so this is the only quantity in the experiment that separated at
+ * all. Quoting "3.6 against 4.1" as a finding would be exactly the sloppiness
+ * the zero-width interval already cost this experiment once.
+ *
+ * ⚠️ NOTE THE DIRECTION BEFORE READING IT AS SUPPORT. A SHORTER loss time means
+ * exclusion arrived SOONER. If local foraging is real here it ACCELERATES the
+ * loss of a lineage — the opposite of the registered hypothesis, under which
+ * giving a rare morph neighbours of its own kind should protect it.
+ */
+const lossTime = (rows) => {
+  const v = rows.map((r) => r.lostAt).filter((x) => x !== null);
+  return v.length ? mean(v) : 0;
+};
+/* ⚠️ the degeneracy check is not only for BINARY statistics — a continuous one
+ * collapses the same way when every paired difference is identical, and loss
+ * time does exactly that in cells where the intervention changes nothing. */
+const flatOrCI = (a, b, statOf) =>
+  degenerate(a, b, statOf)
+    ? "⚠️ NO INTERVAL — every paired difference identical"
+    : ciStr(pairedCI(a, b, statOf));
+
+console.log("\n  loss time, paired against the global·global baseline:");
+[1, 2, 3].forEach((i) => {
+  console.log(
+    `  ${CELLS[i][0].padEnd(30)}${flatOrCI(arm[i], arm[0], lossTime)}`,
+  );
+});
+console.log(
+  "  ⚠️ NEGATIVE means exclusion arrived EARLIER than baseline — against the\n" +
+    "     registered direction, not for it.",
 );
 
 /* the interaction: does the pair pay more than the sum of its parts? */
