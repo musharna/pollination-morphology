@@ -1,0 +1,129 @@
+/*
+ * What does a plant actually GAIN or LOSE by flowering for longer?
+ *
+ * WHY THIS EXISTS. docs/2026-08-25-evolving-width-prereg.md predicts (P2) that
+ * narrowing stops short of zero because "the visit budget is SPLIT across
+ * slices, not duplicated, so a plant absent from a slice simply forgoes it".
+ * That sentence is true and incomplete, and the missing half changes the sign of
+ * the argument.
+ *
+ * sim/carryover.js:295-341 builds the cumulative choice array from the
+ * abundances it is HANDED and draws `r = rng() * acc`, where `acc` is the sum
+ * over the plants actually in flower in that slice. The draw is renormalised
+ * over the present plants. So a plant that skips a slice forgoes those visits,
+ * but a plant present in a THINLY OCCUPIED slice takes a larger share of it.
+ * Narrowing buys fewer slices at a better exchange rate, and which effect wins
+ * depends on how many other plants are in flower — it is frequency-dependent,
+ * not a fixed cost.
+ *
+ * That is trap 3 of the pre-registration ("a positive that is really 'fewer
+ * competitors'") arriving from the opposite direction: it can make WIDENING pay
+ * rather than narrowing. This tool measures the gradient directly instead of
+ * arguing about it, on a population held fixed, so the answer does not depend on
+ * an evolutionary run that takes forty minutes and confounds selection with
+ * drift.
+ *
+ *   node tools/width-gradient.js [slices] [resident-width]
+ */
+
+const I = require("../sim/ibm.js");
+const E = require("../sim/evolve.js");
+
+const N = 30;
+const SITE_N = 160;
+const REPS = 6;
+
+const mean = (xs) =>
+  xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+
+/*
+ * One generation, with plant 0's width set to `focal` and everyone else's to
+ * `resident`. Returns plant 0's siring + receipt, which is what selection on the
+ * locus actually sees.
+ *
+ * ⚠️ THE FOCAL PLANT IS ALWAYS INDEX 0 AND ITS GENOME IS NEVER CHANGED between
+ * conditions — only its width. sitesOf seeds site sampling from the array index,
+ * so comparing index 0 across conditions is the only comparison in which the
+ * geometry is held fixed.
+ */
+function focalFlow(focal, resident, S, seed) {
+  const rng = E.makeRng(seed);
+  const srng = I.signalRng(seed);
+  const opts = {
+    ...I.DEFAULTS,
+    siteN: SITE_N,
+    phenology: { slices: S, widthLocus: true, widthMut: 0 },
+  };
+  const built = I.foundTwoLineages(N, rng, srng, 8, opts);
+  if (!built) return null;
+  const pop = built.pop;
+  /* blooms spread evenly so occupancy is a property of WIDTH rather than of
+   * where the random bloom draws happened to fall */
+  pop.forEach((ind, i) => {
+    const b = i / pop.length;
+    ind.h1[I.BLOOM_GENE] = b;
+    ind.h2[I.BLOOM_GENE] = b;
+    const w = i === 0 ? focal : resident;
+    ind.h1[I.WIDTH_GENE] = w;
+    ind.h2[I.WIDTH_GENE] = w;
+  });
+  const res = I.step(
+    pop,
+    opts,
+    rng,
+    0,
+    srng,
+    I.bloomRng(seed),
+    I.widthRng(seed),
+  );
+  const T = res.T;
+  if (!T) return null;
+  let sired = 0,
+    received = 0;
+  for (let j = 0; j < T.length; j++) {
+    if (j === 0) continue;
+    sired += T[0][j];
+    received += T[j][0];
+  }
+  return { sired, received, total: sired + received };
+}
+
+function main() {
+  const S = Math.max(2, Number(process.argv[2]) || 8);
+  const resident = Number(process.argv[3]) || 1.0;
+  console.log(
+    `focal plant's pollen flow vs its own flowering width\n` +
+      `S = ${S} slices (1/S = ${(1 / S).toFixed(4)})   ` +
+      `resident width = ${resident}   n = ${N}   ${REPS} seeds\n`,
+  );
+  console.log("  focal width    sired  received     total   vs resident");
+  const widths = [0.02, 0.06, 0.12, 0.125, 0.25, 0.5, 0.75, 1.0];
+  let refTotal = null;
+  for (const w of widths) {
+    const rows = [];
+    for (let s = 1; s <= REPS; s++) {
+      const r = focalFlow(w, resident, S, s);
+      if (r) rows.push(r);
+    }
+    if (!rows.length) continue;
+    const t = mean(rows.map((r) => r.total));
+    if (w === resident) refTotal = t;
+    console.log(
+      `  ${String(w).padEnd(11)}${mean(rows.map((r) => r.sired))
+        .toFixed(1)
+        .padStart(9)}${mean(rows.map((r) => r.received))
+        .toFixed(1)
+        .padStart(10)}${t.toFixed(1).padStart(10)}` +
+        (refTotal ? `${(t / refTotal).toFixed(3).padStart(14)}` : ""),
+    );
+  }
+  console.log(
+    "\n  A ratio above 1 at widths BELOW the resident means narrowing pays.\n" +
+      "  A ratio below 1 there means it does not, and P1 predicts the wrong\n" +
+      "  direction — which is a result about the model, not a bug in it.",
+  );
+}
+
+module.exports = { focalFlow };
+
+if (require.main === module) main();

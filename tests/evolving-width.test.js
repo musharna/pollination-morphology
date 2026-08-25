@@ -206,10 +206,24 @@ test("a plant's own width decides which slices it is in flower in", () => {
   const built = I.foundTwoLineages(N0, rng, srng, D_EXCL, opts);
   assert.ok(built);
   const pop = built.pop;
-  /* every plant blooms at the same instant; only the WIDTHS differ */
+  /*
+   * Every plant blooms at the same instant; only the WIDTHS differ.
+   *
+   * ⚠️ AND THE INSTANT IS HALFWAY BETWEEN TWO SLICE CENTRES, NOT ON ONE. The
+   * presence test is `ringDist(bloom, k/S) <= half` — inclusive — so a plant of
+   * width 0 whose bloom lands EXACTLY on a centre satisfies it at 0 <= 0 and is
+   * in flower after all. The first version of this test put every bloom at 0,
+   * which is the centre of slice 0, and the width-0 plant duly exchanged pollen.
+   * That is a real property of the predicate rather than a bug — it is a
+   * measure-zero coincidence that a continuous bloom distribution never
+   * produces — but a test of "width 0 removes a plant" must not sit on it. The
+   * coincidence is pinned separately below.
+   */
+  const S = 8;
+  const OFF = 1 / (2 * S); /* exactly between the centres at 0 and 1/S */
   pop.forEach((ind, i) => {
-    ind.h1[I.BLOOM_GENE] = 0;
-    ind.h2[I.BLOOM_GENE] = 0;
+    ind.h1[I.BLOOM_GENE] = OFF;
+    ind.h2[I.BLOOM_GENE] = OFF;
     const w = i === 0 ? 0 : 1;
     ind.h1[I.WIDTH_GENE] = w;
     ind.h2[I.WIDTH_GENE] = w;
@@ -219,27 +233,76 @@ test("a plant's own width decides which slices it is in flower in", () => {
   assert.strictEqual(res.widths[0], 0, "the zero-width plant was widened");
   assert.strictEqual(res.widths[1], 1, "the full-width plant was narrowed");
 
-  /* ⚠️ THE NEGATIVE NEEDS A POSITIVE CONTROL IN THE SAME TEST. A width of 0 must
+  /*
+   * ⚠️ THE NEGATIVE NEEDS A POSITIVE CONTROL IN THE SAME TEST. A width of 0 must
    * remove the plant from every slice — but "received nothing" also happens when
    * the harness is broken, so the full-width plants must be shown to have
-   * exchanged pollen in the same run. */
-  const T = res.T || null;
-  if (T) {
-    const inflow = (j) =>
-      T.reduce((c, row, i) => c + (i === j ? 0 : row[j]), 0);
-    const outflow = (i) => T[i].reduce((c, x, j) => c + (i === j ? 0 : x), 0);
-    assert.strictEqual(
-      inflow(0) + outflow(0),
-      0,
-      "a plant with width 0 is in no slice and cannot exchange pollen",
-    );
-    const others = pop.map((_, i) => i).slice(1);
-    assert.ok(
-      others.some((i) => inflow(i) + outflow(i) > 0),
-      "no pollen moved between the full-width plants either — the bout is dead, " +
-        "so the zero-width assertion above proves nothing",
-    );
-  }
+   * exchanged pollen in the same run.
+   *
+   * ⚠️⚠️ AND THIS BLOCK WAS ORIGINALLY WRAPPED IN `if (res.T)`, WHICH WAS FALSE.
+   * step() did not return the transfer matrix, so every assertion below was
+   * skipped and the test passed on an empty branch — reported as coverage it did
+   * not have. A guarded assertion whose guard is false is not a weaker test, it
+   * is no test. The guard is gone and T is asserted present first.
+   */
+  const T = res.T;
+  assert.ok(
+    Array.isArray(T) && T.length === pop.length,
+    "step did not return the transfer matrix — the assertions below would be skipped",
+  );
+  const inflow = (j) => T.reduce((c, row, i) => c + (i === j ? 0 : row[j]), 0);
+  const outflow = (i) => T[i].reduce((c, x, j) => c + (i === j ? 0 : x), 0);
+  assert.strictEqual(
+    inflow(0) + outflow(0),
+    0,
+    "a plant with width 0 is in no slice and cannot exchange pollen",
+  );
+  const others = pop.map((_, i) => i).slice(1);
+  assert.ok(
+    others.some((i) => inflow(i) + outflow(i) > 0),
+    "no pollen moved between the full-width plants either — the bout is dead, " +
+      "so the zero-width assertion above proves nothing",
+  );
+});
+
+test("width 0 is not perfectly absorbing: an exact slice-centre coincidence still flowers", () => {
+  /*
+   * Pinning the edge the previous test had to step off, so it is recorded as
+   * known behaviour rather than rediscovered as a surprise. `ringDist <= half`
+   * is inclusive, so at half = 0 a bloom sitting exactly on k/S still satisfies
+   * it. A continuous bloom distribution hits that with probability zero, and
+   * nothing in the experiment depends on width 0 being absorbing — but the
+   * WIDTH_GENE comment says a width-0 plant is "essentially never in flower",
+   * and "essentially" is doing real work in that sentence.
+   */
+  const rng = E.makeRng(11);
+  const srng = I.signalRng(11);
+  const opts = optsAt({
+    phenology: { width: WIDTH, slices: SLICES, widthLocus: true },
+  });
+  const built = I.foundTwoLineages(N0, rng, srng, D_EXCL, opts);
+  assert.ok(built);
+  const pop = built.pop;
+  pop.forEach((ind, i) => {
+    /* bloom exactly ON slice 0's centre this time */
+    ind.h1[I.BLOOM_GENE] = 0;
+    ind.h2[I.BLOOM_GENE] = 0;
+    const w = i === 0 ? 0 : 1;
+    ind.h1[I.WIDTH_GENE] = w;
+    ind.h2[I.WIDTH_GENE] = w;
+  });
+  const res = I.step(pop, opts, rng, 0, srng, I.bloomRng(11), I.widthRng(11));
+  const T = res.T;
+  assert.ok(Array.isArray(T), "no transfer matrix");
+  const flow =
+    T.reduce((c, row, i) => c + (i === 0 ? 0 : row[0]), 0) +
+    T[0].reduce((c, x, j) => c + (j === 0 ? 0 : x), 0);
+  assert.ok(
+    flow > 0,
+    "a width-0 plant blooming exactly on a slice centre exchanged no pollen — " +
+      "the predicate has become exclusive, and the sibling test's choice of an " +
+      "off-centre bloom is now load-bearing for a different reason than documented",
+  );
 });
 
 test("with the locus off the global width still governs", () => {

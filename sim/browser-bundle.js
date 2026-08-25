@@ -4098,6 +4098,20 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
     /* the flowering times themselves, so an experiment can ask whether the
      * SEASON split even when the shapes did not */
     blooms,
+    /*
+     * THE TRANSFER MATRIX ITSELF. T[i][j] is pollen from plant i landing on
+     * plant j, summed over animals and over phenology slices.
+     *
+     * ⚠️ ADDED 2026-08-25 BECAUSE A TEST WAS SILENTLY SKIPPING WITHOUT IT.
+     * tests/evolving-width.test.js asserted that a plant of width 0 exchanges no
+     * pollen, inside `if (res.T) { ... }` — and step did not return T, so the
+     * assertion never ran and the test passed on an empty branch. A guarded
+     * assertion whose guard is false is not a weaker test, it is no test.
+     * Everything downstream of this matrix was already derived from it inside
+     * step; returning it lets a mechanism probe read the quantity selection
+     * actually sees rather than reconstructing it.
+     */
+    T: r.T,
     /* the expressed flowering-window widths — null unless the locus is on.
      * ⚠️ REPORT THE DISPERSION ALONGSIDE THE MEAN. A bimodal outcome, some
      * lineages narrow and some wide, is a different and more interesting result
