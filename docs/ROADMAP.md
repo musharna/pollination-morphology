@@ -34,6 +34,15 @@ Seven things are built and measured, in this order, each gating the next:
    [detail](2026-08-02-presentation-cost-result.md)
 7. **Roadmap B, six steps** — the premise verified, then four mechanism tests of which three are clean
    negatives and spatial structure a partial positive. [detail](2026-08-02-spatial.md)
+   ⚠️⚠️ **THAT PARTIAL POSITIVE DID NOT SURVIVE THE MODEL THAT CAN SPECIATE.** 0.247 → 0.950 was
+   measured in the v1 harness, which has no inheritance, no recombination and no hybrids. Re-run in
+   the IBM: HELD 0 of 38 in every cell, and retained ancestry variance FALLS. The two results do not
+   contradict each other — they show the v1 proxy did not predict the IBM, which is the reason the
+   IBM exists. [detail](2026-08-25-spatial-ibm.md)
+8. **A positive that survives its controls, 2026-08-25** — temporal assortment reaches placement,
+   +0.289 [0.158, 0.447] under free recombination, with the supergene shown inert and the pool-size
+   confound excluded by measurement. ⚠️ It does NOT answer the northstar at `:219`: a narrow season
+   is imposed, not derived. [detail](2026-08-25-phenology.md)
 
 ## Next
 
@@ -217,16 +226,79 @@ placement-mediated mating is untouched by BAL and exclusion still vanishes.
 [detail](2026-08-07-bal-replication.md)
 
 ⬜ **THE NORTHSTAR QUESTION THIS LEAVES: can a minority advantage be DERIVED from pollination rather
-than IMPOSED?** ⚠️ **FIVE ROUTES ARE NOW SPENT, not the two this paragraph used to claim** — and the
-first four all attacked the SAME THING, visitation or attraction:
+than IMPOSED?** ⚠️ **SIX ROUTE FAMILIES ARE NOW SPENT** — and five of the six attacked the same two
+things, visitation or attraction:
 
-| route                                | attacked     | outcome                                             |
-| ------------------------------------ | ------------ | --------------------------------------------------- |
-| second limiting factor (#24/#26)     | visitation   | not available by the pollinator route               |
-| NFD on placement (#25/#27)           | visitation   | self-defeating — rare-bias subsidises the bridge    |
-| learned avoidance (#22)              | attraction   | splits the ADVERTISEMENT, not the plant             |
-| discreteness from geometry (#33/#37) | the axis     | axis CONNECTED; and the morphology premise refuted  |
-| reproductive assurance (#38)         | MATE-FINDING | INADMISSIBLE — indistinguishable from total selfing |
+| route                                | attacked     | outcome                                                       |
+| ------------------------------------ | ------------ | ------------------------------------------------------------- |
+| second limiting factor (#24/#26)     | visitation   | not available by the pollinator route                         |
+| NFD on placement (#25/#27)           | visitation   | self-defeating — rare-bias subsidises the bridge              |
+| learned avoidance (#22)              | attraction   | splits the ADVERTISEMENT, not the plant                       |
+| discreteness from geometry (#33/#37) | the axis     | axis CONNECTED; and the morphology premise refuted            |
+| reproductive assurance (#38, swept)  | MATE-FINDING | no TESTED rate met the conjunction, at any of 7 doses         |
+| **spatial structure (#36)**          | **SPACE**    | **REFUTED — and its active half acts AGAINST the hypothesis** |
+
+⚠️ **THE ASSURANCE ROW IS ONE ROUTE TESTED THOROUGHLY, NOT TWO NEGATIVES.** The 2026-08-07
+single-rate run and the 2026-08-25 sweep are the same mechanism; counting them separately would
+inflate this table. Neither gate opens at any dose from 0.05 to 0.7, and the positive control fires
+at every one of them, so the gates are rejecting WHAT the mechanism did rather than whether it ran.
+⚠️ It is a BOUND, not an equivalence: no pre-declared margin was registered, so "no admissible
+window exists" is not available. [detail](2026-08-25-selfing-sweep.md)
+
+⚠️⚠️ **THE SPATIAL ROW CLOSES THE ROUTE THIS ROADMAP CALLED FAVOURED, AND CLOSES IT IN THE WRONG
+DIRECTION.** `:530` below named spatial structure _"the only remaining candidate that gives a rare
+morph neighbours of its own kind"_, and it is the one mechanism ever measured moving the barrier
+(0.247 → 0.950, v1 harness). In the model that can speciate: **HELD 0 of 38 in every cell**, exact
+one-sided 95% upper bound **7.58%**, with the clustering control landing (0.983 → 0.800). And the
+continuous readout that the four-way label cannot express does move — **retained ancestry variance
+falls**, −0.082 [−0.143, −0.030] and −0.121 [−0.211, −0.035]. Local foraging does not merely fail to
+protect a rare morph; it costs it.
+⚠️ **Every readout that moved tracks FORAGING, not dispersal** — and dispersal is the half `:530`
+argued for. ⚠️ The "limited dispersal alone" cell **cannot** differ from baseline: `carryover.js`
+reads `positions` only when `forageRange` is finite, so that cell is an identity, not a null, and
+the 2×2 has three distinct cells. ⚠️ Which makes the positive control necessary but NOT sufficient:
+it proves kin structure was built while that structure is causally inert unless foraging is local.
+[detail](2026-08-25-spatial-ibm.md)
+
+🎯 **AND ONE ROUTE IS NO LONGER A CANDIDATE BUT A RESULT — the seventh, and the first positive in
+this project that survives its own controls.**
+
+| route                         | attacked | outcome                                                      |
+| ----------------------------- | -------- | ------------------------------------------------------------ |
+| **temporal assortment (#37)** | **TIME** | **+0.289 [0.158, 0.447] — reaches placement, controls hold** |
+
+**Temporal assortment REACHES placement, and the pre-registration that said it could not is
+refuted.** Registered contrast, recombination held fixed: **+0.368 [0.211, 0.526]**. Under FREE
+recombination — where a bloom allele is torn from its placement allele every generation, the arm
+that should have been hardest — **+0.289 [0.158, 0.447]**. FUSED never occurs. Absent from the
+random-mating null.
+
+- ✅ **Not the supergene.** Linkage alone is 0/38 HELD, bound 7.58%. The first version of this
+  experiment had no `wide+linked` cell and its published contrast moved season width and
+  recombination structure together; the 2×2 shows the supergene is inert.
+- ✅ **Not small mating pools.** The shuffled-bloom arm permutes the expressed schedules, holding
+  the multiset of flowering times fixed and destroying only the bloom-to-lineage tie: HELD collapses
+  0.289 → **0.000**. Realised pool size measured rather than assumed — 4.743 against 4.343
+  co-flowering plants of 30, ratio 0.916 — and the residual points the **wrong way** for the
+  confound: the shuffled arm is slightly MORE fragmented and scored ZERO.
+- ⚠️⚠️ **IT DOES NOT ANSWER THE NORTHSTAR ABOVE.** A narrow flowering season is a parameter this
+  model sets, exactly as imposed as the BAL demographic subsidy this roadmap already ruled
+  question-begging. The finding is that temporal assortment reaches placement — not that
+  pollination ecology produced it. **The northstar stays open.**
+- ⚠️ **The prereg's MECHANISM failed, not just its prediction.** Its premise is true — recombination
+  does tear the alleles apart each generation — and its conclusion is false: assortative mating
+  restricts who mates with whom, and that reaches ancestry whether or not any allele pair survives
+  meiosis. **Independence of the axis does not imply independence of the outcome.**
+
+[detail](2026-08-25-phenology.md)
+
+⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
+foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
+divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
+are scattered at random, so a foraging neighbourhood is ancestrally mixed and a smaller sample is
+simply more drift; heritable flowering time makes the pool track ancestry, and the same shrinkage
+becomes assortative mating. Predicted from the spatial run BEFORE the phenology confound arm
+reported, and it held.
 
 The candidate this paragraph used to name as live — **make the placement axis discrete from the
 animal's own body geometry** — is CLOSED, twice over: the axis is connected (below), and the
@@ -297,9 +369,18 @@ strictly downstream, so reusing it would have guaranteed a null for reasons unre
 Any future candidate acting at or after mating needs its own realised-reproduction estimator.
 ⚠️ POST HOC and UNTESTED: single-generation lineage extinction runs 8/40 baseline, 1/40 selfing, 6/40
 floorOnly, 14/40 at full cost. Suggestive of a selfing-specific rescue; no significance test applied.
-⬜ **Open:** whether a SMALLER rate sits in a window that is both admissible and effective. The prereg
-asked for a sweep and this run tested ONE rate — ⚠️ but the two gates squeeze from opposite directions,
-so the window may not exist. [detail](2026-08-07-selfing.md) · [prereg](2026-08-07-selfing-prereg.md)
+✅ **CLOSED 2026-08-25 — the sweep ran and the window does not exist anywhere in it.** This asked
+whether a SMALLER rate sits in a window that is both admissible and effective. Across seven doses
+from 0.05 to 0.7, **neither gate opens at any rate**: nothing is distinguishable from total selfing,
+and nothing is separable from the weight floor. The suspicion that the two gates squeeze from
+opposite directions was right, and they squeeze the window shut.
+✅ The knob was live at every dose — free-vs-fully-costed lineage loss separates 5→14, 4→15, 3→15,
+3→13, 3→13, 1→14, 1→16 of 40 — so the gates reject WHAT the mechanism did, not whether it ran.
+⚠️ **Worded as a bound, not an equivalence.** No pre-declared margin was registered, so the claim is
+"no TESTED rate met the conjunction", not "no admissible window exists".
+⚠️ The realised effect is NEGATIVE at every rate: assurance makes frequency-dependence stronger, not
+weaker. [sweep](2026-08-25-selfing-sweep.md) · [detail](2026-08-07-selfing.md) ·
+[prereg](2026-08-07-selfing-prereg.md)
 
 v1 is adaptive dynamics over species already distinct. It has no standing variation, no
 recombination and no hybridisation, so it cannot speak to how a lineage _splits_. The interesting
@@ -527,11 +608,23 @@ partner-availability effect already measured in the constancy work (0.471 → 0.
 frequency) — and the under-powered arm hints yes. Needs many more draws. After that: clustering that
 EMERGES from limited dispersal rather than being imposed, and temporal assortment by flowering time.
 
-⬜ _Superseded framing, kept for the record:_ **spatial structure, favoured.** It is the only remaining candidate that
+⛔ _Superseded framing, kept for the record — **and BOTH of its two candidates have now reported,
+in opposite directions**. See the route table at `:219`._ **spatial structure, favoured.** It is the only remaining candidate that
 gives a rare morph _neighbours of its own kind_ rather than merely more visits: a new morph's
 offspring land near it, so it is locally common while globally rare. That attacks the measured
 barrier in the one way neither a second pollinator nor constancy does. Temporal assortment by
 flowering time is the other, and is genuinely independent of placement.
+
+⚠️⚠️ **THE FAVOURED ONE WAS REFUTED AND THE OTHER ONE WORKED — and the reasoning above is why the
+prediction inverted.** "Offspring land near it, so it is locally common while globally rare" is true
+of positions and false of ancestry: founders are scattered at RANDOM, so a foraging neighbourhood is
+ancestrally MIXED and shrinking it is simply more drift. Retained ancestry variance FELL
+(−0.082 [−0.143, −0.030]). Meanwhile heritable flowering time makes the pool track ancestry, and the
+same shrinkage becomes assortative mating: +0.289 [0.158, 0.447].
+⚠️ **The paragraph treated "locally common" as if it followed from limited dispersal alone. It does
+not — it needs the local pool to be ALIGNED WITH LINEAGE**, which dispersal from random founders does
+not supply and a heritable schedule does. That is the correction, and it is the reason the two
+results disagree while sharing a mechanism class.
 
 ⬜ _Superseded framing, kept for the record:_ `rare/common ≈ 0.26` is the **rare-morph
 mate-finding problem** — a novel placement is penalised because there is nobody to exchange pollen
@@ -677,6 +770,45 @@ Known defects: flowers read as long trumpets rather than compact blooms (that is
 aspect ratio, so it is a biology change); near petals occlude the mouth at some rotations; the
 flight arc has no real deceleration into a hover. **Not a priority** — the event lands, and the
 project's value scales with mechanism classes rather than polish.
+
+## Instrument debt — open, and it is load-bearing
+
+⚠️⚠️ **THIS SECTION EXISTS BECAUSE THE ROADMAP TRACKED MECHANISMS AND NOT MEASUREMENT.** Almost every
+headline result in this project is a NEGATIVE, so what is actually being sold is that the negatives
+are trustworthy — which makes the instruments, not the findings, the load-bearing part. An external
+audit on 2026-08-25 found defects in five of them. All were LATENT except the sectile one; none has
+been shown to corrupt a published result; every one would have bitten the first time this project
+reported a positive.
+
+| item                                                                                           | state                                                                 |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **`v2` result is not reproducible from its committed runner** — highest priority               | OPEN                                                                  |
+| sectile "flowers serviced" counts deposition objects, not distinct flowers — calibration wrong | OPEN                                                                  |
+| gates consulted only on the negative path (`selfing.js:419`, +3 more sites)                    | OPEN                                                                  |
+| `twoClusterSeparation` unbounded in majority tightness; `minorityFrac` printed, never gated    | OPEN                                                                  |
+| no semantic test of `fateOf` — the mutation's only red light is a staleness tripwire           | OPEN                                                                  |
+| `seasonSplit` maximised on fixation                                                            | ✅ FIXED — replaced by circular moments R1/R2                         |
+| paired bootstrap quoting zero-width intervals over a constant                                  | ✅ FIXED — degeneracy detected, exact binomial bound reported instead |
+
+⚠️⚠️ **`experiments/v2.js` HAS `SEEDS = [1,2]`, `visits: 3000`, AND ZERO MATCHES FOR
+`bootstrap|paired|6000|18000`.** `docs/2026-08-01-v2-result.md` reports n=8 paired seeds, 6,000 and
+18,000-visit budgets and 95% CIs — including the "excluded zero by 0.02, then did not replicate"
+narrative that is the document's entire point. Git history shows runner and result landed together,
+so this is not later drift. Either restore the executable that produced those numbers or put a
+provenance warning on the document. ⚠️ For contrast, `docs/2026-08-03-ibm.md` REPRODUCES exactly
+from its committed runner, so this is one specific failure and not a systemic one.
+
+⚠️ **A GATE CHECKED ONLY ON THE NEGATIVE PATH IS NOT A GATE.** `selfing.js:419` consults
+admissibility and attribution only inside the "effect not established" branch; the green branch at
+`:431` is reached without either. The comment two lines above says the gates are applied rather than
+reported and walked past — true of the branch it sits in, false of the success branch. Same shape at
+`reachability.js:175/:224`, `two-pollinator-coexistence.js:314`, `secondary-contact.js:506/:572`.
+
+⚠️ **AND THE ONE TEST THAT FIRES ON A `fateOf` MUTATION CARRIES NO INFORMATION.** Swapping the
+`HELD` and `FUSED` returns leaves 186 of 187 green; the single failure is
+`tests/browser-bundle.test.js` reporting the bundle stale, which fires identically on a no-op
+comment appended to `sim/ibm.js`. A red light that cannot distinguish an inverted classifier from a
+comment is worse than no test, because it invites the reader who checks and stops.
 
 ## Standing constraints
 
