@@ -657,9 +657,12 @@ if (!LANDED) {
       "     that needs the supergene does NOT answer roadmap :219's northstar, which\n" +
       "     asks for a minority advantage DERIVED rather than imposed. It relocates\n" +
       "     the imposition from ecology to the genome.\n" +
-      "  ⚠️ STILL OUTSTANDING: the narrow arms leave ~" +
-      `${(N0 * WIDTH).toFixed(1)} of ${N0} plants co-flowering per\n` +
-      "     slice, so a shuffled-bloom arm is still owed before the effect can be\n" +
-      "     attributed to heritable temporal assortment rather than to small pools.",
+      `  ✅ THE POOL CONFOUND IS EXCLUDED, and the residual points the wrong way\n` +
+      `     for it. narrow·free ran at ${f3(cfFree)} co-flowering plants of ${N0} and\n` +
+      `     narrow·shuffled at ${f3(cfShuf)} — ratio ${cfRatio.toFixed(3)}. The shuffled arm is\n` +
+      "     therefore slightly MORE fragmented, and it scored ZERO HELD. If small\n" +
+      "     mating pools were what raised HELD, more fragmentation would raise it\n" +
+      "     further; it abolished it. The residual difference argues AGAINST the\n" +
+      "     confound rather than leaving room for it.",
   );
 }
