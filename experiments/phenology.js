@@ -170,6 +170,7 @@ function replicate(seed, phen, randomMating) {
   const r1 = [];
   const r2 = [];
   const lineage = [];
+  const coflow = [];
   let extinct = false;
   for (let g = 0; g < GENS; g++) {
     if (pop.length < 2) {
@@ -182,6 +183,7 @@ function replicate(seed, phen, randomMating) {
      * is blind to it, because a permutation leaves assortment on expressed
      * time untouched and only breaks the tie to ancestry */
     if (res.bloomLineage != null) lineage.push(res.bloomLineage);
+    if (res.coflower != null) coflow.push(res.coflower);
     const m = bloomMoments(res.blooms);
     if (m != null) {
       r1.push(m.R1);
@@ -197,6 +199,9 @@ function replicate(seed, phen, randomMating) {
      * left for flowering time to be associated WITH, so a late window measures
      * the resolution rather than the association. */
     lineage: lineage.length ? mean(lineage.slice(0, 10)) : null,
+    /* ⚠️ over the SAME early window as `lineage`, so the pool size quoted is the
+     * pool size during the generations where the outcome is actually decided */
+    coflower: coflow.length ? mean(coflow.slice(0, 10)) : null,
     /* the LAST few generations — the bloom distribution settles over time */
     R1: mean(r1.slice(-5)),
     R2: mean(r2.slice(-5)),
@@ -366,6 +371,44 @@ console.log(
 );
 console.log(`  bloom-lineage association, narrow·shuffled: ${f3(lnShuf)}`);
 const SHUF_LANDED = lnFree < 0.99 && lnShuf > lnFree;
+
+/*
+ * ⚠️⚠️ AND THE CONTROL'S OWN CLAIM NEEDS CHECKING, BECAUSE IT HOLDS ONLY WITHIN
+ * A GENERATION.
+ *
+ * The permutation preserves the multiset of bloom times, so per-slice occupancy
+ * is identical at the moment it is applied. But decoupling expressed bloom from
+ * fitness makes the locus NEUTRAL, and a neutral locus drifts toward
+ * concentration — which puts MORE plants in flower together in the slices that
+ * are occupied. The first run showed exactly that: R1 0.708 in the shuffled arm
+ * against 0.457 in narrow·free, right beside the wide baseline's 0.679 where
+ * bloom is also unselected.
+ *
+ * If the arms' realised pool sizes differ, then "heritability removed" and "less
+ * fragmentation" moved together and the contrast cannot separate them — the
+ * control would be confounded with the very thing it exists to hold fixed.
+ */
+const cfFree = mean(arm[FREE].map((r) => r.coflower).filter((x) => x != null));
+const cfShuf = mean(
+  arm[SHUFFLED].map((r) => r.coflower).filter((x) => x != null),
+);
+const cfRatio = cfFree > 1e-9 ? cfShuf / cfFree : Infinity;
+console.log(
+  `\n  plants co-flowering per active slice, narrow·free:     ${f3(cfFree)} of ${N0}`,
+);
+console.log(
+  `  plants co-flowering per active slice, narrow·shuffled: ${f3(cfShuf)} of ${N0}`,
+);
+const POOL_HELD = cfRatio < 1.15 && cfRatio > 0.87;
+console.log(
+  POOL_HELD
+    ? `  ✅ pool size held: ratio ${cfRatio.toFixed(3)}, so the confound contrast\n` +
+        "     separates heritability from fragmentation."
+    : `  ⚠️⚠️ POOL SIZE DID NOT HOLD — ratio ${cfRatio.toFixed(3)}. Removing heritability\n` +
+        "     also changed how fragmented the season is, because a neutral bloom locus\n" +
+        "     drifts toward concentration. The confound contrast moves BOTH things and\n" +
+        "     CANNOT attribute the effect to temporal assortment.",
+);
 console.log(
   SHUF_LANDED
     ? "  ✅ the shuffle landed: permuting the schedules removed the tie between\n" +
@@ -526,6 +569,26 @@ if (!LANDED) {
       "     bloom shows no lineage association, or permuting it did not remove\n" +
       "     one, so 'heritable temporal assortment' cannot be separated from\n" +
       "     'small mating pools' and no mechanism may be named.",
+  );
+} else if (!POOL_HELD) {
+  /* ⚠️⚠️ THE CONTROL FAILED ITS OWN PRECONDITION. The shuffle removed
+   * heritability AND changed fragmentation, because a neutral bloom locus
+   * drifts to concentration. Both moved, so neither can be credited. */
+  console.log(
+    "  ⚠️⚠️ NO ATTRIBUTION — THE CONFOUND ARM IS ITSELF CONFOUNDED.\n" +
+      `     narrow+free against narrow+SHUFFLED is ${ciStr(dPool)}, which looks\n` +
+      "     decisive, but the two arms did NOT hold the same pool size (PART 2):\n" +
+      `     ${f3(cfFree)} co-flowering plants against ${f3(cfShuf)} of ${N0}.\n` +
+      "     Destroying heritability makes the bloom locus neutral, a neutral locus\n" +
+      "     drifts toward concentration, and concentration puts more plants in\n" +
+      "     flower together. Heritability and fragmentation moved TOGETHER, so this\n" +
+      "     contrast cannot say which one raised HELD.\n" +
+      "     ⚠️ What is still established: the effect is NOT the supergene\n" +
+      `     (linkage alone ${contrastStr(arm[WIDE_LINKED], arm[0], HELD, "HELD")}),\n` +
+      "     and it is placement-mediated (absent from the random-mating null).\n" +
+      "     ⚠️ NEXT: an arm that holds the bloom DISTRIBUTION fixed as well — e.g.\n" +
+      "     re-imposing narrow·free's realised bloom multiset on the shuffled arm\n" +
+      "     each generation, so only the lineage association differs.",
   );
 } else if (!excludes0(dPool)) {
   /* ⚠️⚠️ AND THIS IS THE BRANCH THAT MATTERS. If narrow+free does not beat

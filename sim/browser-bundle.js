@@ -3212,6 +3212,10 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
    * placing the morphs in arcs.
    */
   const PH = opts.phenology || null;
+  /* how many plants were actually in flower together, averaged over the slices
+   * that had any — the confound arm's claim, measured. See the slice loop. */
+  let coflowerSum = 0;
+  let coflowerSlices = 0;
   const brn = brng || (PH ? bloomRng(7) : null);
   let blooms = null;
   if (PH) {
@@ -3367,6 +3371,26 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
          * a crash and not a redistribution — the pollinator's effort in that
          * part of the season is simply lost. */
         if (!w.some((x) => x > 0)) continue;
+        /*
+         * ⚠️⚠️ THE POOL SIZE THE CONFOUND ARM CLAIMS TO HOLD FIXED, MEASURED
+         * RATHER THAN ASSUMED.
+         *
+         * `shuffleBloom` permutes the schedules, which preserves the multiset of
+         * bloom times WITHIN a generation — so per-slice occupancy is identical
+         * at the moment of the permutation. But once expressed bloom is
+         * decoupled from fitness the ALLELE distribution evolves differently:
+         * selection no longer maintains its spread, it drifts toward
+         * concentration, and a concentrated distribution puts MORE plants in
+         * flower together in the slices that are occupied at all.
+         *
+         * So the control fixes the quantity at one timestep and lets its own
+         * downstream consequence drift. Whether that matters is an empirical
+         * question about how far the arms actually diverge, and it cannot be
+         * settled by inspecting the permutation. This counts what really
+         * happened.
+         */
+        coflowerSum += w.reduce((c, x) => c + (x > 0 ? 1 : 0), 0);
+        coflowerSlices++;
         const rb = C.runBout(ss, w, {
           ...boutOpts,
           visits: perSlice,
@@ -3696,6 +3720,10 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
     /* the positive control for shuffleBloom specifically; bloomAssort is blind
      * to it, because a permutation preserves assortment on expressed time */
     bloomLineage,
+    /* ⚠️ the confound arm holds this fixed only WITHIN a generation; across
+     * generations the allele distribution drifts once selection is removed, so
+     * it is measured rather than assumed. null when phenology is off. */
+    coflower: coflowerSlices ? coflowerSum / coflowerSlices : null,
     /* the flowering times themselves, so an experiment can ask whether the
      * SEASON split even when the shapes did not */
     blooms,
