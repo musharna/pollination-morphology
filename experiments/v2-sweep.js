@@ -31,6 +31,7 @@
 const P = require("../sim/placement.js");
 const K = require("../sim/packing.js");
 const E = require("../sim/evolve.js");
+const { interval, T_CRIT, Z_CRIT } = require("../sim/paired-stats.js");
 
 const SMOKE = !!process.env.SMOKE;
 
@@ -128,44 +129,9 @@ function checkArmIgnoresBudget(
   return a;
 }
 
-const T_CRIT = {
-  1: 12.706205,
-  2: 4.302653,
-  3: 3.182446,
-  4: 2.776445,
-  5: 2.570582,
-  6: 2.446912,
-  7: 2.364624,
-  8: 2.306004,
-  9: 2.262157,
-  10: 2.228139,
-  11: 2.200985,
-  12: 2.178813,
-  13: 2.160369,
-  14: 2.144787,
-  15: 2.13145,
-};
-const Z_CRIT = 1.959964;
-
-function interval(d) {
-  const n = d.length;
-  const mean = d.reduce((a, b) => a + b, 0) / n;
-  if (n < 2) return { n, mean, sd: NaN, se: NaN };
-  const varS = d.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1);
-  const sd = Math.sqrt(varS);
-  const se = sd / Math.sqrt(n);
-  const t = T_CRIT[n - 1];
-  if (t === undefined)
-    throw new Error(`no t critical value tabulated for df=${n - 1}`);
-  return {
-    n,
-    mean,
-    sd,
-    se,
-    t: [mean - t * se, mean + t * se],
-    z: [mean - Z_CRIT * se, mean + Z_CRIT * se],
-  };
-}
+/* ✅ the t table and the interval moved to sim/paired-stats.js when a third
+ * experiment needed them (task #43); see the require at the top. The record of
+ * WHY t rather than z — the v2 correction — moved with them. */
 
 function main() {
   const ctx = { bee: P.DEFAULT_BEE, nSamp: N_SAMP, ...precision() };

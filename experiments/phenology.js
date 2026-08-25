@@ -28,6 +28,7 @@
 
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
+const { pairedCI, degenerate, zeroUpper } = require("../sim/paired-stats.js");
 
 const mean = (xs) =>
   xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
@@ -208,30 +209,6 @@ function replicate(seed, phen, randomMating) {
   };
 }
 
-function pairedCI(a, b, statOf, B = 4000, seed = 99) {
-  const n = a.length;
-  if (n !== b.length || !n) return null;
-  const rng = E.makeRng(seed);
-  const point = statOf(a) - statOf(b);
-  const draws = [];
-  for (let k = 0; k < B; k++) {
-    const ia = [],
-      ib = [];
-    for (let i = 0; i < n; i++) {
-      const j = Math.floor(rng() * n);
-      ia.push(a[j]);
-      ib.push(b[j]);
-    }
-    draws.push(statOf(ia) - statOf(ib));
-  }
-  draws.sort((x, y) => x - y);
-  return {
-    point,
-    lo: draws[Math.floor(0.025 * B)],
-    hi: draws[Math.floor(0.975 * B)],
-  };
-}
-
 const fracOf = (f) => (rows) =>
   rows.filter((r) => r.fate === f).length / rows.length;
 const HELD = fracOf("HELD");
@@ -249,33 +226,13 @@ const excludes0 = (ci) => ci && (ci.lo > 0 || ci.hi < 0);
  * For k = 0 successes in n trials the exact one-sided upper bound at level a
  * solves (1-p)^n = a; at n=30, a=0.05 that is 9.50%.
  *
- * ⚠️ KNOWN DUPLICATE of the same guard in experiments/spatial-ibm.js, which
- * lives on another branch. This project has already been bitten by experiments
- * carrying byte-identical copies of a helper that then diverge silently, so
- * these two must be single-sourced when the branches merge — deliberately not
- * done here, because introducing a shared module across two unmerged branches
- * is a worse hazard than one flagged copy.
+ * ✅ SINGLE-SOURCED 2026-08-25 (task #43). This comment used to say the guard was
+ * a known duplicate of the one in experiments/spatial-ibm.js, to be unified
+ * "when the branches merge". They have merged, a third experiment needed the
+ * same helper, and both copies were confirmed byte-identical before extraction.
+ * `pairedCI`, `degenerate` and the exact bounds now live in sim/paired-stats.js,
+ * which also carries the record of how the predicate was wrong the first time.
  */
-/*
- * ⚠️⚠️ AND THE FIRST VERSION OF THIS GUARD COULD NOT SEE ITS OWN REFERENT.
- * It asked whether the STATISTIC was constant. But `pairedCI` resamples paired
- * DIFFERENCES, and a difference vector can be constant while the statistic
- * varies — if both arms score HELD on exactly the same seeds, every paired
- * difference is 0 and the interval collapses even though HELD is not constant
- * anywhere. The smoke run walked straight through the guard and printed
- * "+0.000 [0.000, 0.000]" for precisely that reason.
- *
- * The object the bootstrap resamples is the difference, so that is the object
- * the predicate has to test.
- */
-const degenerate = (a, b, statOf) => {
-  const n = Math.min(a.length, b.length);
-  if (!n) return true;
-  const d = [];
-  for (let i = 0; i < n; i++) d.push(statOf([a[i]]) - statOf([b[i]]));
-  return d.every((x) => x === d[0]);
-};
-const zeroUpper = (n, alpha = 0.05) => 1 - Math.pow(alpha, 1 / n);
 
 const ciStr = (ci) =>
   ci

@@ -27,6 +27,12 @@
 
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
+const {
+  pairedCI,
+  degenerate,
+  zeroUpper,
+  allLower,
+} = require("../sim/paired-stats.js");
 
 const mean = (xs) =>
   xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
@@ -191,34 +197,9 @@ function replicate(seed, forageRange, seedRange, randomMating) {
 
 /* ------------------------------------------------------- paired bootstrap */
 
-/*
- * Paired over SEEDS: every cell sees the same founding draws, so a difference
- * between cells is not a difference in which populations they happened to get.
- * Resampling is over seeds, which is the unit of independence.
- */
-function pairedCI(a, b, statOf, B = 4000, seed = 99) {
-  const n = a.length;
-  if (n !== b.length || !n) return null;
-  const rng = E.makeRng(seed);
-  const point = statOf(a) - statOf(b);
-  const draws = [];
-  for (let k = 0; k < B; k++) {
-    const ia = [],
-      ib = [];
-    for (let i = 0; i < n; i++) {
-      const j = Math.floor(rng() * n);
-      ia.push(a[j]);
-      ib.push(b[j]);
-    }
-    draws.push(statOf(ia) - statOf(ib));
-  }
-  draws.sort((x, y) => x - y);
-  return {
-    point,
-    lo: draws[Math.floor(0.025 * B)],
-    hi: draws[Math.floor(0.975 * B)],
-  };
-}
+/* ✅ `pairedCI` and the degeneracy guard now live in sim/paired-stats.js — see
+ * the require at the top of this file. They were byte-identical copies here and
+ * in experiments/phenology.js; task #43. */
 
 const fracOf = (f) => (rows) =>
   rows.filter((r) => r.fate === f).length / rows.length;
@@ -245,30 +226,9 @@ const excludes0 = (ci) => ci && (ci.lo > 0 || ci.hi < 0);
  * For k = 0 successes in n trials the exact one-sided upper bound at level a
  * solves (1-p)^n = a. At n=30, a=0.05 that is 9.50%.
  */
-/*
- * ⚠️⚠️ THE FIRST VERSION OF THIS GUARD COULD NOT SEE ITS OWN REFERENT — caught
- * on the phenology branch, ported here.
- *
- * It asked whether the STATISTIC was constant. `pairedCI` resamples paired
- * DIFFERENCES, and a difference vector can be constant while the statistic
- * varies: if both arms score the outcome on exactly the SAME seeds, every
- * paired difference is 0 and the interval collapses to [0.000, 0.000] even
- * though the statistic is not constant anywhere. A guard written against the
- * statistic walks straight past that, which is the whole failure it exists to
- * catch — a predicate that does not fully observe what it is trusted for.
- *
- * The object the bootstrap resamples is the difference, so that is the object
- * the predicate tests.
- */
-const degenerate = (a, b, statOf) => {
-  const n = Math.min(a.length, b.length);
-  if (!n) return true;
-  const d = [];
-  for (let i = 0; i < n; i++) d.push(statOf([a[i]]) - statOf([b[i]]));
-  return d.every((x) => x === d[0]);
-};
-const zeroUpper = (n, alpha = 0.05) => 1 - Math.pow(alpha, 1 / n);
-const allLower = (n, alpha = 0.05) => Math.pow(alpha, 1 / n);
+/* ⚠️ THE FIRST VERSION OF THIS GUARD COULD NOT SEE ITS OWN REFERENT — it tested
+ * whether the STATISTIC was constant rather than the DIFFERENCE. That record,
+ * and the corrected predicate, moved with it to sim/paired-stats.js. */
 
 const ciStr = (ci) =>
   ci
