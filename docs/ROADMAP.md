@@ -43,6 +43,15 @@ Seven things are built and measured, in this order, each gating the next:
    +0.289 [0.158, 0.447] under free recombination, with the supergene shown inert and the pool-size
    confound excluded by measurement. ⚠️ It does NOT answer the northstar at `:219`: a narrow season
    is imposed, not derived. [detail](2026-08-25-phenology.md)
+   ⚠️ Scope condition measured 2026-08-25: it holds where the windows are effectively DISJOINT.
+   Same cell at `S=32`, where width 0.12 spans ~4 slices, gives HELD 0.083 against 0.417 at `S=8`.
+9. 🛑 **AND THE NARROW SEASON CANNOT BE DERIVED — it is selected AGAINST, 2026-08-25.** With width
+   a heritable per-plant locus it evolves WIDE, +0.422 [0.292, 0.551] over the shuffled control at
+   `S=8` and the same at 16 and 32, with S-invariance PASSING so the slice grid is not responsible.
+   Cause measured rather than inferred: **flowering longer is free in this model** — the visit draw
+   is renormalised over the plants present in a slice, so skipping one forgoes it and attending one
+   costs nothing. The route through time is closed; what is missing is a COST OF DURATION.
+   [detail](2026-08-25-evolving-width-result.md)
 
 ## Next
 
@@ -302,6 +311,31 @@ bloom-space catches ZERO slices** — reproductively invisible by grid alignment
 grid structure is identical in both arms and HELD still collapses 0.289 → 0.000. The grid cannot
 be what produced the positive. ⚠️ But it is decisive for anything that lets width VARY, because
 width is the quantity that crosses those thresholds. Re-derive with `node tools/slice-coverage.js`.
+
+⚠️⚠️ **AND IT IS NOW A MEASURED SCOPE CONDITION, NOT ONLY A CAVEAT ABOUT WORDING (2026-08-25).**
+The evolving-width sweep ran the SAME fixed-narrow cell at three slice counts. `WIDTH = 0.12`
+covers one slice at `S=8`, about two at `S=16` and about four at `S=32` — and HELD goes
+**0.417 → 0.417 → 0.083** (5, 5 and 1 of 12 seeds). The effect survives while the windows are
+effectively disjoint and collapses once they genuinely overlap. Mechanistically coherent — more
+overlap is less assortment is less retained ancestry — but it means **#37 holds in the
+disjoint-bin regime specifically**, and anything quoting +0.289 should quote `SLICES = 8` beside it.
+
+🛑 **AND THE NORTHSTAR ROUTE THROUGH TIME IS NOW CLOSED — NEGATIVE. Width does not evolve narrow;
+it evolves WIDE.** Making the season a heritable per-plant locus was the one move that could turn
+#37's imposed parameter into a derived result. Treatment reaches width **0.92** from a start of
+0.50 against a shuffled control at 0.48: **+0.422 [0.292, 0.551]** at `S=8`, and the same at 16
+and 32 — an interval excluding zero in the WRONG DIRECTION, three times.
+✅ S-invariance PASSED (`CV(width) 0.0086` vs `CV(width·S) 0.6630`), so the grid is not
+responsible and the direction is real. ❌ `bloomLineage` did not move and HELD stayed 0.000.
+⚠️ **The cause is that FLOWERING LONGER IS FREE HERE.** `carryover.js:295-341` draws
+`r = rng() * acc` with `acc` summing only the plants in flower in that slice, so the visit draw is
+renormalised over whoever is present: skipping a slice forgoes it, attending one costs nothing.
+Measured, not inferred — `node tools/width-gradient.js` shows focal pollen flow rising monotonically
+`423 → 3494` against a wide resident and `2747 → 12946` against a narrow one, a **4.7x** advantage
+to a wide mutant invading a narrow population, with no interior optimum.
+⚠️ The prereg's P2 named the right mechanism and drew the wrong conclusion from it: budget-splitting
+is a cost of NARROWING, monotone, not a floor that stops narrowing near zero.
+[detail](2026-08-25-evolving-width-result.md)
 
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and

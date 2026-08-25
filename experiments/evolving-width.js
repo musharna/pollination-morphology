@@ -183,15 +183,25 @@ function main() {
     console.log(
       "  arm                             width   sd(w)   start  lineage  gridPull    HELD",
     );
+    /*
+     * ⚠️ AN ARM WITH NO EXPRESSED WIDTHS MUST PRINT A DASH, NOT 0.000. The
+     * fixed-width arms run with the locus OFF, so `widths` is null in every
+     * generation and the filtered array is empty — and mean([]) is 0, so the
+     * first run of this table reported "fixed wide (#37 baseline)  0.000" in a
+     * column headed `width`. A baseline whose width is 1.0 by construction,
+     * displaying as zero, is a number that would be read straight into a
+     * conclusion. Absent and zero are different and the table has to say which.
+     */
+    const col = (rows, key) => {
+      const xs = rows.map((r) => r[key]).filter((x) => x != null);
+      return xs.length ? f3(mean(xs)) : "     - ";
+    };
     CELLS.forEach(([name], i) => {
       const rows = arms[i];
       console.log(
-        `  ${name.padEnd(30)}${f3(mean(rows.map((r) => r.width).filter((x) => x != null)))}` +
-          `${f3(mean(rows.map((r) => r.widthSd).filter((x) => x != null)))}` +
-          `${f3(mean(rows.map((r) => r.widthStart).filter((x) => x != null)))}` +
-          `${f3(mean(rows.map((r) => r.lineage).filter((x) => x != null)))}` +
-          `${f3(mean(rows.map((r) => r.pull).filter((x) => x != null)))}` +
-          `${f3(HELD(rows))}`,
+        `  ${name.padEnd(30)}${col(rows, "width")}${col(rows, "widthSd")}` +
+          `${col(rows, "widthStart")}${col(rows, "lineage")}` +
+          `${col(rows, "pull")}${f3(HELD(rows))}`,
       );
     });
 
