@@ -1,0 +1,148 @@
+# Flowering time — 2026-08-25
+
+**The pre-registered null is REFUTED. Temporal assortment reaches placement under
+FREE recombination, the supergene contributes nothing, and the pool-size confound
+is excluded by a control whose residual points the wrong way for it.**
+
+**⚠️ This is the first positive result in the project that survives its own
+controls — and it does NOT answer roadmap `:219`'s northstar. See "What this is
+not" below.**
+
+Pre-registered in [prereg](2026-08-16-phenology-prereg.md), committed before the
+experiment ran. Result at n=30, d=8, 40 seeds/cell (38 built), 35 generations,
+8 slices, `WIDTH = 0.12`, siteN=160. jobd 3514 on `gt76`, branch
+`flowering-time`.
+
+## The cells
+
+| cell                               | HELD  | FUSED | one lost | assort | R1    | R2    | bloom        |
+| ---------------------------------- | ----- | ----- | -------- | ------ | ----- | ----- | ------------ |
+| wide season (baseline)             | 0.000 | 0.000 | 1.000    | 0.990  | 0.679 | 0.428 | CONCENTRATED |
+| narrow · free recombination        | 0.289 | 0.000 | 0.711    | 0.151  | 0.457 | 0.368 | scattered    |
+| narrow · linked (supergene)        | 0.368 | 0.000 | 0.632    | 0.136  | 0.387 | 0.432 | scattered    |
+| wide · linked (the missing cell)   | 0.000 | 0.000 | 1.000    | 0.981  | 0.725 | 0.469 | CONCENTRATED |
+| narrow · bloom SHUFFLED (confound) | 0.000 | 0.000 | 1.000    | 0.230  | 0.708 | 0.435 | CONCENTRATED |
+
+## The registered contrasts
+
+| contrast                                         | HELD                          |
+| ------------------------------------------------ | ----------------------------- |
+| **H-free** narrow+free vs wide+free              | **+0.289 [0.158, 0.447]**     |
+| **H-link** narrow+linked vs **wide+linked**      | **+0.368 [0.211, 0.526]**     |
+| FUSED, same contrast                             | 0/38 vs 0/38, bound 7.58%     |
+| **LINKAGE MAIN EFFECT** wide+linked vs wide+free | **0/38 vs 0/38, bound 7.58%** |
+| **H-pool** narrow+free vs narrow+**SHUFFLED**    | **+0.289 [0.158, 0.447]**     |
+| random-mating null, linked arm                   | no effect                     |
+
+- narrow season alone **0.289** · linkage alone **0.000** · both **0.368** ·
+  interaction **0.079**
+
+## What was wrong with the first version of this experiment
+
+⚠️⚠️ **THERE WAS NO `wide + linked` CELL, SO THE LINKED ARM BUNDLED TWO
+INTERVENTIONS.** `linkBloom` does not only tie flowering time to the anther loci:
+it makes `antherT`, `angle` and `antherProject` co-segregate off one coin
+(`sim/ibm.js:287-289`) where the free arm draws each independently. That is a
+morphology-preserving supergene, and it could have raised HELD with phenology
+contributing nothing. The published +0.289 compared narrow+linked against
+wide+**free**, moving season width and recombination structure together.
+
+**The 2×2 settles it: linkage alone is 0/38 HELD, bound 7.58%.** The supergene
+does nothing. The effect is the season, and it is present in the arm that should
+have been hardest for it — free recombination, where a bloom allele is torn from
+whatever placement allele it arose beside every single generation.
+
+⚠️⚠️ **`seasonSplit` MAXIMISED ON FIXATION.** Largest-ring-gap over mean spacing,
+fed known distributions: uniform 4.6, two tight clusters (a real split) 19.9, one
+tight cluster (total fixation) **39.9**. It was monotone in concentration, so a
+collapsed distribution outscored a genuine split twofold — and the first run's
+ordering (wide 14.691 above narrow 12.711) was reporting the neutral bloom allele
+drifting to fixation where nothing selected on it.
+
+Replaced by the two circular moments, because one number cannot separate three
+cases and two can: fixation `(R1≈1, R2≈1)`, even scatter `(0,0)`, two opposed
+groups `(0,1)`. **No arm went bimodal** — R2 never clears 0.5. The mechanism is
+not "two flowering groups formed"; narrow windows _maintain_ bloom diversity
+(R1 0.457) while the wide season lets a neutral locus drift together (R1 0.679).
+
+⚠️ **The verdict could print the opposite of its data.** The linked branch asked
+only whether the interval _excluded_ zero, never whether the effect was
+_positive_, so a significant decrease would have fallen through to the green
+"HELD rises" sentence. It did not fire, but that was luck.
+
+## The confound, and why it is excluded
+
+A narrow season assorts mating by flowering time — the hypothesis — **and**
+shrinks the pool available on any day. A small mating pool retains ancestry
+variance mechanically. The random-mating null cannot separate them: it removes
+the transfer matrix, and both act through it.
+
+`shuffleBloom` **permutes** the expressed schedules among plants each generation.
+A permutation, not a redraw, so the multiset of bloom times is preserved and
+per-slice occupancy is identical at the moment it is applied; only _who holds
+which schedule_ is randomised, destroying the bloom-to-lineage tie. Alleles still
+segregate and mutate normally.
+
+✅ **The shuffle landed:** bloom-lineage association 0.886 → **1.000**.
+
+⚠️ **`bloomAssort` could not have been this arm's control.** It measures whether
+pollen moves between plants close in _expressed_ flowering time, which a
+permutation leaves untouched — the shuffled arm assorts as hard as its control
+(0.230 against 0.151), so PART 2 would have reported the manipulation as landed
+whether it ran or not. `bloomLineage` is the statistic that can see it.
+
+⚠️⚠️ **AND THE CONTROL'S OWN PRECONDITION HELD ONLY WITHIN A GENERATION, WHICH
+NEARLY WENT UNCHECKED.** Decoupling expressed bloom from fitness makes the locus
+neutral; a neutral locus drifts toward concentration; concentration changes how
+many plants flower together. R1 in the shuffled arm is **0.708** against 0.457 in
+narrow·free — right beside the wide baseline's 0.679 where bloom is likewise
+unselected. R1 is permutation-invariant within a generation, so that gap is not
+the shuffle. It is 35 generations of drift the shuffle _caused_.
+
+So the realised pool size was **measured** rather than assumed:
+
+| arm               | plants co-flowering per active slice |
+| ----------------- | ------------------------------------ |
+| narrow · free     | **4.743** of 30                      |
+| narrow · shuffled | **4.343** of 30                      |
+
+**Ratio 0.916 — the control holds. And the residual points the wrong way for the
+confound.** The shuffled arm is slightly _more_ fragmented and scored **zero**
+HELD. If small mating pools were what raised HELD, more fragmentation would raise
+it further. It abolished it.
+
+## What this is not
+
+⚠️⚠️ **IT DOES NOT ANSWER ROADMAP `:219`.** The northstar asks whether a minority
+advantage can be **derived from pollination rather than imposed**. A narrow
+flowering season is a parameter this model sets — `WIDTH = 0.12` — exactly as
+imposed as the demographic subsidy that made the BAL result question-begging. The
+finding is that temporal assortment _reaches placement_, which the prereg said it
+could not. It is not a finding that pollination ecology _produced_ the
+assortment.
+
+⚠️ **Scope it to the tested configuration.** One width, one slice count, n=30.
+The effect at other widths is unmeasured, and `WIDTH` interacts with pool size by
+construction.
+
+⚠️ **The prereg's mechanism-reasoning failed, not just its prediction.** It argued
+that free recombination tears a bloom allele from its placement allele within one
+generation, so temporal assortment could sort flowering times without ever
+sorting shapes. The premise is true — recombination does that — and the
+conclusion is false. Assortative mating on a heritable axis restricts _who mates
+with whom_ every generation, and that restriction reaches ancestry regardless of
+whether any particular allele pair stays together. Independence of the axis does
+not imply independence of the outcome.
+
+## The cross-experiment prediction that held
+
+The [spatial run](2026-08-25-spatial-ibm.md) found local foraging _reducing_
+retained ancestry variance (−0.082 [−0.143, −0.030]) — a smaller mating
+neighbourhood, not aligned with lineage, is simply more drift. That predicted the
+shuffled arm here should go **down** rather than merely flat, since permuting the
+schedules is exactly "small pools that stop tracking lineage." It went to 0.000.
+
+**Alignment with lineage is the discriminator between a small pool that preserves
+divergence and one that destroys it.**
+
+[prereg](2026-08-16-phenology-prereg.md) · raw output: jobd 3514
