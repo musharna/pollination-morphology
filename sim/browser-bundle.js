@@ -3220,6 +3220,42 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
       if (ind.h2[BLOOM_GENE] === undefined) ind.h2[BLOOM_GENE] = brn();
     }
     blooms = pop.map((ind) => meanRing(ind.h1[BLOOM_GENE], ind.h2[BLOOM_GENE]));
+
+    /*
+     * ⚠️⚠️ THE CONFOUND ARM. A narrow season does two things at once, and only
+     * one of them is the mechanism under test.
+     *
+     *   (a) it ASSORTS mating by flowering time — the hypothesis; and
+     *   (b) it SHRINKS the pool of plants available on any given day.
+     *
+     * At width 0.12 with n=30 that second effect leaves roughly 3.6 plants
+     * co-flowering per slice against 30 in the wide baseline, and a mating pool
+     * that small retains ancestry variance MECHANICALLY, with no need for
+     * flowering time to correlate with anything. The random-mating null does
+     * not separate them: it removes the transfer matrix, and both act through
+     * the transfer matrix.
+     *
+     * `shuffleBloom` PERMUTES the expressed schedules among plants. A permutation
+     * rather than a redraw, because the multiset of bloom times is then exactly
+     * preserved — the number of plants in flower in every slice is identical,
+     * so (b) is held fixed to the individual — while WHICH plant holds which
+     * schedule is randomised, destroying any association between flowering time
+     * and lineage. It is the expressed PHENOTYPE that is scrambled; the alleles
+     * still segregate and mutate normally.
+     *
+     * ⚠️ THE PERMUTATION IS DRAWN IN EITHER MODE and only APPLIED when the flag
+     * is set, so the arm and its control consume the same number of draws from
+     * the same stream and differ in the MECHANISM rather than in how they walk
+     * the random sequence. Same discipline as the spatial branch's `withPos`.
+     */
+    const order = blooms.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(brn() * (i + 1));
+      const t = order[i];
+      order[i] = order[j];
+      order[j] = t;
+    }
+    if (PH.shuffleBloom) blooms = order.map((i) => blooms[i]);
   }
 
   /*
@@ -3381,6 +3417,46 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
       }
     const allMean = acnt ? asum / acnt : 0;
     bloomAssort = wtot > 0 && allMean > 1e-12 ? wsum / wtot / allMean : null;
+  }
+
+  /*
+   * ⚠️⚠️ THE POSITIVE CONTROL FOR `shuffleBloom`, AND `bloomAssort` CANNOT BE IT.
+   *
+   * bloomAssort measures whether pollen moves between plants close in EXPRESSED
+   * flowering time. Permuting the schedules does not change that at all — plants
+   * still flower in narrow windows and still exchange pollen with whoever is
+   * open alongside them — so bloomAssort stays low in the shuffled arm and would
+   * report the manipulation as not having landed. That is the same trap as
+   * measuring an intervention with a statistic blind to it.
+   *
+   * What the shuffle destroys is the association between flowering time and
+   * ANCESTRY. So: mean bloom distance between plants of the SAME lineage, over
+   * the same quantity for all pairs. Heritable bloom clusters within a lineage
+   * and the ratio sits below 1; a permutation decouples them and it returns to
+   * 1. Null when there is no ancestry variation left to associate with.
+   */
+  let bloomLineage = null;
+  if (PH && n > 3) {
+    let sSum = 0,
+      sCnt = 0,
+      aSum = 0,
+      aCnt = 0;
+    for (let i = 0; i < n; i++)
+      for (let j = i + 1; j < n; j++) {
+        const d = ringDist(blooms[i], blooms[j]);
+        aSum += d;
+        aCnt++;
+        const ai = pop[i].anc === undefined ? 0 : pop[i].anc;
+        const aj = pop[j].anc === undefined ? 0 : pop[j].anc;
+        /* "same lineage" in a population with hybrids is a matter of degree, so
+         * weight by how much ancestry the pair SHARES rather than forcing a
+         * binary that intermediates would not fit */
+        const w = 1 - Math.abs(ai - aj);
+        sSum += w * d;
+        sCnt += w;
+      }
+    const allM = aCnt ? aSum / aCnt : 0;
+    bloomLineage = sCnt > 1e-9 && allM > 1e-12 ? sSum / sCnt / allM : null;
   }
 
   const received = new Array(n).fill(0);
@@ -3617,6 +3693,9 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
     ancVar: ancestryVar(pop),
     /* the positive control for phenology — null when it is off. See above. */
     bloomAssort,
+    /* the positive control for shuffleBloom specifically; bloomAssort is blind
+     * to it, because a permutation preserves assortment on expressed time */
+    bloomLineage,
     /* the flowering times themselves, so an experiment can ask whether the
      * SEASON split even when the shapes did not */
     blooms,

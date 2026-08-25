@@ -72,10 +72,34 @@ const CELLS = [
     "wide · linked (the missing cell)",
     { width: 1.0, slices: SLICES, link: true },
   ],
+  /*
+   * ⚠️⚠️ THE CONFOUND ARM. A narrow season does two things: it ASSORTS mating by
+   * flowering time — the hypothesis — and it SHRINKS the pool available on any
+   * given day. At width 0.12 with n=30 that second effect leaves ~3.6
+   * co-flowering plants against 30 in the baseline, and a mating pool that
+   * small retains ancestry variance MECHANICALLY, with no need for flowering
+   * time to correlate with lineage at all.
+   *
+   * `shuffleBloom` permutes the expressed schedules among plants every
+   * generation. A permutation rather than a redraw, so the multiset of bloom
+   * times is preserved exactly and the number of plants in flower in each slice
+   * is identical to the narrow·free arm — the fragmentation is held fixed to
+   * the individual — while WHO holds which schedule is randomised, destroying
+   * the bloom-to-lineage association.
+   *
+   * narrow·free MINUS narrow·shuffled is therefore the effect of HERITABLE
+   * temporal assortment with pool size controlled. If that contrast is flat,
+   * the +0.237 was small mating pools and nothing more.
+   */
+  [
+    "narrow · bloom SHUFFLED (confound)",
+    { width: WIDTH, slices: SLICES, shuffleBloom: true },
+  ],
 ];
 const FREE = 1;
 const LINKED = 2;
 const WIDE_LINKED = 3;
+const SHUFFLED = 4;
 
 if (SMOKE)
   console.log(
@@ -145,6 +169,7 @@ function replicate(seed, phen, randomMating) {
   const assort = [];
   const r1 = [];
   const r2 = [];
+  const lineage = [];
   let extinct = false;
   for (let g = 0; g < GENS; g++) {
     if (pop.length < 2) {
@@ -153,6 +178,10 @@ function replicate(seed, phen, randomMating) {
     }
     const res = I.step(pop, opts, rng, g, srng, brng);
     if (res.bloomAssort != null) assort.push(res.bloomAssort);
+    /* ⚠️ the positive control for the SHUFFLED arm specifically — bloomAssort
+     * is blind to it, because a permutation leaves assortment on expressed
+     * time untouched and only breaks the tie to ancestry */
+    if (res.bloomLineage != null) lineage.push(res.bloomLineage);
     const m = bloomMoments(res.blooms);
     if (m != null) {
       r1.push(m.R1);
@@ -164,6 +193,10 @@ function replicate(seed, phen, randomMating) {
     seed,
     fate: I.fateOf(pop, ancVar0, extinct),
     assort: mean(assort),
+    /* ⚠️ EARLY, not late. Once a lineage is lost there is no ancestry variation
+     * left for flowering time to be associated WITH, so a late window measures
+     * the resolution rather than the association. */
+    lineage: lineage.length ? mean(lineage.slice(0, 10)) : null,
     /* the LAST few generations — the bloom distribution settles over time */
     R1: mean(r1.slice(-5)),
     R2: mean(r2.slice(-5)),
@@ -310,6 +343,37 @@ console.log(
   `  pollen assortment by flowering time, narrow season: ${f3(aNarrow)}`,
 );
 const LANDED = aNarrow < 0.9 && aWide > 0.9;
+
+/*
+ * ⚠️⚠️ AND THE SHUFFLED ARM NEEDS ITS OWN CONTROL, BECAUSE THE ONE ABOVE CANNOT
+ * SEE IT. `assort` measures whether pollen moves between plants close in
+ * EXPRESSED flowering time — and a permutation leaves that untouched, so the
+ * shuffled arm assorts exactly as hard as its control and PART 2 would report
+ * the manipulation as having landed whether it ran or not.
+ *
+ * What the shuffle destroys is the tie between flowering time and ANCESTRY.
+ * bloomLineage is mean bloom distance within a lineage over the all-pairs mean:
+ * below 1 means relatives flower together, and a permutation should send it to
+ * 1. If it does NOT separate, the confound arm never ran and the contrast below
+ * is measuring nothing.
+ */
+const lnFree = mean(arm[FREE].map((r) => r.lineage).filter((x) => x != null));
+const lnShuf = mean(
+  arm[SHUFFLED].map((r) => r.lineage).filter((x) => x != null),
+);
+console.log(
+  `\n  bloom-lineage association, narrow·free:     ${f3(lnFree)}  (<1 = relatives flower together)`,
+);
+console.log(`  bloom-lineage association, narrow·shuffled: ${f3(lnShuf)}`);
+const SHUF_LANDED = lnFree < 0.99 && lnShuf > lnFree;
+console.log(
+  SHUF_LANDED
+    ? "  ✅ the shuffle landed: permuting the schedules removed the tie between\n" +
+        "     flowering time and lineage while leaving assortment on expressed time."
+    : "  ⚠️⚠️ THE SHUFFLE DID NOT LAND — either heritable bloom shows no lineage\n" +
+        "     association to begin with, or permuting did not remove it. The confound\n" +
+        "     contrast below is NOT interpretable.",
+);
 console.log(
   LANDED
     ? "\n  ✅ the season is assorting pollen: narrow windows move pollen between\n" +
@@ -332,6 +396,10 @@ const dLinkF = pairedCI(arm[LINKED], arm[WIDE_LINKED], FUSED);
 /* the linkage MAIN effect: does co-segregating the anther loci raise HELD with
  * the season held WIDE — i.e. with phenology contributing nothing? */
 const dLinkMain = pairedCI(arm[WIDE_LINKED], arm[0], HELD);
+/* ⚠️ THE CONFOUND CONTRAST: heritable narrow season against a narrow season
+ * whose schedules are permuted. Same pool size to the individual; the only
+ * difference is whether flowering time tracks lineage. */
+const dPool = pairedCI(arm[FREE], arm[SHUFFLED], HELD);
 
 console.log(
   `  H-free    HELD, narrow+free   vs wide+free:   ${contrastStr(arm[FREE], arm[0], HELD, "HELD")}`,
@@ -344,6 +412,11 @@ console.log(
 );
 console.log(
   `\n  LINKAGE MAIN EFFECT, wide+linked vs wide+free: ${contrastStr(arm[WIDE_LINKED], arm[0], HELD, "HELD")}`,
+);
+console.log(
+  `\n  ⚠️⚠️ THE CONFOUND CONTRAST — pool size held fixed, heritability destroyed:\n` +
+    `  H-pool    HELD, narrow+free vs narrow+SHUFFLED: ${contrastStr(arm[FREE], arm[SHUFFLED], HELD, "HELD")}\n` +
+    `            (narrow+shuffled alone vs wide baseline: ${contrastStr(arm[SHUFFLED], arm[0], HELD, "HELD")})`,
 );
 console.log(
   `  (for comparison, the contrast the first run published,\n` +
@@ -444,6 +517,29 @@ if (!LANDED) {
   console.log(
     "  ⚠️ DEMOTED TO DEMOGRAPHY — the effect survives severing placement from\n" +
       `     parentage (${ciStr(dNull)}), so it is not placement-mediated mating.`,
+  );
+} else if (!SHUF_LANDED) {
+  /* ⚠️⚠️ THE CONFOUND ARM IS A GATE, NOT A FOOTNOTE. If the shuffle did not
+   * land there is nothing to subtract and the effect cannot be attributed. */
+  console.log(
+    "  ⚠️⚠️ NO ATTRIBUTION — the confound arm did not land (PART 2). Heritable\n" +
+      "     bloom shows no lineage association, or permuting it did not remove\n" +
+      "     one, so 'heritable temporal assortment' cannot be separated from\n" +
+      "     'small mating pools' and no mechanism may be named.",
+  );
+} else if (!excludes0(dPool)) {
+  /* ⚠️⚠️ AND THIS IS THE BRANCH THAT MATTERS. If narrow+free does not beat
+   * narrow+SHUFFLED, then destroying the tie between flowering time and lineage
+   * cost nothing — and what raised HELD was the ~3.6-plant mating pool, not
+   * temporal assortment. The headline +0.237 would be a pool-size artefact. */
+  console.log(
+    "  ⛔ THE EFFECT IS POOL SIZE, NOT TEMPORAL ASSORTMENT.\n" +
+      `     narrow+free against narrow+SHUFFLED is ${ciStr(dPool)}, which spans zero:\n` +
+      "     destroying the tie between flowering time and lineage cost nothing,\n" +
+      "     while the per-slice pool stayed identical by construction.\n" +
+      `     What raised HELD is ~${(N0 * WIDTH).toFixed(1)} co-flowering plants of ${N0}, not the season.\n` +
+      "     ⚠️ The shuffle DID land (PART 2), so this is a fact about the\n" +
+      "     mechanism and not a control that failed to fire.",
   );
 } else {
   /* ⚠️⚠️ WHICH OF THE FOUR THINGS HAPPENED IS DECIDED BY THE 2x2, NOT ASSERTED.

@@ -227,3 +227,154 @@ test("flowering time is inherited rather than redrawn each generation", () => {
       `${mean(nearest).toFixed(3)}) — the locus is being redrawn, not inherited`,
   );
 });
+
+/* ------------------------- 6. the confound arm: shuffleBloom does what it says */
+
+/*
+ * ⚠️ THE ARM EXISTS TO HOLD POOL SIZE FIXED WHILE DESTROYING HERITABILITY, so
+ * both halves of that sentence get a test. A permutation that quietly changed
+ * how many plants are in flower would make the confound arm differ from its
+ * control in the very thing it is supposed to hold constant.
+ */
+test("shuffleBloom preserves the multiset of flowering times exactly", () => {
+  const pop = fixture(24, 11);
+  const base = { width: 0.12, slices: 8, mut: 0.02 };
+  const plain = I.step(
+    pop,
+    { ...I.DEFAULTS, phenology: base },
+    E.makeRng(5),
+    0,
+    I.signalRng(5),
+    I.bloomRng(5),
+  );
+  const shuf = I.step(
+    pop,
+    { ...I.DEFAULTS, phenology: { ...base, shuffleBloom: true } },
+    E.makeRng(5),
+    0,
+    I.signalRng(5),
+    I.bloomRng(5),
+  );
+
+  const sorted = (xs) => xs.slice().sort((a, b) => a - b);
+  assert.deepStrictEqual(
+    sorted(shuf.blooms).map((x) => x.toFixed(9)),
+    sorted(plain.blooms).map((x) => x.toFixed(9)),
+    "shuffleBloom changed WHICH flowering times exist, not just who holds them — " +
+      "the per-slice pool size is no longer held fixed and the arm is confounded " +
+      "with the thing it controls for",
+  );
+});
+
+test("shuffleBloom destroys the bloom-lineage association, and the control can see it", () => {
+  const base = { width: 0.12, slices: 8, mut: 0.02 };
+
+  /* run several generations so heritable bloom has time to cluster within a
+   * lineage — one generation from a fresh founding is not a test of heritability */
+  const evolve = (shuffle) => {
+    const opts = {
+      ...I.DEFAULTS,
+      phenology: shuffle ? { ...base, shuffleBloom: true } : base,
+    };
+    const rng = E.makeRng(7);
+    const srng = I.signalRng(7);
+    const brng = I.bloomRng(7);
+    let pop = fixture(30, 7);
+    const seen = [];
+    for (let g = 0; g < 12; g++) {
+      if (pop.length < 2) break;
+      const res = I.step(pop, opts, rng, g, srng, brng);
+      if (res.bloomLineage != null) seen.push(res.bloomLineage);
+      pop = res.pop;
+    }
+    return seen;
+  };
+
+  const heritable = evolve(false);
+  const shuffled = evolve(true);
+  assert.ok(
+    heritable.length > 3 && shuffled.length > 3,
+    "not enough generations retained ancestry variation to measure association",
+  );
+
+  const h = mean(heritable);
+  const s = mean(shuffled);
+
+  /* ⚠️ THE POSITIVE CONTROL. Below 1 means plants of the same lineage flower
+   * closer together than chance. If the heritable arm does not sit below 1 there
+   * is no association to destroy and the negative below would be vacuous. */
+  assert.ok(
+    h < 0.97,
+    `heritable bloom shows NO lineage association (${h.toFixed(3)}), so this ` +
+      `test cannot demonstrate that shuffling removes one`,
+  );
+  /* and the manipulation itself */
+  assert.ok(
+    s > h,
+    `shuffleBloom did not weaken the bloom-lineage association ` +
+      `(heritable ${h.toFixed(3)} vs shuffled ${s.toFixed(3)}) — the arm is not ` +
+      `doing what the experiment will claim it does`,
+  );
+});
+
+test("with a WIDE season, shuffleBloom is a no-op down to the last bit", () => {
+  /*
+   * ⚠️ THE STREAM-ALIGNMENT TEST, AND MY FIRST VERSION OF IT COULD NOT PASS.
+   * It counted bloom-stream draws through a whole step and demanded the shuffled
+   * arm equal its control. But once the permutation changes WHO is in flower the
+   * bout changes, the recruits change, and gamete() is called a different number
+   * of times — so the counts diverge for a legitimate reason. The test asserted
+   * a condition that can only hold if the mechanism does nothing, which would
+   * have made a working arm look broken. It failed at 179 draws against 181.
+   *
+   * The invariant that IS available: at width 1.0 every plant is in flower in
+   * every slice whatever its schedule, so permuting the schedules cannot change
+   * who can exchange pollen with whom. If the permutation is drawn in both modes
+   * the two must then agree BIT FOR BIT — and if it were drawn only when the
+   * flag is set, the streams would be off by n-1 draws and the populations would
+   * visibly diverge. So this tests the alignment through its consequence.
+   */
+  const wide = { width: 1.0, slices: 8, mut: 0.02 };
+
+  /*
+   * ⚠️⚠️ A FRESH FIXTURE PER ARM, BECAUSE `step` MUTATES THE POPULATION IT IS
+   * GIVEN. Founders arrive with no bloom allele and step ASSIGNS one in place,
+   * drawing 2n values from the bloom stream to do it. Run two arms off the SAME
+   * `pop` object and the first call pays that cost while the second finds the
+   * alleles already present and skips it — so the arms are offset in the stream
+   * before the mechanism under test has done anything, and they diverge for a
+   * reason with no biology in it. This test failed exactly that way, and the
+   * failure looked like "the permutation is not stream-aligned" when the real
+   * cause was a shared fixture.
+   */
+  const run = (phen) =>
+    I.step(
+      fixture(20, 13),
+      { ...I.DEFAULTS, phenology: phen },
+      E.makeRng(4),
+      0,
+      I.signalRng(4),
+      I.bloomRng(4),
+    );
+
+  const plain = run(wide);
+  const shuf = run({ ...wide, shuffleBloom: true });
+
+  assert.deepStrictEqual(
+    shuf.pop,
+    plain.pop,
+    "at width 1.0 nothing is ever out of flower, so a permutation of the " +
+      "schedules must be invisible — a difference here means the two arms are " +
+      "walking the bloom stream differently, not modelling different biology",
+  );
+
+  /* ⚠️ AND THE NEGATIVE NEEDS A POSITIVE CONTROL IN THE SAME TEST: if the
+   * fixture were degenerate — every bloom identical — the permutation would be
+   * trivially invisible and the assertion above would pass on a broken build. */
+  const spread = Math.max(...plain.blooms) - Math.min(...plain.blooms);
+  assert.ok(
+    spread > 0.1,
+    `the flowering times are nearly identical (spread ${spread.toFixed(3)}), so ` +
+      `permuting them is vacuous and the bit-identity above proves nothing`,
+  );
+});
