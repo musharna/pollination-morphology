@@ -92,6 +92,22 @@ function replicate(seed, forageRange, seedRange, randomMating) {
   const ancVar0 = I.ancestryVar(pop);
   const clustering = [];
   let extinct = false;
+  /*
+   * ⚠️⚠️ THE FIRST RUN KEPT ONLY THE FOUR-WAY LABEL AND THREW THE CONTINUOUS
+   * QUANTITY AWAY. `fateOf` reduces the whole trajectory to HELD / one lost /
+   * FUSED / BOTH LOST, and HELD came back 0/30 in every cell — which is a real
+   * negative, but a CATEGORICAL one. It cannot distinguish "limited dispersal
+   * did nothing" from "limited dispersal SLOWED exclusion without ever crossing
+   * the 0.4 x ancVar0 threshold", and those are different biology.
+   *
+   * So the ratio ancVar(g) / ancVar0 is kept per generation, along with the
+   * generation at which the ancestry mean first leaves the [0.15, 0.85] band
+   * that `fateOf` calls "one lost". A retained ratio and a later loss time are
+   * both continuous, both directional, and both able to move when the label
+   * cannot.
+   */
+  const ancTrace = [];
+  let lostAt = null;
   for (let g = 0; g < GENS; g++) {
     if (pop.length < 2) {
       extinct = true;
@@ -103,7 +119,44 @@ function replicate(seed, forageRange, seedRange, randomMating) {
      * make a resolved run look unstructured. */
     if (res.ancNeighbour !== null) clustering.push(res.ancNeighbour);
     pop = res.pop;
+    const vRel = ancVar0 > 1e-12 ? I.ancestryVar(pop) / ancVar0 : null;
+    if (vRel !== null) ancTrace.push(vRel);
+    /* ⚠️⚠️ THIS LATCHED, AND A LATCH IS THE WRONG SHAPE FOR THIS QUANTITY.
+     * The first version set lostAt on the first excursion outside [0.15, 0.85]
+     * and never cleared it, so a mean that wandered out and came BACK was
+     * recorded as a permanent lineage loss — the smoke run printed "lost by gen
+     * 3.3" beside a final mean of 0.750, which is inside the band. The field
+     * said "time of loss" and measured "time of first excursion".
+     *
+     * `fateOf` classifies on the FINAL state, so the loss time that belongs
+     * beside it is the start of the excursion THAT WAS STILL RUNNING at the
+     * end. Clearing on re-entry gives exactly that, and leaves lostAt null for
+     * a run that finished inside the band — which is the censored case. */
+    const m = mean(pop.map((i) => (i.anc === undefined ? 0 : i.anc)));
+    if (m < 0.15 || m > 0.85) {
+      if (lostAt === null) lostAt = g + 1;
+    } else {
+      lostAt = null;
+    }
   }
+
+  /*
+   * ⚠️⚠️ THE CROSS-SEED AVERAGE OF THIS CANCELS THE THING IT IS FOR.
+   * Per run the final ancestry mean is BIMODAL: losing a lineage drives it to 0
+   * or to 1 depending on WHICH lineage survived, and which one is arbitrary.
+   * Averaging that across seeds sends 0 and 1 to 0.5 — which reads as "the
+   * population is perfectly mixed", the exact opposite of "every run lost a
+   * lineage". The smoke run printed 0.750 for three runs at 1.0 and one at 0.0.
+   *
+   * So the per-run number is FOLDED about the midpoint before it is ever
+   * averaged. `skew` is 0 when the two lineages are balanced and 1 when one is
+   * fixed, regardless of which — a magnitude, which is what the question asks
+   * for, rather than a signed direction that has no meaning across seeds.
+   */
+  const ancMeanFinal = pop.length
+    ? mean(pop.map((i) => (i.anc === undefined ? 0 : i.anc)))
+    : null;
+  const skew = ancMeanFinal === null ? null : Math.abs(ancMeanFinal - 0.5) * 2;
 
   return {
     seed,
@@ -111,6 +164,17 @@ function replicate(seed, forageRange, seedRange, randomMating) {
     /* the EARLY window, before outcomes resolve — clustering measured after a
      * lineage is already going extinct is measuring the extinction */
     clustering: mean(clustering.slice(0, Math.min(10, clustering.length))),
+    /* the continuous readouts the categorical fate cannot express */
+    ancRelFinal: ancTrace.length ? ancTrace[ancTrace.length - 1] : null,
+    ancRelMid: ancTrace.length
+      ? ancTrace[Math.floor(ancTrace.length / 2)]
+      : null,
+    ancMeanFinal,
+    skew,
+    /* ⚠️ null means the lineage was NEVER lost inside GENS — that is the
+     * RIGHT-CENSORED case and it must not be averaged in as if it were a
+     * loss time, so the report counts censored runs separately. */
+    lostAt,
     realised: built.realised,
   };
 }
@@ -148,11 +212,59 @@ function pairedCI(a, b, statOf, B = 4000, seed = 99) {
 
 const fracOf = (f) => (rows) =>
   rows.filter((r) => r.fate === f).length / rows.length;
+const countOf = (f) => (rows) => rows.filter((r) => r.fate === f).length;
 const excludes0 = (ci) => ci && (ci.lo > 0 || ci.hi < 0);
+
+/*
+ * ⚠️⚠️ A PAIRED BOOTSTRAP OVER A CONSTANT IS NOT A CONFIDENCE INTERVAL, AND THE
+ * FIRST RUN PUBLISHED ONE.
+ *
+ * `pairedCI` resamples the observed pairs. When every pair is (0, 0) — which is
+ * what happened: HELD came back 0 of 30 in all four cells — every resample is
+ * necessarily (0, 0) and the interval collapses to [0.000, 0.000]. That width
+ * is a fact about the SAMPLE BEING CONSTANT, not about the precision of the
+ * estimate: it would print identically at n=3. Quoting it says "the effect is
+ * zero to three decimal places" when the data support only "no HELD outcome
+ * occurred in 30 seeds".
+ *
+ * The interval is not wrong, it is OUT OF ITS OPERATING RANGE — the bootstrap
+ * cannot represent outcomes it never observed. So the reporting layer detects
+ * the degeneracy and reports the exact binomial bound instead, which CAN
+ * express boundary uncertainty about a statistic pinned at its floor.
+ *
+ * For k = 0 successes in n trials the exact one-sided upper bound at level a
+ * solves (1-p)^n = a. At n=30, a=0.05 that is 9.50%.
+ */
+const degenerate = (a, b, statOf) => {
+  const va = a.map((r) => statOf([r]));
+  const vb = b.map((r) => statOf([r]));
+  const all = va.concat(vb);
+  return all.every((x) => x === all[0]);
+};
+const zeroUpper = (n, alpha = 0.05) => 1 - Math.pow(alpha, 1 / n);
+const allLower = (n, alpha = 0.05) => Math.pow(alpha, 1 / n);
+
 const ciStr = (ci) =>
   ci
     ? `${ci.point >= 0 ? "+" : ""}${ci.point.toFixed(3)} [${ci.lo.toFixed(3)}, ${ci.hi.toFixed(3)}]`
     : "—";
+
+/* the interval when it means something, the count and the exact bound when it
+ * does not — never the degenerate interval on its own */
+function contrastStr(a, b, statOf, label) {
+  const ci = pairedCI(a, b, statOf);
+  if (!degenerate(a, b, statOf)) return ciStr(ci);
+  const k = a.filter((r) => statOf([r]) === 1).length;
+  const n = a.length;
+  return (
+    `${k}/${n} vs ${b.filter((r) => statOf([r]) === 1).length}/${b.length} — ` +
+    `⚠️ NO INTERVAL: ${label} is constant across every seed in both arms, so the\n` +
+    `              bootstrap is degenerate. ` +
+    (k === 0
+      ? `Exact one-sided 95% upper bound on ${label}: ${(zeroUpper(n) * 100).toFixed(2)}%.`
+      : `Exact one-sided 95% lower bound: ${(allLower(n) * 100).toFixed(2)}%.`)
+  );
+}
 
 /* ---------------------------------------------------------------- the run */
 
@@ -217,8 +329,44 @@ const FUSED = fracOf("FUSED");
 
 const dHeld = pairedCI(arm[INTERACTION], arm[0], HELD);
 const dFused = pairedCI(arm[INTERACTION], arm[0], FUSED);
-console.log(`  H-spatial   HELD, local+limited vs baseline: ${ciStr(dHeld)}`);
-console.log(`  H-distinct  FUSED, same contrast:            ${ciStr(dFused)}`);
+console.log(
+  `  H-spatial   HELD, local+limited vs baseline: ${contrastStr(arm[INTERACTION], arm[0], HELD, "HELD")}`,
+);
+console.log(
+  `  H-distinct  FUSED, same contrast:            ${contrastStr(arm[INTERACTION], arm[0], FUSED, "FUSED")}`,
+);
+
+/*
+ * ⚠️⚠️ THE CONTINUOUS READOUTS, BECAUSE THE LABEL CANNOT MOVE AND THEY CAN.
+ * `fateOf` thresholds retained ancestry variance at 0.4 x ancVar0. If limited
+ * dispersal slowed exclusion without ever clearing that line, HELD is 0 in both
+ * arms and the categorical contrast is silent by construction. These three are
+ * not: retained variance is continuous, and loss TIME is continuous even when
+ * every run eventually resolves the same way.
+ */
+console.log(
+  "\n  cell                          ancVar/ancVar0  ancVar/ancVar0   lineage skew  lost by gen",
+);
+console.log(
+  "                                  (mid-run)        (final)       (0=even,1=fixed) (censored)",
+);
+arm.forEach((rows, i) => {
+  const mid = rows.map((r) => r.ancRelMid).filter((x) => x !== null);
+  const fin = rows.map((r) => r.ancRelFinal).filter((x) => x !== null);
+  const sk = rows.map((r) => r.skew).filter((x) => x !== null);
+  const lost = rows.map((r) => r.lostAt).filter((x) => x !== null);
+  const censored = rows.length - lost.length;
+  console.log(
+    `  ${CELLS[i][0].padEnd(30)}${f3(mean(mid))}          ${f3(mean(fin))}` +
+      `        ${f3(mean(sk))}       ${lost.length ? mean(lost).toFixed(1) : "—"}` +
+      `  (${censored}/${rows.length})`,
+  );
+});
+console.log(
+  "\n  ⚠️ 'lost by gen' averages ONLY the runs that resolved; the censored count is\n" +
+    "     printed beside it because averaging a right-censored run as if it had been\n" +
+    "     lost on the last generation would bias every arm toward the run length.",
+);
 
 /* the interaction: does the pair pay more than the sum of its parts? */
 const mainForage = HELD(arm[1]) - HELD(arm[0]);
@@ -244,7 +392,30 @@ nullArm.forEach((rows, i) => {
   );
 });
 const dHeldNull = pairedCI(nullArm[INTERACTION], nullArm[0], HELD);
-console.log(`\n  HELD, local+limited vs baseline (null): ${ciStr(dHeldNull)}`);
+console.log(
+  `\n  HELD, local+limited vs baseline (null): ${contrastStr(nullArm[INTERACTION], nullArm[0], HELD, "HELD")}`,
+);
+
+/*
+ * ⚠️ THE ASYMMETRY, STATED AS COUNTS RATHER THAN AS 1.000. Under
+ * placement-mediated mating the cells resolve to "one lost"; under random
+ * mating they resolve to FUSED. Both read 1.000 in the fraction columns, which
+ * invites "the model ALWAYS does this" — but 30/30 supports a lower bound of
+ * 90.5%, not a probability of one.
+ */
+console.log("\n  the two attractors, as counts:");
+arm.forEach((rows, i) => {
+  const nl = countOf("one lost")(rows);
+  const nf = countOf("FUSED")(nullArm[i]);
+  console.log(
+    `  ${CELLS[i][0].padEnd(30)} placement-mated ${nl}/${rows.length} one lost` +
+      `   ·   random-mated ${nf}/${nullArm[i].length} FUSED`,
+  );
+});
+console.log(
+  `\n  ⚠️ k/n = n/n gives an exact one-sided 95% LOWER bound of ` +
+    `${(allLower(SEEDS.length) * 100).toFixed(1)}% at n=${SEEDS.length}, not 100%.`,
+);
 
 /* ------------------------------------------------------------- the verdict */
 
@@ -254,6 +425,36 @@ if (!LANDED) {
   console.log(
     "  NO RESULT — the positive control failed. See PART 2. Nothing below the\n" +
       "  control is interpretable and no verdict is issued.",
+  );
+} else if (degenerate(arm[INTERACTION], arm[0], HELD)) {
+  /* ⚠️⚠️ THE CASE THE FIRST RUN GOT WRONG. HELD was constant across every seed
+   * in both arms, the bootstrap returned [0.000, 0.000], and the verdict quoted
+   * it as though a zero-width interval were a precise measurement. It is not a
+   * measurement at all — it is what a bootstrap prints when it has nothing to
+   * resample. The claim available here is a BOUND, and it is a bound on a LARGE
+   * effect only. */
+  const k = countOf("HELD")(arm[INTERACTION]);
+  const n = arm[INTERACTION].length;
+  console.log(
+    `  ❌ NO LARGE EFFECT — and NO INTERVAL IS QUOTED, because none is available.\n` +
+      `     HELD occurred ${k}/${n} times in local+limited and ` +
+      `${countOf("HELD")(arm[0])}/${arm[0].length} in the baseline.\n` +
+      `     The statistic is CONSTANT across every seed in both arms, so the paired\n` +
+      `     bootstrap is degenerate: it would print [0.000, 0.000] at n=3 as readily\n` +
+      `     as at n=${n}, and that width measures the sample being constant, not the\n` +
+      `     precision of the estimate.\n\n` +
+      (k === 0
+        ? `     What the data DO support: an exact one-sided 95% upper bound of ` +
+          `${(zeroUpper(n) * 100).toFixed(2)}% on\n` +
+          `     the HELD probability at this configuration ` +
+          `(${(zeroUpper(n, 0.05 / CELLS.length) * 100).toFixed(2)}% Bonferroni over ${CELLS.length} cells).\n` +
+          `     That REFUTES A LARGE RESCUE and says nothing about a small one.\n`
+        : "") +
+      `     ⚠️ So read the CONTINUOUS columns in PART 3 before concluding the\n` +
+      `     intervention did nothing: a mechanism that SLOWED exclusion without\n` +
+      `     crossing the 0.4 x ancVar0 threshold is invisible to this label and\n` +
+      `     visible in retained variance and loss time.\n` +
+      "     The clustering DID happen (PART 2), so the intervention landed.",
   );
 } else if (!excludes0(dHeld)) {
   console.log(
