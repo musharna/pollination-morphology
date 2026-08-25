@@ -292,6 +292,17 @@ random-mating null.
 
 [detail](2026-08-25-phenology.md)
 
+⚠️⚠️ **THE NARROW ARM IS NOT A SHORT SEASON — IT IS 8 DISJOINT MATING BINS PLUS A 4% DEAD ZONE.**
+Found while designing the evolving-width experiment, by enumerating the presence predicate
+(`ringDist(bloom, k/S) <= width/2`, `ibm.js:1198`) over bloom-space rather than reading it.
+Slice centres are `1/S = 0.125` apart while `WIDTH = 0.12` covers only `0.12`, so at the
+published narrow width **no plant is ever in flower in two slices at once, and 4.0% of
+bloom-space catches ZERO slices** — reproductively invisible by grid alignment alone.
+✅ **This does NOT retract #37**: `shuffleBloom` preserves the multiset of bloom times, so the
+grid structure is identical in both arms and HELD still collapses 0.289 → 0.000. The grid cannot
+be what produced the positive. ⚠️ But it is decisive for anything that lets width VARY, because
+width is the quantity that crosses those thresholds. Re-derive with `node tools/slice-coverage.js`.
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
