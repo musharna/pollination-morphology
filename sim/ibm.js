@@ -103,6 +103,30 @@ const ALL_KEYS = [...GENE_KEYS, ANGLE_GENE, SIGNAL_GENE];
 const BLOOM_GENE = "bloom";
 
 /*
+ * FLOWERING-WINDOW WIDTH, as a heritable locus rather than a global constant.
+ * See docs/2026-08-25-evolving-width-prereg.md: the #37 positive depends on a
+ * narrow season that this model SETS, which is as imposed as the demographic
+ * subsidy already ruled question-begging. Making width heritable is what turns
+ * the assumption into a result — or fails to.
+ *
+ * ⚠️ NOT A RING COORDINATE. Bloom TIME is circular and must use wrap01/meanRing;
+ * width is a MAGNITUDE. Wrapping it would let 0.99 and 0.01 average to a narrow
+ * window, and would let a mutation walk off the top and reappear at the bottom.
+ * It is clamped to [0,1] and expressed as the PLAIN mean of the two haplotypes.
+ *
+ * ⚠️ AND THERE IS NO LOWER FLOOR, DELIBERATELY. A floor would impose the very
+ * thing prediction P2 claims selection supplies — that narrowing stops before
+ * zero because a plant present in fewer slices forgoes their visits. Width 0
+ * means `ringDist <= 0`, so the plant is essentially never in flower and neither
+ * sires nor receives. If P2 is right, selection stops short of that on its own.
+ * If it is wrong, the run must be allowed to show it.
+ *
+ * Like BLOOM_GENE this is NOT in ALL_KEYS and segregates from its own stream,
+ * only when the locus is switched on.
+ */
+const WIDTH_GENE = "bwidth";
+
+/*
  * The linkage group for the supergene arm. Free recombination is the
  * conservative default everywhere in this model, but it is ALSO the thing most
  * likely to stop deception from ever reaching placement — a signal allele and an
@@ -196,6 +220,19 @@ function signalRng(seed) {
 function bloomRng(seed) {
   return E.makeRng((seed * 40503 + 12345) >>> 0 || 1);
 }
+
+/* The width locus's own stream, for the same reason again — and specifically so
+ * that switching the width locus on does not shift the BLOOM stream. With width
+ * off no draw is taken from here at all, and with it on the bloom locus and the
+ * shape loci walk exactly the sequence they would have walked without it, so a
+ * width-on run and a width-off run differ in the width mechanism ALONE. */
+function widthRng(seed) {
+  return E.makeRng((seed * 27259 + 54321) >>> 0 || 1);
+}
+
+/* Width is a magnitude on [0,1]; see WIDTH_GENE for why it is clamped rather
+ * than wrapped, and why the floor is 0 rather than something comfortable. */
+const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 /* Circular mean of two angles. A plain average is wrong at the wrap and would
  * put the offspring of two individuals straddling +/-pi at zero — i.e. exactly
@@ -320,6 +357,28 @@ function gamete(ind, rng, rate, opts = {}) {
     const bRate = opts.bloomMut === undefined ? rate : opts.bloomMut;
     m[BLOOM_GENE] = wrap01(
       (fromH1 ? ind.h1[BLOOM_GENE] : ind.h2[BLOOM_GENE]) + gauss(brng) * bRate,
+    );
+  }
+
+  /*
+   * The width locus, on its own stream again and guarded by `opts.width`, so
+   * with it off not a single extra draw is taken from ANY stream and every
+   * published phenology number reproduces bit-for-bit. That guard is not
+   * asserted by inspection — tests/evolving-width.test.js runs the published
+   * phenology configuration with the locus off and compares the full result
+   * against the same run on the pre-locus code path.
+   *
+   * ⚠️ FREE RECOMBINATION, AND NOT DRAGGED INTO EITHER SUPERGENE. `linkBloom`
+   * ties flowering TIME to the anther loci; there is no argument that window
+   * WIDTH belongs in that group as well, and quietly adding it would mean the
+   * linked phenology arm silently acquired a third intervention.
+   */
+  if (opts.width) {
+    const wrng = opts.wrng || rng;
+    const fromH1w = wrng() < 0.5;
+    const wRate = opts.widthMut === undefined ? rate : opts.widthMut;
+    m[WIDTH_GENE] = clamp01(
+      (fromH1w ? ind.h1[WIDTH_GENE] : ind.h2[WIDTH_GENE]) + gauss(wrng) * wRate,
     );
   }
   return m;
@@ -998,7 +1057,7 @@ function gapOccupancy(places, pA, pB, opts = {}) {
  * One generation. The whole point is between the two marked lines: parentage
  * comes out of the transfer matrix.
  */
-function step(pop, opts, rng, gen, srng = null, brng = null) {
+function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
   const n = pop.length;
   const signals = pop.map(signalOf);
 
@@ -1026,7 +1085,12 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
   let coflowerSum = 0;
   let coflowerSlices = 0;
   const brn = brng || (PH ? bloomRng(7) : null);
+  const wrn = wrng || (PH && PH.widthLocus ? widthRng(7) : null);
   let blooms = null;
+  /* null whenever the locus is off, and the presence test falls back to the
+   * global PH.width in that case — so every earlier phenology run is unchanged
+   * rather than re-expressed through a per-plant path. */
+  let widths = null;
   if (PH) {
     for (const ind of pop) {
       if (ind.h1[BLOOM_GENE] === undefined) ind.h1[BLOOM_GENE] = brn();
@@ -1069,6 +1133,62 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
       order[j] = t;
     }
     if (PH.shuffleBloom) blooms = order.map((i) => blooms[i]);
+
+    /*
+     * ---- FLOWERING-WINDOW WIDTH, when it is a locus rather than a constant.
+     *
+     * ⚠️ FOUNDERS START UNIFORM ON (0,1), NOT AT THE WIDE CEILING, AND THE
+     * REASON IS AN ARTEFACT THE PRE-REGISTRATION DID NOT NAME. Width is clamped
+     * at both ends, and a population initialised AT a clamp drifts away from it
+     * under mutation alone: every step that would cross the boundary is folded
+     * back inside. Starting every plant at width 1.0 would therefore produce
+     * narrowing with no selection whatsoever, and P1 — "width evolves narrower"
+     * — would be confirmed by the clamp. Starting uniform puts the initial mean
+     * at 0.5 with room to move in both directions.
+     *
+     * ⚠️ AND THAT IS WHY THE PRIMARY COMPARISON IS TREATMENT AGAINST THE
+     * SHUFFLED ARM, not treatment against its own starting value. Whatever
+     * residual boundary effect survives a uniform start acts identically in both
+     * arms, so the paired difference cancels it. Reporting only the treatment's
+     * drop from 0.5 would put an arithmetic artefact on the same footing as a
+     * result.
+     */
+    if (PH.widthLocus) {
+      for (const ind of pop) {
+        if (ind.h1[WIDTH_GENE] === undefined) ind.h1[WIDTH_GENE] = wrn();
+        if (ind.h2[WIDTH_GENE] === undefined) ind.h2[WIDTH_GENE] = wrn();
+      }
+      /* PLAIN mean, not meanRing — see WIDTH_GENE. */
+      widths = pop.map((ind) =>
+        clamp01((ind.h1[WIDTH_GENE] + ind.h2[WIDTH_GENE]) / 2),
+      );
+
+      /*
+       * ⚠️ BOTH CONTROLS DRAW UNCONDITIONALLY AND APPLY CONDITIONALLY, so an arm
+       * and its control differ in the MECHANISM rather than in how far they have
+       * walked the random sequence. The v2 audit found sim/evolve.js violating
+       * exactly this (task #45); it is not repeated here.
+       *
+       * `shuffleWidth` permutes expressed widths, preserving the multiset — so
+       * the distribution of window sizes, and hence total flowering effort, is
+       * held fixed to the individual — while destroying the tie between a
+       * plant's width and its own fitness. It is the confound arm, and it is
+       * also the drift-and-clamp null described above.
+       *
+       * `widthNonHeritable` redraws each generation from the same uniform,
+       * separating "narrow windows help" from "narrow windows are INHERITED".
+       */
+      const worder = widths.map((_, i) => i);
+      for (let i = worder.length - 1; i > 0; i--) {
+        const j = Math.floor(wrn() * (i + 1));
+        const t = worder[i];
+        worder[i] = worder[j];
+        worder[j] = t;
+      }
+      const fresh = widths.map(() => wrn());
+      if (PH.widthNonHeritable) widths = fresh;
+      else if (PH.shuffleWidth) widths = worder.map((i) => widths[i]);
+    }
   }
 
   /*
@@ -1192,10 +1312,27 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
        */
       const S = Math.max(2, PH.slices | 0 || 8);
       const half = (PH.width === undefined ? 0.25 : PH.width) / 2;
+      /*
+       * ⚠️ PER-PLANT, once width is a locus. With the locus off this is the same
+       * global constant it always was and the arithmetic is identical, so no
+       * earlier phenology number moves.
+       *
+       * ⚠️⚠️ AND THE PREDICATE IS A STEP FUNCTION WHOSE STEPS ARE SET BY `S`,
+       * WHICH IS NOT WHAT THE NAME "SEASON WIDTH" SUGGESTS. Slice centres are
+       * 1/S apart, so below width = 1/S no plant is ever in two slices at once
+       * and some plants catch ZERO — 4.0% of bloom-space at the published
+       * WIDTH 0.12, S 8. A locus free to move across those thresholds will climb
+       * a staircase belonging to the discretisation rather than to pollination,
+       * which is why S-invariance is a REQUIRED condition of the design and not
+       * a robustness check. Re-derive with `node tools/slice-coverage.js`.
+       */
+      const halfOf = (i) => (widths ? widths[i] / 2 : half);
       const perSlice = Math.max(1, Math.round(per / S));
       for (let k = 0; k < S; k++) {
         const t = k / S;
-        const w = base.map((b, i) => (ringDist(blooms[i], t) <= half ? b : 0));
+        const w = base.map((b, i) =>
+          ringDist(blooms[i], t) <= halfOf(i) ? b : 0,
+        );
         /* A slice in which nothing is in flower is a slice with no visits, not
          * a crash and not a redistribution — the pollinator's effort in that
          * part of the season is simply lost. */
@@ -1472,6 +1609,10 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
       brng: brn,
       bloomMut: PH ? PH.mut : undefined,
       linkBloom: PH ? !!PH.link : false,
+      /* the width locus segregates only when it is switched on; see gamete() */
+      width: !!(PH && PH.widthLocus),
+      wrng: wrn,
+      widthMut: PH ? PH.widthMut : undefined,
     };
     const S = opts.selfing;
 
@@ -1594,6 +1735,13 @@ function step(pop, opts, rng, gen, srng = null, brng = null) {
     /* the flowering times themselves, so an experiment can ask whether the
      * SEASON split even when the shapes did not */
     blooms,
+    /* the expressed flowering-window widths — null unless the locus is on.
+     * ⚠️ REPORT THE DISPERSION ALONGSIDE THE MEAN. A bimodal outcome, some
+     * lineages narrow and some wide, is a different and more interesting result
+     * than a uniform shift, and a mean alone would hide it — trap 4 of the
+     * pre-registration. The array is returned rather than a summary so the
+     * caller cannot be handed a centre without a spread. */
+    widths,
     unmated: failed,
     /* A stall is a generation that could not produce the offspring it was
      * entitled to. With demography off `target` IS n, so this is the same
@@ -1635,6 +1783,10 @@ function run({
   /* The flowering-time stream, created only when phenology is on so the default
    * model's streams are untouched. See bloomRng(). */
   const brng = opts.phenology ? bloomRng(seed) : null;
+  /* created only when the width locus is on, so with it off the width stream
+   * does not exist and cannot be drawn from. See widthRng(). */
+  const wrng =
+    opts.phenology && opts.phenology.widthLocus ? widthRng(seed) : null;
   let pop = found || foundPopulation(n, rng, { srng });
   const history = [];
   let extinct = false;
@@ -1654,7 +1806,7 @@ function run({
     const parentAnc = trace
       ? pop.map((i) => (i.anc === undefined ? 0 : i.anc))
       : null;
-    const out = step(pop, opts, rng, g, srng, brng);
+    const out = step(pop, opts, rng, g, srng, brng, wrng);
     pop = out.pop;
     history.push({
       gen: g,
@@ -1688,6 +1840,8 @@ module.exports = {
   LINK_GROUP,
   BLOOM_LINK_GROUP,
   bloomRng,
+  widthRng,
+  WIDTH_GENE,
   DEFAULTS,
   meanAngle,
   meanRing,
