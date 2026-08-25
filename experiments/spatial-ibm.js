@@ -235,11 +235,27 @@ const excludes0 = (ci) => ci && (ci.lo > 0 || ci.hi < 0);
  * For k = 0 successes in n trials the exact one-sided upper bound at level a
  * solves (1-p)^n = a. At n=30, a=0.05 that is 9.50%.
  */
+/*
+ * ⚠️⚠️ THE FIRST VERSION OF THIS GUARD COULD NOT SEE ITS OWN REFERENT — caught
+ * on the phenology branch, ported here.
+ *
+ * It asked whether the STATISTIC was constant. `pairedCI` resamples paired
+ * DIFFERENCES, and a difference vector can be constant while the statistic
+ * varies: if both arms score the outcome on exactly the SAME seeds, every
+ * paired difference is 0 and the interval collapses to [0.000, 0.000] even
+ * though the statistic is not constant anywhere. A guard written against the
+ * statistic walks straight past that, which is the whole failure it exists to
+ * catch — a predicate that does not fully observe what it is trusted for.
+ *
+ * The object the bootstrap resamples is the difference, so that is the object
+ * the predicate tests.
+ */
 const degenerate = (a, b, statOf) => {
-  const va = a.map((r) => statOf([r]));
-  const vb = b.map((r) => statOf([r]));
-  const all = va.concat(vb);
-  return all.every((x) => x === all[0]);
+  const n = Math.min(a.length, b.length);
+  if (!n) return true;
+  const d = [];
+  for (let i = 0; i < n; i++) d.push(statOf([a[i]]) - statOf([b[i]]));
+  return d.every((x) => x === d[0]);
 };
 const zeroUpper = (n, alpha = 0.05) => 1 - Math.pow(alpha, 1 / n);
 const allLower = (n, alpha = 0.05) => Math.pow(alpha, 1 / n);
