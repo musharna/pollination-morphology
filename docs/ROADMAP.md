@@ -780,23 +780,40 @@ audit on 2026-08-25 found defects in five of them. All were LATENT except the se
 been shown to corrupt a published result; every one would have bitten the first time this project
 reported a positive.
 
-| item                                                                                           | state                                                                 |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **`v2` result is not reproducible from its committed runner** — highest priority               | OPEN                                                                  |
-| sectile "flowers serviced" counts deposition objects, not distinct flowers — calibration wrong | OPEN                                                                  |
-| gates consulted only on the negative path (`selfing.js:419`, +3 more sites)                    | OPEN                                                                  |
-| `twoClusterSeparation` unbounded in majority tightness; `minorityFrac` printed, never gated    | OPEN                                                                  |
-| no semantic test of `fateOf` — the mutation's only red light is a staleness tripwire           | OPEN                                                                  |
-| `seasonSplit` maximised on fixation                                                            | ✅ FIXED — replaced by circular moments R1/R2                         |
-| paired bootstrap quoting zero-width intervals over a constant                                  | ✅ FIXED — degeneracy detected, exact binomial bound reported instead |
+| item                                                                                           | state                                                                        |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **`v2` result is a snapshot of a superseded model** (was: "not reproducible")                  | ✅ DIAGNOSED — Round 2 reproduces bit-exactly at `a9e45d4`; Round 3 does not |
+| sectile "flowers serviced" counts deposition objects, not distinct flowers — calibration wrong | OPEN                                                                         |
+| gates consulted only on the negative path (`selfing.js:419`, +3 more sites)                    | OPEN                                                                         |
+| `twoClusterSeparation` unbounded in majority tightness; `minorityFrac` printed, never gated    | OPEN                                                                         |
+| no semantic test of `fateOf` — the mutation's only red light is a staleness tripwire           | OPEN                                                                         |
+| `seasonSplit` maximised on fixation                                                            | ✅ FIXED — replaced by circular moments R1/R2                                |
+| paired bootstrap quoting zero-width intervals over a constant                                  | ✅ FIXED — degeneracy detected, exact binomial bound reported instead        |
 
-⚠️⚠️ **`experiments/v2.js` HAS `SEEDS = [1,2]`, `visits: 3000`, AND ZERO MATCHES FOR
-`bootstrap|paired|6000|18000`.** `docs/2026-08-01-v2-result.md` reports n=8 paired seeds, 6,000 and
-18,000-visit budgets and 95% CIs — including the "excluded zero by 0.02, then did not replicate"
-narrative that is the document's entire point. Git history shows runner and result landed together,
-so this is not later drift. Either restore the executable that produced those numbers or put a
-provenance warning on the document. ⚠️ For contrast, `docs/2026-08-03-ibm.md` REPRODUCES exactly
-from its committed runner, so this is one specific failure and not a systemic one.
+⚠️⚠️ **RESOLVED 2026-08-25 — AND THE DIAGNOSIS ABOVE WAS WRONG.** It is true that
+`experiments/v2.js` has `SEEDS = [1,2]`, `visits: 3000` and no interval code, and true that no
+committed code ever produced the published tables — an exhaustive scan of all 655 git objects
+finds `18000` in two Markdown blobs and nowhere else. But **the numbers are genuine.** Against
+`sim/` pinned at `a9e45d4`, at **120 generations** (the committed runner hardcodes 250) with
+seeds 1–3, Round 2 reproduces **bit-exactly** on four of five rows. The real defect is that the
+model moved underneath the result: 8 commits since have changed `sim/carryover.js`, 3
+`sim/evolve.js`, 3 `packing.js`/`placement.js` — incl. `0af4ba7` (transfer-rate recalibration)
+and `6b7c8e1` (continuous overlap metric). **A result is not unreproducible merely because
+today's code disagrees with it; pin the model version before concluding that.**
+
+Three defects remain, recorded in the document's own Correction section:
+
+- ⚠️⚠️ **The published intervals are z-intervals at n = 8.** Under the correct t (df = 7) the
+  6,000 interval is `[-2.18, +0.18]` and does **not** exclude zero — so the document's entire
+  "excluded zero by 0.02, then did not replicate" narrative describes an event that never
+  happened. A fourth measurement artefact, inside the document written to warn about three.
+- **The Round-2 table mixes run lengths** — its `v=6000` row is a 250-generation run printed
+  beside a 120-generation mean-field row.
+- **Round 3 does not reproduce** under any of four configurations tried; best fit 6 of 8 diffs.
+
+⚠️ The conclusion — "no demonstrated effect on what evolves" — survives all of it; every
+correction pushes toward less evidence, not more. ⚠️ For contrast, `docs/2026-08-03-ibm.md`
+REPRODUCES exactly from its committed runner, so this was one specific failure and not systemic.
 
 ⚠️ **A GATE CHECKED ONLY ON THE NEGATIVE PATH IS NOT A GATE.** `selfing.js:419` consults
 admissibility and attribution only inside the "effect not established" branch; the green branch at
