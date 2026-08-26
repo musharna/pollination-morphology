@@ -30,8 +30,43 @@
 
 const P = require("../sim/placement.js");
 const K = require("../sim/packing.js");
-const E = require("../sim/evolve.js");
 const { interval, T_CRIT, Z_CRIT } = require("../sim/paired-stats.js");
+
+/*
+ * EVOLVE_REF runs the whole sweep against sim/evolve.js as it stood at some
+ * other commit, with every other module taken from the working tree.
+ *
+ * It exists for one question: the rng repair (task #45) changes every number
+ * this script produces, and "did the repair move the answer, or only its
+ * variance?" cannot be answered by two runs of the same build. Comparing a
+ * repaired run against a pinned unrepaired one answers it in a single pass, on
+ * one machine, with everything else held fixed.
+ *
+ * It is a harness affordance, not a model switch: there is no way to select an
+ * rng policy inside sim/, and the repaired behaviour is unconditional.
+ */
+const EVOLVE_REF = process.env.EVOLVE_REF || "";
+const E = (() => {
+  if (!EVOLVE_REF) return require("../sim/evolve.js");
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const { execFileSync } = require("node:child_process");
+  const dst = path.join(
+    __dirname,
+    "..",
+    "sim",
+    `.pinned-evolve-${process.pid}.js`,
+  );
+  fs.writeFileSync(
+    dst,
+    execFileSync("git", ["show", `${EVOLVE_REF}:sim/evolve.js`], {
+      cwd: path.join(__dirname, ".."),
+      maxBuffer: 32 * 1024 * 1024,
+    }),
+  );
+  process.on("exit", () => fs.rmSync(dst, { force: true }));
+  return require(dst);
+})();
 
 const SMOKE = !!process.env.SMOKE;
 
@@ -140,7 +175,10 @@ function main() {
   console.log(
     `L2 only · ${N_START} species seeded · ${GENERATIONS} generations · ` +
       `seeds [${SEEDS.join(",")}] · budgets [${BUDGETS.join(",")}]` +
-      (SMOKE ? " · SMOKE" : ""),
+      (SMOKE ? " · SMOKE" : "") +
+      (EVOLVE_REF
+        ? ` · evolve.js PINNED AT ${EVOLVE_REF}`
+        : " · evolve.js from the working tree"),
   );
   console.log(
     "mean-field is the within-seed reference; diff = carryover - meanfield\n",

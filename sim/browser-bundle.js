@@ -1751,6 +1751,45 @@ function makeRng(seed) {
     return (x >>> 0) / 4294967296;
   };
 }
+/*
+ * A SUBSTREAM KEYED BY IDENTITY, not by position in a shared stream.
+ *
+ * ⚠️ THE DEFECT THIS EXISTS TO REMOVE. A single sequential rng shared by all
+ * arms sounds like the strongest possible pairing — same seed, same draws — but
+ * it only holds while every arm consumes the SAME NUMBER of draws. This model
+ * broke that twice, and both times the consumption depended on the very thing
+ * being measured:
+ *
+ *   · init() redraws when a candidate never touches the animal, and the
+ *     rejection rate is arm-dependent (L2 can miss the bee; L0 never can), so
+ *     one rejection shifted every later founder — the arms were never paired
+ *     even at generation 0. Measured at seed 5: L2 rejects candidate 4, and
+ *     from there its community is a different set of flowers, not the same
+ *     flowers judged by a different placement rule.
+ *   · step() drew once per LIVE species, and extinction shrinks `live`. Arms
+ *     stayed in step only while their survivor counts agreed — and survivor
+ *     count is the measurement. Measured at seed 5: L0/L1 and L2 diverge from
+ *     generation 24.
+ *
+ * A stream whose position is a function of the outcome cannot be a control.
+ * The fix is not to suppress the rejections or the extinctions — both are
+ * real — but to stop them moving anyone else's draws. Every random quantity is
+ * now addressed by WHO and WHEN (species slot, generation, purpose) rather
+ * than by when it happened to be asked for. The shared rng still advances, but
+ * by a fixed amount: once in init, once per generation, whatever happens.
+ */
+function subRng(...key) {
+  let h = 2166136261 >>> 0;
+  for (const v of key) {
+    let x = (v | 0) >>> 0;
+    for (let b = 0; b < 4; b++) {
+      h ^= (x >>> (b * 8)) & 0xff;
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+  }
+  return makeRng(h || 1);
+}
+
 const gauss = (rng) =>
   Math.sqrt(-2 * Math.log(1 - rng())) * Math.cos(2 * Math.PI * rng());
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -2048,6 +2087,15 @@ function step(state, params, rng) {
   } = params;
   const live = state.species.filter((s) => s.alive);
 
+  /*
+   * Exactly one draw per generation, regardless of how many species are alive.
+   * Everything below is keyed off it by SLOT — a species' stable identity —
+   * so an extinction changes who is mutated, never which random numbers the
+   * survivors receive.
+   */
+  const gbase = Math.floor(rng() * 4294967296) >>> 0;
+  const slotOf = (s, i) => (s.slot === undefined ? i : s.slot);
+
   // 1. mutation and trait substitution
   const ev = params.evaluate || MEANFIELD;
   const sigs = live.map((s) => s.sig);
@@ -2055,8 +2103,11 @@ function step(state, params, rng) {
   const w = ev.community(live, n, arm, params);
 
   for (let i = 0; i < live.length; i++) {
-    const cand = mutate(live[i].g, rng, mutRate);
-    const cs = arm.sig(cand, { ...ctx, seed: ctx.seed + 7 * i });
+    const slot = slotOf(live[i], i);
+    const cand = mutate(live[i].g, subRng(gbase, 202, slot), mutRate);
+    /* Keyed by slot, not by index among survivors: `7 * i` moved a species'
+     * placement sample every time somebody earlier in the array went extinct. */
+    const cs = arm.sig(cand, { ...ctx, seed: ctx.seed + 7 * slot });
     if (!cs) continue; // a mutant that never touches the animal cannot invade
     if (ev.invasion(live, n, i, cs, arm, params) > w[i]) {
       live[i].g = cand;
@@ -2087,7 +2138,7 @@ function step(state, params, rng) {
      * abundance with exactly equal fitness sits on an unstable equilibrium and
      * a deterministic update leaves it there forever — which reads as
      * coexistence when it is really just symmetry never being broken. */
-    const jitter = 1 + noise * gauss(rng);
+    const jitter = 1 + noise * gauss(subRng(gbase, 303, slotOf(live[i], i)));
     prop[i] = Math.max(0, n[i] * wf[i] * jitter);
     propTot += prop[i];
   }
@@ -2113,18 +2164,40 @@ function step(state, params, rng) {
   return { extinctions, meanW: mean };
 }
 
+const ATTEMPTS_PER_SLOT = 20;
+
+/*
+ * Founders are drawn PER SLOT. Slot i's candidates come from its own
+ * substream, so an arm that rejects a candidate redraws only for that slot and
+ * leaves every other slot's flower untouched — the arms found their
+ * communities from the same pool and differ only where the placement rule
+ * genuinely differs.
+ *
+ * Rejection is kept, not suppressed: a flower that never touches the animal
+ * cannot start a species, and that is a fact about the geometry rather than a
+ * nuisance. What is removed is its power to shift everyone else.
+ *
+ * A slot that exhausts its attempts contributes no species, so the community
+ * can start below nSpecies. The old global budget could end short too; this
+ * just makes which slot failed visible instead of silently backfilling it with
+ * a later candidate.
+ */
 function init(params, rng) {
   const { arm, ctx, nSpecies } = params;
+  /* One draw, whatever happens below — the shared stream must not learn how
+   * many candidates this arm rejected. */
+  const base = Math.floor(rng() * 4294967296) >>> 0;
   const species = [];
-  let tries = 0;
-  while (species.length < nSpecies && tries < nSpecies * 20) {
-    tries++;
-    const g = randomGenome(rng);
-    const sig = arm.sig(g, { ...ctx, seed: ctx.seed + 13 * species.length });
-    if (!sig) continue; // must be able to touch the animal to start
-    species.push({ g, sig, n: 1 / nSpecies, alive: true });
+  for (let slot = 0; slot < nSpecies; slot++) {
+    for (let attempt = 0; attempt < ATTEMPTS_PER_SLOT; attempt++) {
+      const g = randomGenome(subRng(base, 101, slot, attempt));
+      const sig = arm.sig(g, { ...ctx, seed: ctx.seed + 13 * slot });
+      if (!sig) continue; // must be able to touch the animal to start
+      species.push({ g, sig, n: 1 / nSpecies, alive: true, slot });
+      break;
+    }
   }
-  return { species };
+  return { species, base };
 }
 
 function run(params) {
@@ -2159,6 +2232,8 @@ module.exports = {
   init,
   run,
   makeRng,
+  subRng,
+  ATTEMPTS_PER_SLOT,
 };
 
   };

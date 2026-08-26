@@ -80,7 +80,23 @@ test("interval() refuses a df it has no tabulated critical value for", () => {
 test("the budget guard fires on a budget-sensitive arm and not on the reference", () => {
   const ctx = { bee: P.DEFAULT_BEE, nSamp: S.N_SAMP, ...S.precision() };
   const GENS = 120;
-  const BUDGETS = [300, 1500];
+  /*
+   * ⚠️ The budgets are SEPARATED on purpose, and that is a repair.
+   *
+   * This pair was [300, 1500], which trips the guard only if those two
+   * budgets happen to land on different survivor counts — and after the rng
+   * repair they no longer do. Measured at 120 generations:
+   *
+   *   seed 1  meanfield 9   carryover  200:3  300:5  600:5  1500:5  3000:8
+   *   seed 2  meanfield 10  carryover  200:4  300:4  600:5  1500:6  3000:7
+   *   seed 3  meanfield 8   carryover  200:5  300:6  600:6  1500:6  3000:7
+   *
+   * The arm is plainly budget-sensitive; 300-vs-1500 was simply a flat stretch
+   * of it. A positive control resting on a coincidence is one seed away from
+   * silently becoming a test that cannot fail, which is the failure this whole
+   * test exists to prevent — so it now spans the full measured range instead.
+   */
+  const BUDGETS = [200, 3000];
 
   /* POSITIVE CONTROL — carryover genuinely reads the budget, so the guard has
    * to trip. If this stops throwing, the guard has gone blind and the

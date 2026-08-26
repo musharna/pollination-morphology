@@ -2,3 +2,9 @@
 # jobd run captures — the RESULT lives in docs/, the raw log is reproducible
 # from the command quoted there and should not be committed as data
 _scratch/
+# pinned older builds of a module, extracted per-pid so a guard can compare
+# against a build that genuinely lacks the thing it guards. Cleaned up on exit;
+# ignored so a killed run cannot leave one staged.
+sim/.baseline-*.js
+sim/.pinned-*.js
+sim/.seenfail*.js
