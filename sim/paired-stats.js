@@ -108,6 +108,108 @@ const T_CRIT = {
 };
 const Z_CRIT = 1.959964;
 
+/*
+ * ⚠️ A TABLE CANNOT SERVE AN OPEN SET OF n. The table above ends at df=15 and
+ * `interval` throws past it — the correct failure, but still a failure: the
+ * moment an experiment wants 40 seeds instead of 8, the choice is between
+ * hand-typing more rows (numeric constants written from recall, which is exactly
+ * how z-instead-of-t got in) and computing the quantile.
+ *
+ * So it is computed. The table is KEPT, and is now the POSITIVE CONTROL: the
+ * test asserts tCrit reproduces all fifteen tabulated values, so a solver that
+ * quietly returned nonsense would have to reproduce fifteen independently
+ * sourced numbers to pass.
+ */
+
+/* Lanczos. */
+function gammaln(x) {
+  const cof = [
+    76.18009172947146, -86.50532032941677, 24.01409824083091,
+    -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5,
+  ];
+  let y = x;
+  let tmp = x + 5.5;
+  tmp -= (x + 0.5) * Math.log(tmp);
+  let ser = 1.000000000190015;
+  for (let j = 0; j < 6; j++) ser += cof[j] / ++y;
+  return -tmp + Math.log((2.5066282746310005 * ser) / x);
+}
+
+/* Continued fraction for the incomplete beta (modified Lentz). Throws rather
+ * than returning its last iterate — a non-converged fraction that returns
+ * anyway is an observable that cannot report its own failure. */
+function betacf(a, b, x) {
+  const MAXIT = 300;
+  const EPS = 3e-16;
+  const FPMIN = 1e-300;
+  const qab = a + b;
+  const qap = a + 1;
+  const qam = a - 1;
+  let c = 1;
+  let d = 1 - (qab * x) / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    const m2 = 2 * m;
+    let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    h *= d * c;
+    aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c;
+    if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < EPS) return h;
+  }
+  throw new Error(`betacf did not converge at a=${a} b=${b} x=${x}`);
+}
+
+/* Regularised incomplete beta I_x(a,b). */
+function betai(a, b, x) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const bt = Math.exp(
+    gammaln(a + b) -
+      gammaln(a) -
+      gammaln(b) +
+      a * Math.log(x) +
+      b * Math.log(1 - x),
+  );
+  if (x < (a + 1) / (a + b + 2)) return (bt * betacf(a, b, x)) / a;
+  return 1 - (bt * betacf(b, a, 1 - x)) / b;
+}
+
+/*
+ * Two-sided critical value of Student's t at `df` degrees of freedom.
+ *
+ * For t > 0, P(|T| > t) = I_{df/(df+t^2)}(df/2, 1/2), monotonically decreasing
+ * in t — so the tail is inverted by bisection, with no derivative and no
+ * starting guess to get wrong.
+ */
+function tCrit(df, alpha = 0.05) {
+  if (!Number.isFinite(df) || df < 1)
+    throw new Error(`t critical value undefined for df=${df}`);
+  if (!(alpha > 0 && alpha < 1)) throw new Error(`bad alpha ${alpha}`);
+  const tail = (t) => betai(df / 2, 0.5, df / (df + t * t));
+  let lo = 0;
+  let hi = 1e4;
+  if (tail(hi) > alpha) throw new Error(`t critical value outside bracket`);
+  for (let i = 0; i < 300 && hi - lo > 1e-12 * (1 + hi); i++) {
+    const mid = 0.5 * (lo + hi);
+    if (tail(mid) > alpha) lo = mid;
+    else hi = mid;
+  }
+  return 0.5 * (lo + hi);
+}
+
 function interval(d) {
   const n = d.length;
   const mean = d.reduce((a, b) => a + b, 0) / n;
@@ -115,12 +217,12 @@ function interval(d) {
   const varS = d.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1);
   const sd = Math.sqrt(varS);
   const se = sd / Math.sqrt(n);
-  const t = T_CRIT[n - 1];
-  /* ⚠️ THROWS RATHER THAN FALLING BACK TO z. A silent fallback past the end of
-   * the table is how the v2 intervals became normal approximations in the first
-   * place. */
-  if (t === undefined)
-    throw new Error(`no t critical value tabulated for df=${n - 1}`);
+  /* ⚠️ STILL NEVER FALLS BACK TO z. tCrit throws on a df it cannot serve rather
+   * than returning a normal approximation, which is how the v2 intervals became
+   * normal approximations in the first place. It is a single path: there is no
+   * "use the table if it has this df" branch, so the table cannot drift away
+   * from the solver without the positive-control test noticing. */
+  const t = tCrit(n - 1);
   return {
     n,
     mean,
@@ -140,6 +242,8 @@ module.exports = {
   zeroUpper,
   allLower,
   interval,
+  tCrit,
+  betai,
   T_CRIT,
   Z_CRIT,
 };

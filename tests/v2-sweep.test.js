@@ -67,9 +67,21 @@ test("the published intervals are z-intervals, and z is the wrong estimator at n
   assert.ok(b.t[1] - b.t[0] > b.z[1] - b.z[0]);
 });
 
-test("interval() refuses a df it has no tabulated critical value for", () => {
-  const tooMany = new Array(64).fill(1).map((_, i) => i % 3);
-  assert.throws(() => S.interval(tooMany), /no t critical value tabulated/);
+/* ⚠️ WAS "refuses a df it has no tabulated critical value for", asserting a
+ * throw at n=64. The critical values are now solved rather than tabulated, so
+ * n=64 is served — and this sweep's own 40-seed before/after comparison needs
+ * it to be. What that test was really protecting is that a large n must not
+ * quietly become a z interval, so that is what is asserted here instead. */
+test("interval() serves a large n with t, not with z", () => {
+  const many = new Array(64).fill(1).map((_, i) => i % 3);
+  const ci = S.interval(many);
+  assert.strictEqual(ci.n, 64);
+  const mult = (ci.t[1] - ci.mean) / ci.se;
+  /* tCrit is not re-exported by the sweep — asked of the module that owns it */
+  const PS = require("../sim/paired-stats.js");
+  assert.ok(Math.abs(mult - PS.tCrit(63)) < 1e-12, `multiplier was ${mult}`);
+  assert.ok(mult > S.Z_CRIT, "large n silently became a normal approximation");
+  assert.ok(ci.t[1] - ci.t[0] > ci.z[1] - ci.z[0]);
 });
 
 /*

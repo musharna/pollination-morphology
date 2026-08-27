@@ -83,20 +83,51 @@ test("interval reports Student's t wider than the normal approximation", () => {
   const tw = ci.t[1] - ci.t[0];
   const zw = ci.z[1] - ci.z[0];
   assert.ok(tw > zw, "the t interval was not wider than z at n=8");
-  /* t(df=7)=2.364624 against z=1.959964 — the ratio the v2 correction turned on */
+  /* t(df=7)=2.364624 against z=1.959964 — the ratio the v2 correction turned on.
+   * Compared against the TABULATED constant, which is an independent source,
+   * at the precision the table is quoted to. */
   assert.ok(
-    Math.abs(tw / zw - 2.364624 / 1.959964) < 1e-9,
+    Math.abs(tw / zw - 2.364624 / 1.959964) < 1e-6,
     `t/z width ratio was ${(tw / zw).toFixed(6)}, not the tabulated 1.206462`,
   );
 });
 
-test("interval throws rather than falling back to z past the end of the table", () => {
-  /* ⚠️ A SILENT FALLBACK IS HOW THE v2 INTERVALS BECAME NORMAL APPROXIMATIONS.
-   * n=17 means df=16, which is not tabulated. */
-  assert.throws(
-    () => S.interval(new Array(17).fill(0).map((_, i) => i % 3)),
-    /no t critical value tabulated for df=16/,
-  );
+/*
+ * ⚠️ REWRITTEN, NOT WEAKENED. This pair used to assert that `interval` THROWS
+ * past df=15, because the critical values were a fifteen-row table and the end
+ * of the table was the only thing standing between the caller and a silent
+ * normal approximation. The table is now a solver, so there is no end to fall
+ * off — and asserting the old throw would be asserting that the module still has
+ * the limitation, not that it still has the protection.
+ *
+ * The protection is what gets asserted: at EVERY n, the interval reported is a t
+ * interval and not a z one. That is the invariant the original test was reaching
+ * for through the only handle it had. It now holds where the old guard was blind
+ * — past df=15, which is exactly where the historical bug lived.
+ */
+test("interval never silently degrades to a normal approximation, at any n", () => {
+  for (const n of [2, 3, 8, 16, 17, 30, 64, 200, 1000]) {
+    const d = new Array(n).fill(0).map((_, i) => (i % 5) - 2);
+    const ci = S.interval(d);
+    const tw = ci.t[1] - ci.t[0];
+    const zw = ci.z[1] - ci.z[0];
+    assert.ok(tw > zw, `n=${n}: t interval was not wider than z`);
+    const mult = (ci.t[1] - ci.mean) / ci.se;
+    assert.ok(
+      Math.abs(mult - S.tCrit(n - 1)) < 1e-12,
+      `n=${n}: multiplier ${mult} is not t(df=${n - 1})`,
+    );
+    assert.ok(mult > S.Z_CRIT, `n=${n}: multiplier fell to z`);
+  }
+});
+
+test("interval refuses an n it cannot serve rather than approximating", () => {
+  /* n<2 has no variance to report and must not come back with an interval */
+  for (const n of [0, 1]) {
+    const ci = S.interval(new Array(n).fill(1));
+    assert.ok(!ci.t, `n=${n} returned an interval`);
+    assert.ok(Number.isNaN(ci.sd), `n=${n} reported an sd`);
+  }
 });
 
 test("interval flags a zero-width difference vector as degenerate", () => {
