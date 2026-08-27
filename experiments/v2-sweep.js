@@ -14,15 +14,25 @@
  * that was never committed. This script runs the design the document DESCRIBES
  * so that they can be checked rather than trusted.
  *
- * WHAT IS DELIBERATELY NOT FIXED HERE. sim/evolve.js draws the shared rng
- * inside loops over `live` (mutate at :367, demographic jitter at :399), and
- * extinction shrinks `live`, so two arms desynchronise the moment their
- * survivor counts differ — which is the very quantity being compared. That
- * breaks the document's stated invariant that "the only within-pair difference
- * is the transfer model". It is left alone on purpose: this run has to answer
- * "do the published numbers reproduce from the code as it stands", and
- * repairing the model in the same pass would confound that with "did the
- * repair move them". The repair is a separate change.
+ * ✅ WHAT WAS DELIBERATELY NOT FIXED HERE, AND NOW IS (9db5612). sim/evolve.js
+ * used to draw the shared rng inside loops over `live`, and extinction shrinks
+ * `live`, so two arms desynchronised the moment their survivor counts differed —
+ * the very quantity being compared. It was left alone while this script's job
+ * was "do the published numbers reproduce from the code as it stands", because
+ * repairing the model in the same pass would have confounded that with "did the
+ * repair move them".
+ *
+ * A THIRD DESYNC SITE turned up during the repair that no document mentions:
+ * init() redrew a founder whenever a candidate flower could not touch the bee.
+ * L2 can miss where L0 cannot, so ONE rejection shifted every later founder and
+ * the arms started from DIFFERENT COMMUNITIES at generation 0 — the pairing was
+ * never intact, not even before the first extinction. Measured at seed 5: L2
+ * rejects candidate 4 (init draws 72 vs 64), and draw counts diverge from
+ * generation 24.
+ *
+ * Randomness is now keyed by identity rather than by stream position, so
+ * rejections and extinctions still happen — both are real — but can no longer
+ * move anyone else's draws. Use EVOLVE_REF (below) to run the unrepaired build.
  *
  * L2 only. The document's paired table is the L2 comparison; L0 collapses to
  * one species under both evaluators and L1 is not what was reported.
