@@ -3824,10 +3824,57 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
        */
       const halfOf = (i) => (widths ? widths[i] / 2 : half);
       const perSlice = Math.max(1, Math.round(per / S));
+      /*
+       * ⚠️⚠️ CONSERVATION. `base[i]` is a display SHARE, computed once at :1290
+       * and — until this flag existed — re-offered at FULL STRENGTH in every
+       * slice the plant is in flower. A plant's season-integrated display was
+       * therefore `base[i] * occ[i]`, so flowering all season MANUFACTURED S
+       * times the floral display of flowering once, out of nothing, and both
+       * fitness paths consume it uncapped (`received` at :1490, siring at
+       * :1698). That is what made width evolve wider in #47 — not, as that
+       * result concluded, an absent cost. See
+       * docs/2026-08-28-conserved-display-prereg.md, which registers the
+       * arithmetic before this code existed: the wide-to-narrow flow ratio
+       * against a saturated resident is exactly `S` under duplication (measured
+       * 8.26 at S=8 and 16.52 at S=16) and `(S+29)/30` once the display is
+       * conserved.
+       *
+       * ⚠️ A COST TERM WOULD NOT HAVE FIXED THIS. It leaves the duplication in
+       * place and taxes it, so the evolved width becomes a statement about the
+       * cost coefficient — the imposition #47 was built to escape. Conservation
+       * introduces NO parameter: `base` is already normalised, and the
+       * constraint is that a plant has a finite reproductive investment.
+       *
+       * ⚠️ DEFAULT OFF, and off means THIS CODE DOES NOT RUN — which is what
+       * keeps every earlier result bit-identical. The three draws in
+       * carryover.js (:295, :331, :362) are all scale-invariant in exact
+       * arithmetic, so an equal-width population should be unaffected even with
+       * the flag ON; that is measured by tests/conserved-display.test.js rather
+       * than asserted, because `r = rng() * acc` against `cum[i]` can flip at a
+       * boundary under rounding.
+       *
+       * ⚠️ `occ[i] === 0` is a plant in flower in NO slice — the coverage gap
+       * this roadmap already records at width < 1/S. It contributes 0 to every
+       * slice regardless, so the guard exists to avoid dividing by zero, not to
+       * give such a plant a display it does not have.
+       */
+      let occ = null;
+      if (PH.conserveDisplay) {
+        occ = new Array(n).fill(0);
+        for (let k = 0; k < S; k++) {
+          const t = k / S;
+          for (let i = 0; i < n; i++)
+            if (ringDist(blooms[i], t) <= halfOf(i)) occ[i]++;
+        }
+      }
       for (let k = 0; k < S; k++) {
         const t = k / S;
         const w = base.map((b, i) =>
-          ringDist(blooms[i], t) <= halfOf(i) ? b : 0,
+          ringDist(blooms[i], t) <= halfOf(i)
+            ? occ
+              ? b / (occ[i] || 1)
+              : b
+            : 0,
         );
         /* A slice in which nothing is in flower is a slice with no visits, not
          * a crash and not a redistribution — the pollinator's effort in that

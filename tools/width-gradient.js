@@ -31,7 +31,33 @@ const E = require("../sim/evolve.js");
 
 const N = 30;
 const SITE_N = 160;
-const REPS = 6;
+const REPS = Math.max(1, Number(process.env.REPS) || 6);
+
+/*
+ * `CONSERVE=1` runs the same gradient with a plant's display SPREAD over the
+ * slices it occupies instead of re-offered at full strength in each — see
+ * docs/2026-08-28-conserved-display-prereg.md. Off by default so the published
+ * table above regenerates unchanged.
+ */
+const CONSERVE = process.env.CONSERVE === "1";
+
+/*
+ * Occupancy of the focal plant, whose bloom is pinned to 0 by main(). Reported
+ * beside the flow because the registered per-width predictions are functions of
+ * `k_f`, not of width — and width maps to `k_f` through a STEP function whose
+ * steps belong to `S`. Reading `k_f` off the run rather than assuming it is what
+ * lets a missed prediction be attributed to the share model instead of to a
+ * guess about which slices a width covers.
+ */
+function occupancy(width, S) {
+  const ringDist = (a, b) => {
+    const d = Math.abs(a - b) % 1;
+    return d > 0.5 ? 1 - d : d;
+  };
+  let k = 0;
+  for (let i = 0; i < S; i++) if (ringDist(0, i / S) <= width / 2) k++;
+  return k;
+}
 
 const mean = (xs) =>
   xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
@@ -52,7 +78,12 @@ function focalFlow(focal, resident, S, seed) {
   const opts = {
     ...I.DEFAULTS,
     siteN: SITE_N,
-    phenology: { slices: S, widthLocus: true, widthMut: 0 },
+    phenology: {
+      slices: S,
+      widthLocus: true,
+      widthMut: 0,
+      conserveDisplay: CONSERVE,
+    },
   };
   const built = I.foundTwoLineages(N, rng, srng, 8, opts);
   if (!built) return null;
@@ -94,9 +125,10 @@ function main() {
   console.log(
     `focal plant's pollen flow vs its own flowering width\n` +
       `S = ${S} slices (1/S = ${(1 / S).toFixed(4)})   ` +
-      `resident width = ${resident}   n = ${N}   ${REPS} seeds\n`,
+      `resident width = ${resident}   n = ${N}   ${REPS} seeds   ` +
+      `display ${CONSERVE ? "CONSERVED (base/k_f per slice)" : "per-slice (base in every slice)"}\n`,
   );
-  console.log("  focal width    sired  received     total   vs resident");
+  console.log("  focal width  k_f    sired  received     total   vs resident");
   const widths = [0.02, 0.06, 0.12, 0.125, 0.25, 0.5, 0.75, 1.0];
   let refTotal = null;
   for (const w of widths) {
@@ -109,7 +141,9 @@ function main() {
     const t = mean(rows.map((r) => r.total));
     if (w === resident) refTotal = t;
     console.log(
-      `  ${String(w).padEnd(11)}${mean(rows.map((r) => r.sired))
+      `  ${String(w).padEnd(11)}${String(occupancy(w, S)).padStart(4)} ${mean(
+        rows.map((r) => r.sired),
+      )
         .toFixed(1)
         .padStart(9)}${mean(rows.map((r) => r.received))
         .toFixed(1)
