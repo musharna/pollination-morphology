@@ -18,9 +18,16 @@
  *   nothing left over once the flattening is subtracted.
  *
  * A window exists only if those two intervals both clear zero somewhere on the
- * same rate. They may not, and a clean empty answer is a result: it would say
- * reproductive assurance is not merely unhelpful here but STRUCTURALLY
- * unavailable to this model, at any dose.
+ * same rate. They may not, and a clean empty answer is a result — but it is a
+ * result about THE RATES TESTED.
+ *
+ * ⚠️ THIS HEADER USED TO SAY "STRUCTURALLY unavailable to this model, at any
+ * dose", and the verdict said it too. Neither was earned. The sweep is a finite
+ * grid, so it cannot speak for the rates between or beyond its points; and every
+ * gate is a FAILURE TO REJECT, so without a pre-declared equivalence margin an
+ * interval spanning zero cannot tell "indistinguishable from total selfing" from
+ * "not resolvable by this design". An empty answer is therefore "no TESTED rate
+ * met the conjunction", which is a smaller and true claim.
  *
  * ⚠️ IT DRIVES experiments/selfing.js RATHER THAN RE-IMPLEMENTING IT. Every
  * number below comes out of the same file, the same estimator and the same two
@@ -124,6 +131,45 @@ console.log(`  separable from the weight floor at:    ${list(attributedAt)}`);
 console.log(`  a rare advantage at:                   ${list(effectiveAt)}`);
 console.log(`\n  ALL THREE:                             ${list(WINDOW)}`);
 
+/*
+ * ⚠️⚠️ WHAT AN UNMET GATE DOES AND DOES NOT LICENSE. Every gate here is a
+ * FAILURE TO REJECT: the interval spans zero. Failing closed on that is right —
+ * an arm that cannot be separated from total selfing must not be credited — but
+ * it is NOT evidence that the arm IS total selfing. Those two readings differ
+ * only in the width of the interval, and NO EQUIVALENCE MARGIN WAS PRE-DECLARED
+ * for this sweep, so neither is licensed by it.
+ *
+ * The half-widths are therefore printed, so a spanning interval cannot be read
+ * as a demonstration of sameness. For the same reason the verdict below is
+ * scoped to the RATES TESTED: seven grid points cannot speak for the continuum
+ * between and beyond them.
+ */
+rule("RESOLUTION — is an unmet gate a null, or an unresolved question?");
+console.log(
+  "  No equivalence margin was pre-declared, so a spanning interval is reported\n" +
+    "  as UNRESOLVED rather than as equivalence. Half-widths, for scale:\n",
+);
+console.log("  rate    admissibility          attribution");
+const wid = (d) =>
+  !d
+    ? "        -       "
+    : (excludes0(d) ? "clears 0" : "spans 0 ") + ` h=${d.h.toFixed(3)}`;
+for (const r of rows)
+  console.log(
+    `  ${String(r.rate).padEnd(6)}${wid(r.admissible).padEnd(23)}${wid(r.attribution)}`,
+  );
+
+const widest = rows
+  .filter((r) => r.admissible && !excludes0(r.admissible))
+  .reduce((a, r) => (a && a.admissible.h > r.admissible.h ? a : r), null);
+if (widest)
+  console.log(
+    `\n  ⚠️ The widest unmet admissibility interval is h=${widest.admissible.h.toFixed(3)}, at rate ${widest.rate}. An\n` +
+      '  effect smaller than that is invisible to this design, so "cannot be told apart\n' +
+      '  from total selfing" means the sweep lacked the resolution to tell them apart —\n' +
+      "  not that they are the same.",
+  );
+
 rule("VERDICT");
 
 if (WINDOW.length) {
@@ -139,24 +185,37 @@ if (WINDOW.length) {
   );
 } else if (!attributedAt.length && admissibleAt.length) {
   console.log(
-    "  ❌ NO WINDOW — and the binding gate is ATTRIBUTION. Rates that stay\n" +
-      "  distinguishable from total selfing never produce an effect separable\n" +
-      "  from the maternal-weight FLATTENING that the floor causes on its own.\n" +
-      "  Whatever moves at high rates is not the selfing.",
+    "  ❌ NO TESTED RATE MEETS THE CONJUNCTION — and the binding gate is\n" +
+      "  ATTRIBUTION. Among the rates swept, those that stay distinguishable from\n" +
+      "  total selfing do not produce an effect separable from the maternal-weight\n" +
+      "  FLATTENING that the floor causes on its own, so whatever moves at the high\n" +
+      "  rates tested is not the selfing.\n\n" +
+      '  ⚠️ "Not separable" is a failure to reject, not a demonstration of sameness,\n' +
+      "  and no equivalence margin was pre-declared — see the RESOLUTION table.",
   );
 } else if (!admissibleAt.length && attributedAt.length) {
   console.log(
-    "  ❌ NO WINDOW — and the binding gate is ADMISSIBILITY. Every rate with a\n" +
-      "  separable effect is indistinguishable from TOTAL SELFING, which\n" +
-      "  manufactures isolation by severing mating from pollination. The effect\n" +
-      "  is real and the mechanism is the trivial one.",
+    "  ❌ NO TESTED RATE MEETS THE CONJUNCTION — and the binding gate is\n" +
+      "  ADMISSIBILITY. Among the rates swept, every one with a separable effect\n" +
+      "  fails to separate from TOTAL SELFING, which manufactures isolation by\n" +
+      "  severing mating from pollination. On this grid the effect is real and the\n" +
+      "  mechanism looks like the trivial one.\n\n" +
+      '  ⚠️ "Fails to separate" is not "is the same as": the admissibility gate is a\n' +
+      "  failure to reject and no equivalence margin was pre-declared. A rate between\n" +
+      "  the grid points is untested, not excluded — see the RESOLUTION table.",
   );
 } else if (!admissibleAt.length && !attributedAt.length) {
   console.log(
-    "  ❌ NO WINDOW, AND NEITHER GATE OPENS ANYWHERE. Across the whole swept\n" +
-      "  range no rate is both distinguishable from total selfing and separable\n" +
-      "  from the weight floor. Reproductive assurance is not merely unhelpful\n" +
-      "  in this model — it is STRUCTURALLY UNAVAILABLE, at any dose.\n\n" +
+    `  ❌ NO TESTED RATE MEETS THE CONJUNCTION, and neither gate opens anywhere on\n` +
+      "  the grid: no rate swept is both distinguishable from total selfing and\n" +
+      `  separable from the weight floor.\n  rates swept (${rows.length}): ${rows.map((r) => r.rate).join(", ")}\n\n` +
+      '  ⚠️ THAT IS NOT "STRUCTURALLY UNAVAILABLE AT ANY DOSE", which is what this\n' +
+      "  line used to say. Two things stand between the observation and that claim.\n" +
+      "  The grid is finite, and nothing here speaks for the rates between or beyond\n" +
+      "  its points. And every gate is a FAILURE TO REJECT: without a pre-declared\n" +
+      '  equivalence margin, an interval spanning zero cannot distinguish "the arm\n' +
+      '  behaves like total selfing" from "this design cannot resolve the\n' +
+      '  difference". See the RESOLUTION table above for which rows are which.\n\n' +
       "  ⚠️ Read the loss column before believing the knob was inert: if\n" +
       "  free-vs-fully-costed lineage loss separates, the mechanism was doing\n" +
       "  something and the gates are rejecting WHAT it did, not whether it ran.",
