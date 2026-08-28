@@ -27,6 +27,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const C = require("../sim/carryover.js");
+const { claim } = require("../sim/verdict-gates.js");
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const sd = (xs) => {
@@ -143,7 +144,6 @@ function anchors() {
   return ok;
 }
 
-
 // ----------------------------------------------------- detectability control
 
 /*
@@ -237,11 +237,19 @@ function arm(label, extra, withOptima = false) {
     const t = r.history.slice(Math.floor((GENS * 2) / 3));
     return mean(t.map((h) => h.separation ?? 0));
   });
+  /* ⚠️ `separation` is gap/dispersion and is UNBOUNDED in its denominator: a
+   * majority 100x tighter multiplies it ~97x with the split unchanged. Both
+   * parts are carried out so a reader can tell a wider gap from a tighter core.
+   * See sim/ibm.js twoClusterSeparation and tests/split-stats.test.js. */
+  const gaps = last.map((h) => h.gap).filter((x) => x !== null);
+  const disp = last.map((h) => h.dispersion).filter((x) => x !== null);
   return {
     label,
     sep: [mean(seps), sd(seps)],
     tail: [mean(tail), sd(tail)],
     minor: mean(minor),
+    gap: gaps.length ? mean(gaps) : null,
+    dispersion: disp.length ? mean(disp) : null,
     spread: mean(spread),
     stalled: last.some((h) => h.stalled),
   };
@@ -249,7 +257,8 @@ function arm(label, extra, withOptima = false) {
 
 function report(a) {
   console.log(
-    `  ${a.label.padEnd(30)} ${f2(a.sep[0])} +/-${f2(a.sep[1])}   ${f2(a.tail[0])}    ${f2(a.minor)}  ${f2(a.spread)}${a.stalled ? "  (a run stalled)" : ""}`,
+    `  ${a.label.padEnd(30)} ${f2(a.sep[0])} +/-${f2(a.sep[1])}   ${f2(a.tail[0])}    ${f2(a.minor)}  ` +
+      `${f2(a.gap)} ${f2(a.dispersion)}  ${f2(a.spread)}${a.stalled ? "  (a run stalled)" : ""}`,
   );
 }
 
@@ -276,7 +285,7 @@ console.log(
   "PART A -- placement-determined mating vs a null that cannot assort\n",
 );
 console.log(
-  "  arm                              final sep        tail    minority  spread",
+  "  arm                              final sep        tail    minority    gap   disp   spread",
 );
 const real = arm("placement decides mating", {});
 const nul = arm("random mating (null)", { randomMating: true });
@@ -286,7 +295,7 @@ console.log();
 
 console.log("PART B -- imposed fecundity selection toward TWO placements\n");
 console.log(
-  "  arm                              final sep        tail    minority  spread",
+  "  arm                              final sep        tail    minority    gap   disp   spread",
 );
 const forced = arm("two imposed optima (k=8)", { optimaK: 8 }, true);
 report(forced);
@@ -298,6 +307,38 @@ console.log("=".repeat(84));
 const realSplits = real.tail[0] > nul.tail[0] + 2 * nul.tail[1];
 const forcedSplits = forced.tail[0] > nul.tail[0] + 2 * nul.tail[1];
 const forcedCollapsed = forced.spread < nul.spread;
+
+/*
+ * ⚠️⚠️ THE MINORITY WAS PRINTED AND NEVER CONSULTED. The two predicates above
+ * read `tail` alone — a separation averaged over the final third — while
+ * `minor` sat in the same table, unread by anything. `separation` and
+ * `minorityFrac` fail on OPPOSITE shapes, which is exactly why one cannot stand
+ * in for the other: a single cloud cut arbitrarily in half scores ~1 on
+ * separation but a healthy ~0.5 minority, and a lone outlier scores hugely on
+ * separation with a minority near 1/N. Gating on separation alone therefore
+ * cannot refuse "one individual wandered off", which is the shape a split is
+ * most likely to be mistaken for.
+ *
+ * The floor is the NULL's own minority rather than a number picked here — the
+ * house rule from twoClusterSeparation's docstring, "quoted against its own
+ * shuffled null rather than against a threshold I picked". The 0.5 is a declared
+ * tolerance on that null-referenced quantity, not an absolute threshold: a real
+ * split may be somewhat more lopsided than an arbitrary cut, but not five times
+ * more.
+ */
+const MINOR_TOL = 0.5;
+const minorityGate = (a) => ({
+  name: `the minority is a lineage, not an outlier (${a.label})`,
+  ok:
+    a.minor == null || nul.minor == null
+      ? null
+      : a.minor >= MINOR_TOL * nul.minor,
+  failText:
+    `The smaller cluster holds ${(100 * a.minor).toFixed(1)}% of the population against the\n` +
+    `random-mating null's ${(100 * nul.minor).toFixed(1)}%. A separation this lopsided is one group and a\n` +
+    "few strays, not two lineages — and `separation` cannot refuse it, because a lone\n" +
+    "outlier maximises the very ratio a split is being scored on.",
+});
 
 console.log(
   `  placement-mated population splits            : ${realSplits ? "YES" : "NO"}`,
@@ -312,14 +353,28 @@ console.log();
 
 if (realSplits) {
   console.log(
-    "  The population SPLIT under placement-determined mating alone. That would be a",
+    claim({
+      gates: [minorityGate(real)],
+      heading:
+        "  ⛔ THE TAIL SEPARATION CLEARS THE NULL AND IT IS NOT A SPLIT:",
+      positive:
+        "  The population SPLIT under placement-determined mating alone, and the smaller\n" +
+        "  cluster is a real fraction of it rather than a handful of strays. That would be\n" +
+        "  a first for this project -- check it hard before believing it.",
+    }).text,
   );
-  console.log("  first for this project -- check it hard before believing it.");
 } else if (forcedSplits) {
   console.log(
-    "  Placement-mated mating alone does not split, but imposed selection toward two",
+    claim({
+      gates: [minorityGate(forced)],
+      heading:
+        "  ⛔ THE IMPOSED-OPTIMA TAIL CLEARS THE NULL AND IT IS NOT A SPLIT:",
+      positive:
+        "  Placement-mated mating alone does not split, but imposed selection toward two\n" +
+        "  placements does, and the smaller cluster is a real fraction of the population.\n" +
+        "  The barrier is the mating system, not the fitness surface.",
+    }).text,
   );
-  console.log("  placements does. The barrier is the mating system, not the fitness surface.");
 } else {
   console.log(
     "  NEITHER splits, and the measurement demonstrably CAN see a split (Part 0b).",

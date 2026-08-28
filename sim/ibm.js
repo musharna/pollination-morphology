@@ -886,10 +886,36 @@ function twoClusterSeparation(places) {
     assign.filter((x) => x === 0).length,
     assign.filter((x) => x === 1).length,
   ];
+  /*
+   * ⚠️⚠️ `separation` IS A RATIO AND IT IS UNBOUNDED IN ITS DENOMINATOR, so it
+   * is never returned on its own again. Measured on synthetic clouds
+   * (_scratch/sep-probe.js): a genuine balanced split scores 222.6, and the SAME
+   * one-outlier geometry scores 97.4 with an ordinary core and 9443.6 with a
+   * core 100x tighter — a 96.9x move produced by tightening the majority and
+   * changing nothing about the split. The statistic is monotone in majority
+   * tightness, so two runs' separations are not comparable unless the
+   * denominators are too.
+   *
+   * ⚠️ AND IT CANNOT TELL A BALANCED SPLIT FROM A LOPSIDED ONE. 90/10 scores
+   * 204.9 against the balanced split's 222.6 — a 8% difference for a five-fold
+   * difference in what actually happened. `minorityFrac` reads 0.100 against
+   * 0.500 and separates them immediately.
+   *
+   * So the numerator (`gap`), the denominator (`dispersion`) and the balance
+   * (`minorityFrac`) all travel with the ratio. A reader who sees 9443.6 beside
+   * dispersion 0.0001 can see it is a tightness artefact; one who sees the ratio
+   * alone cannot. Matches `ringSeparation`, which already returned `gap`.
+   */
   return {
     separation: w > 1e-9 ? dist(m1, m2) / w : 0,
     sizes,
     minorityFrac: Math.min(...sizes) / pts.length,
+    gap: dist(m1, m2),
+    dispersion: w,
+    within: [0, 1].map((c) => {
+      const ms = within.filter((_, i) => assign[i] === c);
+      return ms.length ? mean(ms) : 0;
+    }),
   };
 }
 
@@ -932,16 +958,24 @@ function ringSeparation(signals) {
       else m2 = bestM;
     }
   }
-  const w = mean(xs.map((p, i) => ringDist(p, assign[i] === 0 ? m1 : m2)));
+  const withins = xs.map((p, i) => ringDist(p, assign[i] === 0 ? m1 : m2));
+  const w = mean(withins);
   const sizes = [
     assign.filter((x) => x === 0).length,
     assign.filter((x) => x === 1).length,
   ];
+  /* same fields as twoClusterSeparation, for the same reason — the ratio is
+   * unbounded in its denominator, so the denominator travels with it */
   return {
     separation: w > 1e-9 ? ringDist(m1, m2) / w : 0,
     sizes,
     minorityFrac: Math.min(...sizes) / xs.length,
     gap: ringDist(m1, m2),
+    dispersion: w,
+    within: [0, 1].map((c) => {
+      const ms = withins.filter((_, i) => assign[i] === c);
+      return ms.length ? mean(ms) : 0;
+    }),
   };
 }
 
@@ -1831,6 +1865,11 @@ function run({
       spread: out.spread,
       separation: out.cluster ? out.cluster.separation : null,
       minorityFrac: out.cluster ? out.cluster.minorityFrac : null,
+      /* the ratio's two parts travel with it — see twoClusterSeparation. The
+       * signal axis already carried `signalGap`; the placement axis carried
+       * neither, which is the asymmetry that let `separation` be read alone. */
+      gap: out.cluster ? out.cluster.gap : null,
+      dispersion: out.cluster ? out.cluster.dispersion : null,
       signalSpread: out.signalSpread,
       signalSeparation: out.signalCluster ? out.signalCluster.separation : null,
       signalGap: out.signalCluster ? out.signalCluster.gap : null,
