@@ -33,6 +33,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const C = require("../sim/carryover.js");
+const { claim } = require("../sim/verdict-gates.js");
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const f3 = (x) => (x == null ? "    -  " : x.toFixed(3).padStart(7));
@@ -364,6 +365,36 @@ const attribution = pairedBetween(
   `floorOnly rate=${RATE}`,
 );
 
+/* ⚠️⚠️ AND THE SECOND VERSION IMPLEMENTED THEM ON THE WRONG PATH. Both gates
+ * were computed here, printed below, and then consulted ONLY inside the "effect
+ * not established" arm of the verdict. The ✅ branch was reached without reading
+ * either — so the two gates the pre-registration wrote could caveat a failure
+ * and were structurally incapable of blocking a success, which is the one thing
+ * a gate is for. Repaired by building the list ONCE and routing the positive
+ * text through `claim()`, which cannot return it while any gate is unmet.
+ *
+ * `ok: null` means the control did not fit. It fails closed: an unmeasured gate
+ * licenses nothing. */
+const GATES = [
+  {
+    name: "admissibility (selfing vs ALWAYS)",
+    ok: admissible ? excludes0(admissible) : null,
+    failText:
+      "The treatment is INDISTINGUISHABLE from the full-selfing triviality control,\n" +
+      "which is precisely the regime the pre-registration ruled out in advance: a\n" +
+      "rescue that only appears where the arm behaves like total selfing is not a\n" +
+      "rescue, it is total selfing.",
+  },
+  {
+    name: "attribution (selfing vs floorOnly)",
+    ok: attribution ? excludes0(attribution) : null,
+    failText:
+      "Selfing is not separable from floorOnly — the weight flattening WITHOUT the\n" +
+      "selfing — so any movement is maternal-weight FLATTENING rather than\n" +
+      "reproductive assurance. The mechanism is not what it says on the label.",
+  },
+];
+
 rule("PRE-REGISTERED GATES");
 console.log(
   "  admissibility  selfing vs ALWAYS      " +
@@ -381,6 +412,21 @@ console.log(
         (excludes0(attribution)
           ? "selfing-specific effect survives"
           : "⚠️ NOT separable from the floor")
+      : "     -"),
+);
+/* ⚠️ REPORTED, NOT GATED, AND THAT IS A DELIBERATE CHANGE. An earlier version
+ * made "floorOnly separates from baseline" a branch of the verdict and printed
+ * ATTRIBUTION FAILS on it. That is the wrong predicate: the flattening moving
+ * the exponent at all is EXPECTED, and does not invalidate a selfing effect that
+ * is separably larger. The pre-registered question is selfing-minus-floorOnly,
+ * which is the gate above; this line stays as context so the two cannot be
+ * confused for one another again. */
+console.log(
+  "  context        floorOnly vs baseline  " +
+    (floor && floor.realised && base && base.realised
+      ? sep(base.realised, floor.realised)
+        ? "the floor moves the exponent on its own"
+        : "the floor alone does not move it"
       : "     -"),
 );
 
@@ -426,35 +472,40 @@ if (!base || !treat || !base.realised || !treat.realised) {
         "  test this design earns. ⚠️ Post-hoc: the prereg named the quantity, not the\n" +
         "  test, and this one was chosen after seeing the overlap.",
     );
-  /* the gates are applied HERE rather than reported and walked past */
-  if (!excludes0(admissible))
-    console.log(
-      "\n  ⛔ AND IT IS INADMISSIBLE ANYWAY. The treatment is INDISTINGUISHABLE from the\n" +
-        "  full-selfing triviality control, which is precisely the regime the\n" +
-        "  pre-registration ruled out in advance: a rescue that only appears where the\n" +
-        "  arm behaves like total selfing is not a rescue, it is total selfing.",
-    );
-  else if (!excludes0(attribution))
-    console.log(
-      "\n  ⚠️ AND ATTRIBUTION FAILS: selfing is not separable from floorOnly, so the\n" +
-        "  movement is maternal-weight FLATTENING rather than reproductive assurance.",
-    );
+  /* the SAME list the positive branch is routed through, so a gate cannot be
+   * live on one path and absent from the other */
+  console.log(
+    claim({
+      gates: GATES,
+      positive:
+        "\n  (The pre-registered gates were themselves met — the effect simply was not\n" +
+        "  established. Had it been, nothing here would have blocked it.)",
+      heading:
+        "\n  AND THE PRE-REGISTERED GATES WOULD NOT HAVE LICENSED IT EITHER:",
+    }).text,
+  );
 } else if (treat.realised.m >= base.realised.m) {
   console.log(
     "  ❌ H-assurance REFUTED, and in the WRONG DIRECTION: the realised exponent ROSE.\n" +
       "  Assurance made frequency-dependence stronger, not weaker.",
   );
-} else if (sep(base.realised, floor && floor.realised)) {
-  console.log(
-    "  ⚠️ ATTRIBUTION FAILS. floorOnly — the weight floor WITHOUT the selfing — moved\n" +
-      "  the exponent too, so the effect is maternal-weight FLATTENING rather than\n" +
-      "  reproductive assurance. The mechanism is not what it says on the label.",
-  );
 } else {
+  /* ⚠️⚠️ THE ✅ TEXT LIVES INSIDE `claim()` AND NOWHERE ELSE. It was previously
+   * an `else` at the end of the chain, reachable without either pre-registered
+   * gate having been read. There is no longer a branch that can print it. */
   console.log(
-    "  ✅ The realised exponent MOVED and floorOnly did not, so the effect is the\n" +
-      "  selfing rather than the flattening. ⚠️ This is the SCREEN only: it says\n" +
-      "  assurance repairs mate-finding, NOT that rescued lineages stay distinct.",
+    claim({
+      gates: GATES,
+      positive:
+        "  ✅ The realised exponent MOVED, it is separable from floorOnly, and the\n" +
+        "  treatment is distinguishable from full selfing. So the effect is the selfing\n" +
+        "  rather than the flattening, and it is not the triviality control in disguise.\n" +
+        "  ⚠️ This is the SCREEN only: it says assurance repairs mate-finding, NOT that\n" +
+        "  rescued lineages stay distinct.",
+      heading:
+        "  ⚠️ THE REALISED EXPONENT MOVED IN THE PREDICTED DIRECTION, AND IT IS STILL\n" +
+        "  NOT A RESULT — the pre-registered gates are unmet:",
+    }).text,
   );
 }
 

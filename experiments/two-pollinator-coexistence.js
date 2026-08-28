@@ -42,6 +42,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const P = require("../sim/placement.js");
+const { claim } = require("../sim/verdict-gates.js");
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const sd = (xs) => {
@@ -312,18 +313,41 @@ console.log(
 );
 
 if (held(diff) && !held(same) && !held(one)) {
+  /* ⚠️⚠️ THE NULL USED TO BE A FOOTNOTE INSIDE THIS STRING. It read "⚠️ BUT the
+   * random-mating null ALSO holds — check that before believing any of it", and
+   * it was appended to a message whose FIRST LINE had already announced the
+   * result. A control that ships inside the claim it invalidates cannot withhold
+   * that claim, only apologise for it. The null is the single discriminator
+   * between "it is the geometry" and "it is the demography", so it is now the
+   * gate and the ✅ text is unreachable while it holds. */
   console.log(
-    `  ✅ A SECOND POLLINATOR PERMITS COEXISTENCE, AND IT IS THE GEOMETRY.\n` +
-      `\n` +
-      `  Two lineages that are excluded under one animal persist under two with different\n` +
-      `  body plans — while two IDENTICAL animals, same bouts and same split budget, still\n` +
-      `  exclude. So it is not the extra bout, not the summation and not the visit split.\n` +
-      `\n` +
-      `  That resolves the discrepancy the last run created. Exclusion was never a fact\n` +
-      `  about placement divergence; it was a fact about a SINGLE pool of visits, in which\n` +
-      `  two isolated lineages must play zero-sum. A second animal gives the competition\n` +
-      `  somewhere else to go, and coexistence needs no new mechanism at all.\n` +
-      `${held(nul) ? "\n  ⚠️ BUT the random-mating null ALSO holds — check that before believing any of it.\n" : ""}`,
+    claim({
+      gates: [
+        {
+          name: "the random-mating null does NOT also hold",
+          ok: nul ? !held(nul) : null,
+          failText:
+            "Two lineages persist under two animals even when mating is RANDOM with respect\n" +
+            "to placement. Whatever permits coexistence therefore does not run through\n" +
+            "placement-mediated mating, and calling it geometry is unsupported: the same\n" +
+            "demography produces it with the geometry switched off.",
+        },
+      ],
+      heading:
+        "  ⛔ THE PATTERN IS PRESENT AND IT IS NOT A RESULT — the null is unmet:",
+      positive:
+        `  ✅ A SECOND POLLINATOR PERMITS COEXISTENCE, AND IT IS THE GEOMETRY.\n` +
+        `\n` +
+        `  Two lineages that are excluded under one animal persist under two with different\n` +
+        `  body plans — while two IDENTICAL animals, same bouts and same split budget, still\n` +
+        `  exclude. So it is not the extra bout, not the summation and not the visit split.\n` +
+        `  The random-mating null does not hold here either, so it is not the demography.\n` +
+        `\n` +
+        `  That resolves the discrepancy the last run created. Exclusion was never a fact\n` +
+        `  about placement divergence; it was a fact about a SINGLE pool of visits, in which\n` +
+        `  two isolated lineages must play zero-sum. A second animal gives the competition\n` +
+        `  somewhere else to go, and coexistence needs no new mechanism at all.`,
+    }).text,
   );
 } else if (held(diff) && held(same)) {
   console.log(

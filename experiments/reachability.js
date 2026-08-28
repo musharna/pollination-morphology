@@ -40,6 +40,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const P = require("../sim/placement.js");
+const { claim, gateReport } = require("../sim/verdict-gates.js");
 
 const SMOKE = process.env.RE_SMOKE === "1";
 const N1 = SMOKE ? 1500 : Number(process.env.RE_N || 12000);
@@ -182,7 +183,9 @@ console.log(
 );
 if (!anchorKeep || !anchorDrop)
   console.log(
-    "\n  ⚠️ THE FILTER CANNOT DISCRIMINATE. Every verdict below is meaningless.",
+    "\n  ⚠️ THE FILTER CANNOT DISCRIMINATE, and the verdict below is WITHHELD rather\n" +
+      "  than caveated. This line used to say every verdict below was meaningless and\n" +
+      "  then let them all print.",
   );
 
 rule(
@@ -225,30 +228,58 @@ rule("VERDICT");
 
 const control = verdicts.find((v) => v.isControl);
 const real = verdicts.filter((v) => !v.isControl);
+const withHoles = real.filter((v) => v.stable);
 
-if (!control || !control.stable) {
-  console.log(
-    "  ⚠️ THE POSITIVE CONTROL FOUND NO HOLE. The pinched plan has an\n" +
-      "  unreachable mid-body by construction, so the probe cannot see what it\n" +
-      "  exists to see. EVERY NULL BELOW IS VOID.",
-  );
-} else {
-  console.log(
-    `  positive control: ${control.stable} stable hole(s) — the probe can see a real gap.`,
-  );
-  const withHoles = real.filter((v) => v.stable);
-  if (withHoles.length === 0) {
-    console.log(
-      `\n  ALL ${real.length} REAL BODY PLANS ARE CONNECTED. Discreteness does NOT\n` +
-        "  emerge from the existing geometry — not even from the radius step at the\n" +
-        "  face/scutum junction. A discrete placement axis would have to come from a\n" +
-        "  body plan with a genuine constriction, which is a MODELLING CHOICE and has\n" +
-        "  to be justified from morphology rather than from the answer it produces.",
-    );
-  } else {
-    console.log(
-      `\n  ${withHoles.length} of ${real.length} real plans carry a stable hole: ` +
-        withHoles.map((v) => v.name).join(", "),
-    );
-  }
-}
+/* ⚠️⚠️ THE ANCHOR USED TO ANNOUNCE ITS OWN IRRELEVANCE AND BE IGNORED. It
+ * printed "THE FILTER CANNOT DISCRIMINATE. Every verdict below is meaningless."
+ * — and then the verdict below printed anyway, because nothing downstream read
+ * `anchorKeep` or `anchorDrop`. Only the positive control was wired in. A
+ * warning that does not reach the branch it warns about is prose.
+ *
+ * ⚠️ AND IT GUARDS BOTH READINGS, NOT JUST THE NULL. A filter hard-wired to
+ * `true` keeps every sampling artefact and flips all four real plans to "has
+ * holes", so the HOLES-FOUND branch is exactly as dependent on the anchor as the
+ * connected branch is. Both are therefore routed through the same gates. */
+const GATES = [
+  {
+    name: "the filter KEEPS a stationary hole",
+    ok: anchorKeep,
+    failText:
+      "A hole measured in the same place at both sample sizes was discarded, so the\n" +
+      "filter rejects real geometry and every CONNECTED reading below is an artefact\n" +
+      "of over-filtering rather than a fact about the body plan.",
+  },
+  {
+    name: "the filter DROPS a hole that moved",
+    ok: anchorDrop,
+    failText:
+      "A gap that drifted with its tail between sample sizes was kept, so the filter\n" +
+      "cannot tell geometry from sampling noise. Any hole reported below may be the\n" +
+      "draw, and a filter that keeps everything would report holes everywhere.",
+  },
+  {
+    name: "the positive control finds its known hole",
+    ok: control ? (control.stable == null ? null : control.stable > 0) : null,
+    failText:
+      "The pinched plan has an unreachable mid-body BY CONSTRUCTION, so the probe\n" +
+      "cannot see what it exists to see. Every null below is void.",
+  },
+];
+
+console.log(gateReport(GATES) + "\n");
+console.log(
+  claim({
+    gates: GATES,
+    positive:
+      withHoles.length === 0
+        ? `  ALL ${real.length} REAL BODY PLANS ARE CONNECTED. Discreteness does NOT\n` +
+          "  emerge from the existing geometry — not even from the radius step at the\n" +
+          "  face/scutum junction. A discrete placement axis would have to come from a\n" +
+          "  body plan with a genuine constriction, which is a MODELLING CHOICE and has\n" +
+          "  to be justified from morphology rather than from the answer it produces."
+        : `  ${withHoles.length} of ${real.length} real plans carry a stable hole: ` +
+          withHoles.map((v) => v.name).join(", "),
+    heading:
+      "  ⛔ NO VERDICT — the probe has not shown it can tell a hole from an artefact:",
+  }).text,
+);

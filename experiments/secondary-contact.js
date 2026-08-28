@@ -44,6 +44,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const C = require("../sim/carryover.js");
+const { claim } = require("../sim/verdict-gates.js");
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const sd = (xs) => {
@@ -251,8 +252,7 @@ function netEffect(gA, gB, hybShape, tag) {
   return rm.self / parentMixed / (hSolo / aSolo);
 }
 
-const ci = (xs) =>
-  xs.length > 1 ? (1.96 * sd(xs)) / Math.sqrt(xs.length) : 0;
+const ci = (xs) => (xs.length > 1 ? (1.96 * sd(xs)) / Math.sqrt(xs.length) : 0);
 
 function anchorHybridCost() {
   /* Matched to the published run exactly: makePairs(41, 60, 2.0) — 60 pairs at a
@@ -526,10 +526,12 @@ console.log(
   `  lowest separation where the split HOLDS   ${threshold ?? "none — it never holds"}\n`,
 );
 console.log(
-  `  fusion regime      : ${real
-    .filter((r) => r.tally.FUSED > r.tally["one lost"])
-    .map((r) => r.d)
-    .join(", ") || "none"}`,
+  `  fusion regime      : ${
+    real
+      .filter((r) => r.tally.FUSED > r.tally["one lost"])
+      .map((r) => r.d)
+      .join(", ") || "none"
+  }`,
 );
 console.log(
   `  exclusion regime   : ${lostRows.map((r) => r.d).join(", ") || "none"}` +
@@ -570,10 +572,59 @@ if (threshold === null && lostRows.length && nullFusesThere) {
       `  the obvious candidate is what roadmap C measures: more than one pollinator.`,
   );
 } else if (threshold !== null) {
+  /* ⚠️⚠️ THIS BRANCH USED TO NAME ITS OWN CHECKS AND NOT RUN THEM. It said "so
+   * check it hard: start with whether the null holds at the same separation, and
+   * whether the ancestry tracer is actually being averaged" — with `nul` and the
+   * tracer columns both already in scope, three lines up. An instruction to the
+   * reader is not a control; it is a control that has been described instead of
+   * executed, and it would have shipped the project's first positive result
+   * un-checked. All three are now gates.
+   *
+   * The FROZEN gate is the file's own hazard, quoted from contactRun: a
+   * generation that cannot fill itself falls back to the previous population, so
+   * a frozen run is not maintaining a split, it is not running — "and it would
+   * read as a clean result". */
+  const heldRow = heldAt[0];
+  const nulThere = nul.find((x) => x.d === threshold);
   console.log(
-    `  A SEPARATION MAINTAINS DIVERGENCE. That is a first for this project, so check it\n` +
-      `  hard: start with whether the null holds at the same separation, and whether the\n` +
-      `  ancestry tracer is actually being averaged.`,
+    claim({
+      gates: [
+        {
+          name: "the null does NOT hold at that separation",
+          ok: nulThere ? !(nulThere.tally.HELD > nulThere.tally.FUSED) : null,
+          failText:
+            "The two lineages persist at this separation with mating SEVERED from placement.\n" +
+            "They were therefore not held apart by the geometry — they simply never had the\n" +
+            "chance to mix — and the result is about demography, which is exactly what PART B\n" +
+            "exists to catch.",
+        },
+        {
+          name: "no run at that separation FROZE",
+          ok: heldRow ? heldRow.stalls === 0 : null,
+          failText:
+            "At least one seed could not fill a generation and fell back to the previous\n" +
+            "population. A frozen run is not maintaining a split, it is not advancing, and it\n" +
+            "reads as a clean HELD. Maintenance cannot be claimed from a population that\n" +
+            "stopped reproducing.",
+        },
+        {
+          name: "the lineages were founded distinct",
+          ok: heldRow ? heldRow.v0 > 0 : null,
+          failText:
+            "Ancestry variance at founding is not above zero, so the tracer never had two\n" +
+            "lineages to tell apart. A split that was never there cannot be maintained, and a\n" +
+            "flat tracer would report HELD for the same reason it reports everything else.",
+        },
+      ],
+      heading:
+        `  ⛔ A SEPARATION APPEARS TO MAINTAIN DIVERGENCE AT d = ${threshold}, AND IT IS NOT A\n` +
+        `  RESULT — this would be the project's first positive, and it does not clear:`,
+      positive:
+        `  A SEPARATION MAINTAINS DIVERGENCE, at d = ${threshold}. That is a first for this\n` +
+        `  project. The null does not hold there, no seed froze, and the lineages were founded\n` +
+        `  distinct — so the three ways this could have been an artefact are closed. It still\n` +
+        `  wants an independent replication before it is believed.`,
+    }).text,
   );
 } else {
   console.log(
