@@ -63,7 +63,27 @@ Seven things are built and measured, in this order, each gating the next:
 
 ## Next
 
-### A. Close the empirical leg — 🟡 mechanism leg CLOSED 2026-08-03, ceiling leg still blocked
+### A. Close the empirical leg — 🟡 mechanism leg CLOSED 2026-08-03; ceiling leg UNBLOCKED and MEASURED 2026-08-28, and it does NOT clear the bar
+
+⚠️⚠️ **THE CEILING LEG WAS NEVER BLOCKED ON WHAT THIS SECTION SAYS IT WAS (2026-08-28).** The paper
+is still closed — re-verified against OpenAlex today, `is_oa: false`, `oa_status: "closed"`, no
+repository full text — so that half of the record was accurate. **But the leg needs the DATABASE the
+paper introduces, not the paper, and that database is openly deposited under CC-BY-4.0**
+(Zenodo `10.5281/zenodo.7263689`, 2872 species). This section checked whether the ARTICLE was
+readable when the requirement was a DATASET — a different object, its own deposit, its own licence —
+and re-confirmed the null several times without ever pointing the search at the thing required.
+**Measured: 88 euglossine bee species, 50.0% recorded on more than one orchid.** Range-wide maximum
+**35** orchid species on _Eulaema cingulata_ — but a bee's geographic range is not a community, and
+the model's ceiling is a LOCAL packing limit, so that number is a category error against it.
+🛑 **Restricted to one named region the maximum is 14** (_Euglossa viridissima_, Mex) against the
+precision-matched **1-D arm's 19** at τ = 0.2 and the 309-species pool. **14 < 19: the bar at `:88`
+is NOT cleared, and the claim does NOT get upgraded** — this project still says "2-D out-packs 1-D in
+this model" and still cannot say "real richness exceeds what 1-D placement supports."
+⚠️ A BOUND, NOT A REFUTATION: literature compilation UNDER-counts sharing, a region OVER-counts
+sympatry, the two biases run opposite ways, neither is quantified — and per `:17` the comparator
+itself is pool-dependent, so 19 is one point on a curve. What would settle it is a single-site
+census; the deposit carries `region`, not site-level co-occurrence. That is a data requirement rather
+than a paywall. [detail](2026-08-28-euglossine-ceiling.md)
 
 The packing prediction has two halves and only the geometric one is closed. Needed: **orchid species
 per _shared_ euglossine pollinator**, to compare against the 1-D ceiling. The figure in the
@@ -112,8 +132,11 @@ necessary but not sufficient. ⚠️ The cross-site gradient arm (17% vs 7% admi
 reports **0.997 overlap for well-separated samples** — it saturates toward "these are the same",
 which here would read as "no isolation". No existing result is affected (all run at scale ~1;
 smallest real SD is 10⁵× clear) and a test now pins both the invariance and the floor.
-⬜ Still open, and still needing the paywalled source: the **ceiling** half. Nothing here measures how
-many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
+⬜ Still open at the time this was written: the **ceiling** half. Nothing in the Platanthera route
+measures how many species a shared pollinator supports. [detail](2026-08-03-platanthera.md)
+⚠️ **"Needing the paywalled source" was wrong — see the head of this section.** The number came out
+of the open CC-BY database the paywalled paper introduces, and the answer is **14 in one region
+against the 1-D arm's 19**: measured, and NOT clearing the bar.
 
 ### B. Speciation, which v1 explicitly cannot address — ✅ ORIGIN **and** MAINTENANCE both fail, and the two are ONE PROBLEM (2026-08-04); fusion vs exclusion SEPARATED (2026-08-07), but exclusion is only preventable by IMPOSING a minority subsidy
 
