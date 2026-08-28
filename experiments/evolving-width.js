@@ -46,6 +46,7 @@ const SLICE_SET = (process.env.EW_SLICES || (SMOKE ? "8" : "8,16,32"))
   .map(Number)
   .filter(Number.isFinite);
 const N_SEEDS = SMOKE ? 4 : Number(process.env.EW_SEEDS || 12);
+const CONSERVE = process.env.EW_CONSERVE === "1";
 const SEEDS = Array.from({ length: N_SEEDS }, (_, i) => i + 1);
 /* the mutational step on the width locus. Not swept: the question is whether
  * width moves at all and in which direction, and a rate chosen to make it move
@@ -157,7 +158,8 @@ const excludes0 = (ci) => !!ci && ci.t && (ci.t[0] > 0 || ci.t[1] < 0);
 function main() {
   console.log(
     `evolving flowering-window width · ${N0} plants · ${GENS} generations · ` +
-      `${SEEDS.length} seeds · d=${D_EXCL} · widthMut=${WIDTH_MUT}`,
+      `${SEEDS.length} seeds · d=${D_EXCL} · widthMut=${WIDTH_MUT} · ` +
+      `display ${CONSERVE ? "CONSERVED" : "per-slice (job 3529 regime)"}`,
   );
   console.log(
     "founders uniform on (0,1); primary comparison is treatment - shuffled,\n" +
@@ -167,13 +169,34 @@ function main() {
   const perS = [];
 
   for (const S of SLICE_SET) {
-    const base = { slices: S, widthLocus: true, widthMut: WIDTH_MUT };
+    /*
+     * `EW_CONSERVE=1` spreads a plant's fixed display over the slices it
+     * occupies instead of re-offering it whole in each — see
+     * docs/2026-08-28-conserved-display-prereg.md. The original run of this
+     * experiment (job 3529) was made WITHOUT it, and its finding that width
+     * evolves wider is now known to have been measured against a model in which
+     * flowering longer MANUFACTURED display. Off by default so that run
+     * reproduces.
+     *
+     * ⚠️ It rides on `base` and on the two fixed-width cells alike. The fixed
+     * cells are equal-width populations, where conservation is a no-op
+     * (tests/conserved-display.test.js), so those two rows must come back
+     * UNCHANGED — which makes them a built-in control on the flag rather than
+     * two rows that merely happen to be reported beside it.
+     */
+    const cons = CONSERVE ? { conserveDisplay: true } : {};
+    const base = {
+      slices: S,
+      widthLocus: true,
+      widthMut: WIDTH_MUT,
+      ...cons,
+    };
     const CELLS = [
       ["treatment (width evolves)", base],
       ["shuffled width (confound)", { ...base, shuffleWidth: true }],
       ["non-heritable width", { ...base, widthNonHeritable: true }],
-      ["fixed wide (#37 baseline)", { slices: S, width: 1.0 }],
-      ["fixed narrow (#37 arm)", { slices: S, width: WIDTH }],
+      ["fixed wide (#37 baseline)", { slices: S, width: 1.0, ...cons }],
+      ["fixed narrow (#37 arm)", { slices: S, width: WIDTH, ...cons }],
     ];
     const arms = CELLS.map(([, p]) =>
       SEEDS.map((s) => replicate(s, p)).filter(Boolean),

@@ -1396,23 +1396,29 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
        * slice regardless, so the guard exists to avoid dividing by zero, not to
        * give such a plant a display it does not have.
        */
+      /*
+       * ⚠️ ONE predicate, used by BOTH the occupancy count and the display map.
+       * They were two copies of the same expression, and a mutation run showed
+       * why that matters: `occ[i] === 0` holds exactly when the plant is in
+       * flower in NO slice, in which case the ternary below is false everywhere
+       * and the division is never reached — so the `|| 1` guard is unreachable
+       * WHILE THE TWO PREDICATES AGREE. Two copies is what would let them stop
+       * agreeing. Single-sourced, the guard's unreachability is structural
+       * rather than a coincidence, and it stays as a belt.
+       */
+      const inFlower = (i, t) => ringDist(blooms[i], t) <= halfOf(i);
       let occ = null;
       if (PH.conserveDisplay) {
         occ = new Array(n).fill(0);
         for (let k = 0; k < S; k++) {
           const t = k / S;
-          for (let i = 0; i < n; i++)
-            if (ringDist(blooms[i], t) <= halfOf(i)) occ[i]++;
+          for (let i = 0; i < n; i++) if (inFlower(i, t)) occ[i]++;
         }
       }
       for (let k = 0; k < S; k++) {
         const t = k / S;
         const w = base.map((b, i) =>
-          ringDist(blooms[i], t) <= halfOf(i)
-            ? occ
-              ? b / (occ[i] || 1)
-              : b
-            : 0,
+          inFlower(i, t) ? (occ ? b / (occ[i] || 1) : b) : 0,
         );
         /* A slice in which nothing is in flower is a slice with no visits, not
          * a crash and not a redistribution — the pollinator's effort in that

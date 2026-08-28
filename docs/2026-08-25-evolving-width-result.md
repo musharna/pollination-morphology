@@ -6,6 +6,22 @@
 **Raw output:** `_scratch/evolving-width-full.txt` · re-run with
 `EW_SEEDS=12 EW_SLICES=8,16,32 node experiments/evolving-width.js`
 
+> ⚠️⚠️ **THE DIAGNOSIS IN THIS DOCUMENT IS SUPERSEDED (2026-08-28). ITS DIRECTION IS NOT.**
+> This document concludes that width evolves wider because **"there is no cost to flowering
+> longer"**, and that the missing biology is a duration cost. **Nothing was missing — a resource
+> was being created.** `sim/ibm.js` re-offered a plant's whole display share in every slice it was
+> in flower, so flowering all season **manufactured `S` times** the floral display of flowering
+> once. The tell is in this document's own gradient table: `423 → 3494` at `S = 8` is **8.26**, and
+> the same probe at `S = 16` gives **16.52** — the ratio **tracks `S`**, which duplication predicts
+> exactly and a missing cost does not predict at all.
+>
+> Conserving the display — **which costs no parameter, unlike the cost coefficient this document
+> rightly warned against** — collapses the gradient to **1.698** and **2.707**. Roughly **four
+> fifths of the effect reported here was manufacture.** Width still evolves wider, so the headline
+> stands; the section "What this closes, and what it opens" does not, and the follow-up it proposes
+> was never the right remedy.
+> → [`2026-08-28-conserved-display.md`](2026-08-28-conserved-display.md)
+
 ## The answer
 
 The northstar at `ROADMAP.md:219` asks whether a minority advantage can be **derived** from

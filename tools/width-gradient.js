@@ -23,7 +23,19 @@
  * an evolutionary run that takes forty minutes and confounds selection with
  * drift.
  *
+ * ⚠️⚠️ AND THE ACCOUNT ABOVE, WHICH THIS TOOL WAS BUILT TO SUPPORT, TURNED OUT
+ * TO BE THE WRONG HALF OF THE STORY — established by this tool's own output.
+ * Renormalisation is real but secondary. The dominant effect was that
+ * `sim/ibm.js` re-offered a plant's whole display share in EVERY slice it was in
+ * flower, so flowering all season MANUFACTURED S times the display of flowering
+ * once. The tell was sitting in the table this file prints: against a saturated
+ * resident the wide-to-narrow ratio is 8.26 at S=8 and 16.52 at S=16 — it TRACKS
+ * S, which duplication predicts exactly and a missing cost does not predict at
+ * all. Run with CONSERVE=1 for the conserved regime; see
+ * docs/2026-08-28-conserved-display.md.
+ *
  *   node tools/width-gradient.js [slices] [resident-width]
+ *   CONSERVE=1 REPS=24 node tools/width-gradient.js 8 1.0
  */
 
 const I = require("../sim/ibm.js");

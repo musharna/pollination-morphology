@@ -52,6 +52,14 @@ Seven things are built and measured, in this order, each gating the next:
    is renormalised over the plants present in a slice, so skipping one forgoes it and attending one
    costs nothing. The route through time is closed; what is missing is a COST OF DURATION.
    [detail](2026-08-25-evolving-width-result.md)
+   ⚠️⚠️ **THAT CAUSE IS WRONG, AND NOTHING WAS MISSING — SOMETHING WAS BEING CREATED (2026-08-28).**
+   A plant's display share was re-offered whole in every slice it was in flower, so flowering all
+   season **manufactured `S` times** the floral display of flowering once. Duplication predicts the
+   wide/narrow flow ratio equals **exactly `S`**, and it measures **8.26 at `S=8`, 16.52 at `S=16`**;
+   a missing cost predicts nothing about `S`. Conserving the display — **which costs no parameter** —
+   collapses it to **1.698 / 2.707**, so **four fifths of that gradient was manufacture**. The
+   direction survives, the explanation does not, and a COST OF DURATION was never the remedy.
+   [detail](2026-08-28-conserved-display.md)
 
 ## Next
 
@@ -336,6 +344,31 @@ to a wide mutant invading a narrow population, with no interior optimum.
 ⚠️ The prereg's P2 named the right mechanism and drew the wrong conclusion from it: budget-splitting
 is a cost of NARROWING, monotone, not a floor that stops narrowing near zero.
 [detail](2026-08-25-evolving-width-result.md)
+
+⚠️⚠️ **THE PARAGRAPH ABOVE NAMES THE WRONG CAUSE, AND IT WAS NOT A COST THAT WAS MISSING — IT WAS A
+RESOURCE BEING CREATED (2026-08-28).** `sim/ibm.js:1290` computes `base` — a display share
+normalised over the population — ONCE, and the slice loop re-offered **the same `base[i]` in every
+slice a plant was in flower**. Season-integrated display was therefore `base[i] × k_i`: flowering
+all season **MANUFACTURED S times** the floral display of flowering once, out of nothing, consumed
+uncapped by both fitness paths (`received` `:1490`, siring `:1698`).
+⚠️ **The discriminator was already sitting in the table above and went unread.** Duplication
+predicts the wide-to-narrow ratio equals **exactly `S`**; a missing cost predicts nothing about `S`.
+`423 → 3494` is **8.26** at `S = 8`, and the same probe at `S = 16` gives **16.52**.
+✅ **FIXED — `PH.conserveDisplay`, and it costs NO PARAMETER**: `base` is already normalised, so the
+constraint is only that a plant has a finite reproductive investment. A cost coefficient would have
+left the duplication in place and taxed it, making the evolved width a statement about the
+coefficient — the imposition this route was built to escape. The gradient collapses **8.26 → 1.698**
+at `S=8` and **16.52 → 2.707** at `S=16`, i.e. **four fifths of it was manufacture**, and at 24
+seeds there is still no interior optimum.
+⚠️ **#47 KEEPS ITS DIRECTION AND LOSES ITS EXPLANATION** — width still evolves wider, but not
+because duration is free. ✅ **#37 IS UNTOUCHED**: conservation is a no-op on equal-width
+populations and every #37 arm is fixed-width, asserted by test rather than by that argument.
+⚠️ The residual pro-wide gradient is the **per-slice budget being `per/S` regardless of how much
+display is in the slice** — which makes EMPTY TIME VALUABLE, and that is the northstar's own
+negative frequency-dependence arising from pollination rather than imposed on it. The duplication
+was swamping it by a factor of `S`.
+[detail](2026-08-28-conserved-display.md)
+[detail](2026-08-28-conserved-display-prereg.md)
 
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
@@ -825,15 +858,15 @@ audit on 2026-08-25 found defects in five of them. All were LATENT except the se
 been shown to corrupt a published result; every one would have bitten the first time this project
 reported a positive.
 
-| item                                                                                           | state                                                                        |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| **`v2` result is a snapshot of a superseded model** (was: "not reproducible")                  | ✅ DIAGNOSED — Round 2 reproduces bit-exactly at `a9e45d4`; Round 3 does not |
+| item                                                                                           | state                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`v2` result is a snapshot of a superseded model** (was: "not reproducible")                  | ✅ DIAGNOSED — Round 2 reproduces bit-exactly at `a9e45d4`; Round 3 does not                                                                               |
 | sectile "flowers serviced" counts deposition objects, not distinct flowers — calibration wrong | ✅ FIXED 2026-08-28 — `servicedPairs`; NO massula count reaches the 3-20 target (max 1.5), so the old selection was an artefact. Transfer result unchanged |
-| gates consulted only on the negative path (`selfing.js:419`, +3 more sites)                    | ✅ FIXED @a084f5b — `sim/verdict-gates.js`; the positive text is unreachable except through `claim()` |
-| `twoClusterSeparation` unbounded in majority tightness; `minorityFrac` printed, never gated    | ✅ FIXED @11b9a5c — returns `gap`/`dispersion`; `experiments/ibm.js` gates the minority against the null |
-| no semantic test of `fateOf` — the mutation's only red light is a staleness tripwire           | ✅ FIXED @11b9a5c — `tests/fate-of.test.js`; the HELD/FUSED swap dies on 7 tests, 6/6 mutants killed |
-| `seasonSplit` maximised on fixation                                                            | ✅ FIXED — replaced by circular moments R1/R2                                |
-| paired bootstrap quoting zero-width intervals over a constant                                  | ✅ FIXED — degeneracy detected, exact binomial bound reported instead        |
+| gates consulted only on the negative path (`selfing.js:419`, +3 more sites)                    | ✅ FIXED @a084f5b — `sim/verdict-gates.js`; the positive text is unreachable except through `claim()`                                                      |
+| `twoClusterSeparation` unbounded in majority tightness; `minorityFrac` printed, never gated    | ✅ FIXED @11b9a5c — returns `gap`/`dispersion`; `experiments/ibm.js` gates the minority against the null                                                   |
+| no semantic test of `fateOf` — the mutation's only red light is a staleness tripwire           | ✅ FIXED @11b9a5c — `tests/fate-of.test.js`; the HELD/FUSED swap dies on 7 tests, 6/6 mutants killed                                                       |
+| `seasonSplit` maximised on fixation                                                            | ✅ FIXED — replaced by circular moments R1/R2                                                                                                              |
+| paired bootstrap quoting zero-width intervals over a constant                                  | ✅ FIXED — degeneracy detected, exact binomial bound reported instead                                                                                      |
 
 ⚠️⚠️ **RESOLVED 2026-08-25 — AND THE DIAGNOSIS ABOVE WAS WRONG.** It is true that
 `experiments/v2.js` has `SEEDS = [1,2]`, `visits: 3000` and no interval code, and true that no
@@ -871,6 +904,30 @@ reported and walked past — true of the branch it sits in, false of the success
 `tests/browser-bundle.test.js` reporting the bundle stale, which fires identically on a no-op
 comment appended to `sim/ibm.js`. A red light that cannot distinguish an inverted classifier from a
 comment is worse than no test, because it invites the reader who checks and stops.
+
+⚠️⚠️ **AND A NEW INSTRUMENT CLASS, FOUND BY MUTATION RATHER THAN BY READING (2026-08-28).** Three
+mutants survived the conserved-display guards, and all three were real.
+
+- **An inertness guard that covered only the regime where its change is invisible.** Forcing
+  conservation ON regardless of its flag left the byte-identity test GREEN, because every cell in
+  that test was **equal-width** — which is exactly the regime the accompanying no-op theorem says
+  conservation cannot move. **The guard and the theorem it sat beside shared one blind spot**, so
+  the test could confirm the theorem and never notice the flag being ignored.
+- **An unreachable guard whose test's name claimed to exercise it.** `occ[i] === 0` holds exactly
+  when a plant is in flower nowhere, so the in-flower predicate is false at every slice and the
+  division it guards never runs. Deleting the guard killed nothing. The occupancy count and the
+  display map are now single-sourced through one `inFlower`, making the unreachability structural.
+- **A `<=` → `<` boundary mutant, surviving for the second time in this project.** Every test drew
+  blooms at random, where an exact hit on a slice centre has probability zero — while the boundary
+  decides the published occupancies. Same repair as `fateOf`: **dyadic rationals land ON the
+  threshold**, and both sides get asserted.
+
+⚠️⚠️ **AND THE HARNESS ITSELF CORRUPTED FOUR MEASUREMENTS.** It rewrites `sim/ibm.js` in place;
+four runs launched during its window read a mutated model. **The tell was a result that was too
+clean** — a conserved and an unconserved run agreeing byte-for-byte on every number, which is what
+a flag-disabling mutant produces and is not otherwise plausible. **Nothing may be run against the
+model while a mutation loop is live**, and the restore must be an in-memory copy over a committed
+baseline, never `git checkout`.
 
 ## Standing constraints
 

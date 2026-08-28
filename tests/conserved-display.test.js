@@ -112,6 +112,18 @@ test("with conservation off, every phenology stream is byte-identical to the pre
         "narrow, flag false",
         { width: WIDTH, slices: SLICES, conserveDisplay: false },
       ],
+      /*
+       * ⚠️⚠️ THIS CELL EXISTS BECAUSE A MUTANT SURVIVED WITHOUT IT. Forcing
+       * conservation ON regardless of the flag left this whole test green,
+       * because every cell above is EQUAL-WIDTH — and conservation is a no-op
+       * on equal-width populations, which is exactly what test 2 asserts. The
+       * inertness guard was covering only the regime in which the change it
+       * guards is invisible. A differing-widths cell is the one that can fail.
+       */
+      [
+        "width locus, widths differ between plants",
+        { slices: SLICES, widthLocus: true, widthMut: 0.03 },
+      ],
     ];
     for (const [name, phen] of cells)
       for (const seed of [1, 2, 3]) {
@@ -260,14 +272,23 @@ test("conserving the display removes most of the width gradient", () => {
   );
 });
 
-/* ------------------- 4. the coverage gap must not divide by zero */
+/* ------------------- 4. the coverage gap stays inert */
 
 test("a plant in flower in no slice at all neither crashes nor gains a display", () => {
   /*
    * Below width = 1/S some blooms fall between every slice centre — the coverage
-   * gap this roadmap records at 4% of bloom-space for WIDTH 0.12, S 8. Such a
-   * plant has occ = 0, and `base[i] / occ[i]` would be Infinity, which would
-   * hand the emptiest possible plant the entire slice.
+   * gap this roadmap records at 4% of bloom-space for WIDTH 0.12, S 8.
+   *
+   * ⚠️ WHAT THIS DOES *NOT* COVER, established by a surviving mutant rather than
+   * by reading: deleting the `|| 1` zero-guard changes nothing here. `occ[i]`
+   * is 0 exactly when the plant is in flower in no slice, and in that case the
+   * in-flower predicate is false at every slice, so `b / occ[i]` is never
+   * evaluated. The guard is UNREACHABLE while the occupancy count and the
+   * display map share one predicate — which is why `sim/ibm.js` now single-
+   * sources `inFlower` instead of writing the expression twice.
+   *
+   * So this asserts the OBSERVABLE claim — such a plant moves no pollen and the
+   * run stays finite — and does not pretend to exercise the guard.
    */
   const S = 8;
   const N = 12;
@@ -315,5 +336,82 @@ test("a plant in flower in no slice at all neither crashes nor gains a display",
     flow,
     0,
     `a plant in flower in no slice moved ${flow} grains — it is being given a display`,
+  );
+});
+
+/* ------------------- 5. the in-flower boundary, pinned exactly */
+
+test("a plant whose window reaches a slice centre EXACTLY is in flower there", () => {
+  /*
+   * ⚠️⚠️ THIS TEST EXISTS BECAUSE A MUTANT SURVIVED. Changing the shared
+   * predicate from `<=` to `<` broke nothing in this file, because every other
+   * test draws blooms at random and an exact boundary hit is measure-zero.
+   * The boundary is nonetheless LOAD-BEARING for the published gradient: at
+   * bloom 0, width 0.25 and S=8 the window reaches the neighbouring slice
+   * centre exactly, and that is what makes occupancy 3 rather than 1.
+   *
+   * Same repair the project already made for `fateOf`: build the boundary out of
+   * DYADIC RATIONALS so it lands ON the threshold instead of near it. 0.25,
+   * 0.125 and 1/8 are all exact in binary, so `ringDist(0, 0.125) === 0.125 ===
+   * halfOf(0)` holds with no rounding slack.
+   *
+   * ⚠️ BOTH SIDES ARE ASSERTED. On its own, "the boundary plant has flow" would
+   * pass on a harness that reports flow for any input; the width-0.24 arm — just
+   * inside, so the window does NOT reach the centre — must report exactly zero.
+   * The pair pins `<=` and nothing weaker.
+   */
+  const S = 8;
+  const N = 10;
+  const seed = 3;
+
+  function focalFlowAtWidth(width) {
+    const rng = E.makeRng(seed);
+    const srng = I.signalRng(seed);
+    const opts = optsAt({
+      phenology: { slices: S, widthLocus: true, widthMut: 0 },
+    });
+    const built = I.foundTwoLineages(N, rng, srng, D_EXCL, opts);
+    assert.ok(built, "fixture failed");
+    const pop = built.pop;
+    /* the focal blooms on slice centre 0; everyone else blooms on slice centre 1
+     * with a window far too narrow to reach anywhere else, so the ONLY way the
+     * focal can outcross is by reaching slice 1 — which is exactly the boundary
+     * question. */
+    pop.forEach((ind, i) => {
+      const b = i === 0 ? 0 : 1 / S;
+      ind.h1[I.BLOOM_GENE] = b;
+      ind.h2[I.BLOOM_GENE] = b;
+      const w = i === 0 ? width : Math.pow(2, -20);
+      ind.h1[I.WIDTH_GENE] = w;
+      ind.h2[I.WIDTH_GENE] = w;
+    });
+    const res = I.step(
+      pop,
+      opts,
+      rng,
+      0,
+      srng,
+      I.bloomRng(seed),
+      I.widthRng(seed),
+    );
+    assert.ok(res.T, "step produced no transfer matrix");
+    let flow = 0;
+    for (let j = 1; j < res.T.length; j++) flow += res.T[0][j] + res.T[j][0];
+    return flow;
+  }
+
+  /* half = 0.125, and ringDist(0, 1/8) = 0.125 — equal, to the bit */
+  assert.ok(
+    focalFlowAtWidth(0.25) > 0,
+    "a window reaching the next slice centre EXACTLY left the plant out of that " +
+      "slice — the in-flower predicate has lost its boundary (`<=` became `<`)",
+  );
+  /* half = 0.12 < 0.125, so the window falls short and the focal is alone */
+  assert.strictEqual(
+    focalFlowAtWidth(0.24),
+    0,
+    "a window that does NOT reach the next slice centre still let the plant " +
+      "outcross — this harness reports flow regardless of the predicate, so the " +
+      "boundary assertion above proves nothing",
   );
 });
