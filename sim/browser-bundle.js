@@ -1340,6 +1340,8 @@ function runBout(sites, abundance, opts = {}) {
     landedWrong = 0,
     groomedOff = 0;
   const ageOnDeposit = [];
+  /* distinct (donor flower, recipient flower) pairs — see the visit loop */
+  let servicedPairs = 0;
 
   /* ---- the visit log (see `log` in DEFAULTS). READS ONLY: nothing below draws
    * a random number, and no branch that consumes randomness tests `rec`. */
@@ -1379,6 +1381,20 @@ function runBout(sites, abundance, opts = {}) {
     // --- pollen it is about to hand over on the same visit
     const sSite = site.stigma[(rng() * site.stigma.length) | 0];
     if (rec) rec.stig = { s: sSite.s, phi: sSite.phi };
+    /*
+     * ⚠️ DISTINCT SOURCE FLOWERS SERVICED AT THIS VISIT, which is not the same
+     * as the number of deposits. A grain's `t` is the visit it was picked up
+     * at, and one visit IS one flower, so `t` identifies the DONOR flower and
+     * `v` identifies the RECIPIENT. Two massulae from the same donor landing on
+     * the same stigma are two deposits and ONE flower serviced. Counting
+     * deposits instead — which is what `ageOnDeposit.length` does — inflates
+     * "flowers serviced" by exactly the amount of that doubling-up, and that
+     * counter is what selects massula count in experiments/sectile.js.
+     *
+     * Accumulated per visit rather than as a global set of pairs, so the cost
+     * is the grains taken at one stigma rather than every deposit in the bout.
+     */
+    const donorsHere = new Set();
     if (load.length) {
       const near = [];
       for (let gi = 0; gi < load.length; gi++)
@@ -1423,12 +1439,16 @@ function runBout(sites, abundance, opts = {}) {
         }
         T[g.sp][j] += m;
         ageOnDeposit.push(v - g.t);
+        /* same viability rule as ageOnDeposit above — an inviable grain is not
+         * counted by either, so the two differ ONLY in distinct-vs-events */
+        donorsHere.add(g.t);
         if (g.sp === j) landedRight += m;
         else landedWrong += m;
       }
       const drop = new Set(take);
       load = load.filter((_, gi) => !drop.has(gi));
     }
+    servicedPairs += donorsHere.size;
 
     /*
      * --- grooming comes BETWEEN the sweep and the new load, and the order is
@@ -1644,6 +1664,10 @@ function runBout(sites, abundance, opts = {}) {
     visitsTo,
     retained: load.length,
     ageOnDeposit,
+    /* distinct (donor flower, recipient flower) pairs. `ageOnDeposit.length` is
+     * the number of DEPOSITS and is larger whenever two units from one donor
+     * reach the same stigma — see the visit loop. */
+    servicedPairs,
     visits,
   };
 }

@@ -91,11 +91,21 @@ const BASE = { visitsPerFlower: 25, groom: 0.3, harvest: 0.2 };
  *   removal  = released / committed          (their removal efficiency, RE)
  *   transfer = delivered / released          (their PTE)
  *   export   = removal * transfer            (their relative pollen export)
- *   serviced = deposition EVENTS per flower's pollen — the "minimal visit
- *              number". ageOnDeposit gets one entry per unit deposited, so a
- *              solid pollinium contributes one and a flower's worth of monads
- *              contributes many. That is the quantity the paper describes in
- *              text, and it is measured rather than assumed.
+ *   serviced = DISTINCT RECIPIENT FLOWERS per donor flower's pollen — the
+ *              "minimal visit number". A solid pollinium services one, a
+ *              flower's worth of monads services many. That is the quantity the
+ *              paper describes in text, and it is measured rather than assumed.
+ *
+ * ⚠️⚠️ AND `serviced` COUNTED THE WRONG THING UNTIL 2026-08-28. It was
+ * `ageOnDeposit.length / flowersUsed` — deposition EVENTS per donor, not
+ * distinct recipients. Two massulae from one donor landing on the same stigma
+ * are two events and ONE flower serviced, so the old counter overcounted by
+ * exactly the amount of that doubling-up, and did so most at HIGH massula
+ * counts. That is not cosmetic: this is the counter the massula count is
+ * SELECTED on against Johnson & Harder's "a few to 20", so an inflated value
+ * changes which counts qualify and therefore which one the rest of the file
+ * predicts from. Both are carried below so the size of the correction is
+ * visible rather than asserted.
  */
 const fates = (opts) => fatesPool(POOL, opts);
 
@@ -103,7 +113,8 @@ function fatesPool(pool, opts) {
   const POOL = pool;
   const rem = [],
     pte = [],
-    serv = [];
+    serv = [],
+    servEvents = [];
   for (const seed of SEEDS) {
     const r = C.runBout(SITES, AB, {
       visits: 14000,
@@ -123,7 +134,11 @@ function fatesPool(pool, opts) {
     }
     if (committed > 0) rem.push(released / committed);
     if (released > 0) pte.push(delivered / released);
-    if (flowers > 0) serv.push(r.ageOnDeposit.length / flowers);
+    if (flowers > 0) {
+      serv.push(r.servicedPairs / flowers);
+      /* the superseded counter, kept so the correction can be shown */
+      servEvents.push(r.ageOnDeposit.length / flowers);
+    }
   }
   const removal = mean(rem),
     transfer = mean(pte);
@@ -131,6 +146,7 @@ function fatesPool(pool, opts) {
     removal,
     transfer,
     serviced: mean(serv),
+    servicedEvents: mean(servEvents),
     export: removal === null || transfer === null ? null : removal * transfer,
   };
 }
@@ -244,16 +260,19 @@ console.log(
     "  parameter is chosen on, so transfer stays a prediction.\n",
 );
 console.log(
-  "  massulae   grains each   removal   flowers serviced   in target?",
+  "  massulae   grains each   removal   flowers serviced   (old: deposits)   in target?",
 );
 const sweep = [];
 for (const massulae of [1, 2, 4, 6, 10, 15, 20, 30, 60]) {
   const f = sectileArm(massulae);
   const inTarget = f.serviced >= 3 && f.serviced <= 20;
-  sweep.push({ massulae, ...f, inTarget });
+  const wasInTarget = f.servicedEvents >= 3 && f.servicedEvents <= 20;
+  sweep.push({ massulae, ...f, inTarget, wasInTarget });
   console.log(
     `  ${String(massulae).padStart(8)}   ${(POOL / massulae).toFixed(1).padStart(11)}   ` +
-      `${pct(f.removal).padStart(7)}   ${f.serviced.toFixed(1).padStart(16)}   ${inTarget ? "✅" : ""}`,
+      `${pct(f.removal).padStart(7)}   ${f.serviced.toFixed(1).padStart(16)}   ` +
+      `${f.servicedEvents.toFixed(1).padStart(14)}   ${inTarget ? "✅" : ""}` +
+      `${inTarget !== wasInTarget ? "  ⚠️ the old counter disagreed" : ""}`,
   );
 }
 

@@ -828,10 +828,10 @@ reported a positive.
 | item                                                                                           | state                                                                        |
 | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | **`v2` result is a snapshot of a superseded model** (was: "not reproducible")                  | ✅ DIAGNOSED — Round 2 reproduces bit-exactly at `a9e45d4`; Round 3 does not |
-| sectile "flowers serviced" counts deposition objects, not distinct flowers — calibration wrong | OPEN                                                                         |
-| gates consulted only on the negative path (`selfing.js:419`, +3 more sites)                    | OPEN                                                                         |
-| `twoClusterSeparation` unbounded in majority tightness; `minorityFrac` printed, never gated    | OPEN                                                                         |
-| no semantic test of `fateOf` — the mutation's only red light is a staleness tripwire           | OPEN                                                                         |
+| sectile "flowers serviced" counts deposition objects, not distinct flowers — calibration wrong | ✅ FIXED 2026-08-28 — `servicedPairs`; NO massula count reaches the 3-20 target (max 1.5), so the old selection was an artefact. Transfer result unchanged |
+| gates consulted only on the negative path (`selfing.js:419`, +3 more sites)                    | ✅ FIXED @a084f5b — `sim/verdict-gates.js`; the positive text is unreachable except through `claim()` |
+| `twoClusterSeparation` unbounded in majority tightness; `minorityFrac` printed, never gated    | ✅ FIXED @11b9a5c — returns `gap`/`dispersion`; `experiments/ibm.js` gates the minority against the null |
+| no semantic test of `fateOf` — the mutation's only red light is a staleness tripwire           | ✅ FIXED @11b9a5c — `tests/fate-of.test.js`; the HELD/FUSED swap dies on 7 tests, 6/6 mutants killed |
 | `seasonSplit` maximised on fixation                                                            | ✅ FIXED — replaced by circular moments R1/R2                                |
 | paired bootstrap quoting zero-width intervals over a constant                                  | ✅ FIXED — degeneracy detected, exact binomial bound reported instead        |
 
