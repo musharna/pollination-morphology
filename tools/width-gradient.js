@@ -54,6 +54,15 @@ const REPS = Math.max(1, Number(process.env.REPS) || 6);
 const CONSERVE = process.env.CONSERVE === "1";
 
 /*
+ * `DPV=1` is #51's ablation: the same total visits apportioned across slices in
+ * PROPORTION to the display each carries, instead of `per/S` to every slice
+ * regardless. It removes the empty-time premium and leaves geitonogamy in place
+ * — see docs/2026-08-31-empty-time-prereg.md, which registers the predicted
+ * ratios BEFORE this flag existed.
+ */
+const DPV = process.env.DPV === "1";
+
+/*
  * Occupancy of the focal plant, whose bloom is pinned to 0 by main(). Reported
  * beside the flow because the registered per-width predictions are functions of
  * `k_f`, not of width — and width maps to `k_f` through a STEP function whose
@@ -95,6 +104,7 @@ function focalFlow(focal, resident, S, seed) {
       widthLocus: true,
       widthMut: 0,
       conserveDisplay: CONSERVE,
+      displayProportionalVisits: DPV,
     },
   };
   const built = I.foundTwoLineages(N, rng, srng, 8, opts);
@@ -128,7 +138,24 @@ function focalFlow(focal, resident, S, seed) {
     sired += T[0][j];
     received += T[j][0];
   }
-  return { sired, received, total: sired + received };
+  /*
+   * ⚠️ VISITS ARE REPORTED BESIDE FLOW BECAUSE THEY ANSWER A DIFFERENT
+   * QUESTION, and #51's decisive prediction (P2) is about this column and not
+   * about the flow one. Flow excludes self-transfer (`j === 0` is skipped just
+   * above), so it carries the geitonogamy penalty on a concentrated plant;
+   * visits do not. Under the proportional ablation expected visits collapse to
+   * `total * base[f]`, independent of width — so a visits ratio that is NOT
+   * 1.000 means the ablation did not do what it claims, whatever the flow
+   * column says.
+   */
+  return {
+    sired,
+    received,
+    total: sired + received,
+    visits: res.visitsTo ? res.visitsTo[0] : null,
+    spent: res.visitsSpent,
+    emptySlices: res.emptyVisitSlices,
+  };
 }
 
 function main() {
@@ -140,9 +167,14 @@ function main() {
       `resident width = ${resident}   n = ${N}   ${REPS} seeds   ` +
       `display ${CONSERVE ? "CONSERVED (base/k_f per slice)" : "per-slice (base in every slice)"}\n`,
   );
-  console.log("  focal width  k_f    sired  received     total   vs resident");
+  console.log(
+    "  focal width  k_f    sired  received     total   vs resident" +
+      "     visits  vs res  empty  spent",
+  );
   const widths = [0.02, 0.06, 0.12, 0.125, 0.25, 0.5, 0.75, 1.0];
   let refTotal = null;
+  let refVisits = null;
+  const spentSeen = new Set();
   for (const w of widths) {
     const rows = [];
     for (let s = 1; s <= REPS; s++) {
@@ -151,7 +183,12 @@ function main() {
     }
     if (!rows.length) continue;
     const t = mean(rows.map((r) => r.total));
-    if (w === resident) refTotal = t;
+    const v = mean(rows.map((r) => r.visits));
+    if (w === resident) {
+      refTotal = t;
+      refVisits = v;
+    }
+    rows.forEach((r) => spentSeen.add(r.spent));
     console.log(
       `  ${String(w).padEnd(11)}${String(occupancy(w, S)).padStart(4)} ${mean(
         rows.map((r) => r.sired),
@@ -160,9 +197,28 @@ function main() {
         .padStart(9)}${mean(rows.map((r) => r.received))
         .toFixed(1)
         .padStart(10)}${t.toFixed(1).padStart(10)}` +
-        (refTotal ? `${(t / refTotal).toFixed(3).padStart(14)}` : ""),
+        (refTotal
+          ? `${(t / refTotal).toFixed(3).padStart(14)}`
+          : "".padStart(14)) +
+        `${v.toFixed(1).padStart(11)}` +
+        (refVisits
+          ? `${(v / refVisits).toFixed(3).padStart(8)}`
+          : "".padStart(8)) +
+        `${String(mean(rows.map((r) => r.emptySlices)).toFixed(1)).padStart(7)}` +
+        `${String(rows[0].spent).padStart(7)}`,
     );
   }
+  /*
+   * ⚠️ THE CONFOUND GUARD, PRINTED RATHER THAN ASSUMED. If the arms did not all
+   * spend the same number of visits, "empty time is worthless" and "fewer
+   * visits" are not separable and every ratio above is uninterpretable.
+   */
+  console.log(
+    `\n  total visits spent: ${[...spentSeen].join(", ")}` +
+      (spentSeen.size === 1
+        ? "  — identical across every width, so the ratios are not a budget difference"
+        : "  ⚠️⚠️ NOT IDENTICAL — the comparison is confounded with budget size"),
+  );
   console.log(
     "\n  A ratio above 1 at widths BELOW the resident means narrowing pays.\n" +
       "  A ratio below 1 there means it does not, and P1 predicts the wrong\n" +

@@ -1118,6 +1118,19 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
    * that had any — the confound arm's claim, measured. See the slice loop. */
   let coflowerSum = 0;
   let coflowerSlices = 0;
+  /*
+   * ⚠️ VISITS, REPORTED AS A FIRST-CLASS OUTCOME rather than left inside the
+   * bout. #51's decisive prediction is about raw visits and not about pollen:
+   * visits are blind to geitonogamy, so they separate "empty time is valuable"
+   * from "a concentrated plant pollinates itself" in a way no flow number can.
+   * `emptyVisitSlices` counts slices that carried display and still received
+   * NOTHING — legitimate under the proportional ablation, and reported because
+   * a slice with no visits and a slice that never ran are otherwise
+   * indistinguishable downstream.
+   */
+  let visitsSpent = 0;
+  let emptyVisitSlices = 0;
+  let visitsTo = null;
   const brn = brng || (PH ? bloomRng(7) : null);
   const wrn = wrng || (PH && PH.widthLocus ? widthRng(7) : null);
   let blooms = null;
@@ -1274,6 +1287,7 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
     : Math.max(1, Math.round(budget / bees.length));
 
   const T = Array.from({ length: n }, () => new Float64Array(n));
+  visitsTo = new Float64Array(n);
   let sites = null;
   let visitLog = null;
   bees.forEach((bee, bi) => {
@@ -1318,8 +1332,10 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
     if (!PH) {
       const rb = C.runBout(ss, base, { ...boutOpts, visits: per });
       if (bi === 0 && opts.logBout) visitLog = rb.visitLog;
+      visitsSpent += per;
       for (let i = 0; i < n; i++)
         for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
+      for (let i = 0; i < n; i++) visitsTo[i] += rb.visitsTo[i];
     } else {
       /*
        * ---- THE SEASON, RUN AS A SEQUENCE OF BOUTS.
@@ -1431,11 +1447,86 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
           for (let i = 0; i < n; i++) if (inFlower(i, t)) occ[i]++;
         }
       }
-      for (let k = 0; k < S; k++) {
-        const t = k / S;
-        const w = base.map((b, i) =>
+      /*
+       * ⚠️ ONE source for the per-slice display vector, used by the bout AND by
+       * the apportionment below. Two copies of this expression is exactly what
+       * let the occupancy count and the display map drift apart in #49.
+       */
+      const wAt = (t) =>
+        base.map((b, i) =>
           inFlower(i, t) ? (occ ? b / (occ[i] || 1) : b) : 0,
         );
+
+      /*
+       * ⚠️⚠️ `PH.displayProportionalVisits` — THE #51 ABLATION, per
+       * docs/2026-08-31-empty-time-prereg.md. Default off, and off means this
+       * block does not run, so every earlier result is bit-identical.
+       *
+       * Every slice normally receives `perSlice` visits REGARDLESS of how much
+       * display is in it, and the draw inside the bout is renormalised over the
+       * plants present (carryover.js:293-300). Together those make EMPTY TIME
+       * VALUABLE: concentrating display into one slice saturates your share
+       * there, while spreading into a thinly-occupied slice earns full marginal
+       * return. Against a saturated resident that premium is exactly `(29+S)/30`
+       * — the quantity registered as P1 in the #49 prereg.
+       *
+       * With the flag on, the SAME total (`perSlice * S`) is apportioned across
+       * slices in proportion to the display each actually carries, so a slice
+       * with a tenth of the display gets a tenth of the visits. Expected visits
+       * to a plant then collapse to `total * base[i]` — independent of its width
+       * and of its phase.
+       *
+       * ⚠️⚠️ SAME TOTAL, REDISTRIBUTED — AND "THE SAME TOTAL" IS THE TOTAL THE
+       * UNABLATED ARM ACTUALLY SPENDS, NOT `perSlice * S`. A slice in which
+       * nothing is in flower is skipped below, and its visits are LOST rather
+       * than moved: that is this model's standing convention, stated in the
+       * comment on that `continue`. So the budget to apportion is
+       * `perSlice * (slices carrying any display)`. Using the nominal
+       * `perSlice * S` instead silently hands the proportional arm the visits
+       * the other arm throws away — which is a BIGGER BUDGET, exactly the
+       * confound this ablation must not have, and it is what
+       * tests/empty-time.test.js caught on the first run.
+       *
+       * ⚠️ NO `max(1, …)` FLOOR HERE. The floor on `perSlice` exists so a bout
+       * is never empty; applying one per slice would hand every near-empty slice
+       * a visit and quietly restore the premium being ablated. A slice can and
+       * should receive ZERO, and the count of those is reported rather than
+       * dropped — a slice with no visits and a slice that never ran look
+       * identical downstream otherwise.
+       *
+       * ⚠️ Largest remainder, ties broken by slice index: deterministic, exact
+       * in total, and it draws no random numbers, so no stream moves.
+       */
+      let visitsAt = null;
+      if (PH.displayProportionalVisits) {
+        const D = [];
+        let tot = 0;
+        let occupied = 0;
+        for (let k = 0; k < S; k++) {
+          const d = wAt(k / S).reduce((a, x) => a + x, 0);
+          D.push(d);
+          tot += d;
+          if (d > 0) occupied++;
+        }
+        const total = perSlice * occupied;
+        visitsAt = new Array(S).fill(0);
+        if (tot > 0) {
+          const rem = [];
+          let used = 0;
+          for (let k = 0; k < S; k++) {
+            const exact = (total * D[k]) / tot;
+            visitsAt[k] = Math.floor(exact);
+            used += visitsAt[k];
+            rem.push([exact - visitsAt[k], k]);
+          }
+          rem.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+          for (let r = 0; r < total - used; r++) visitsAt[rem[r][1]]++;
+        }
+      }
+
+      for (let k = 0; k < S; k++) {
+        const t = k / S;
+        const w = wAt(t);
         /* A slice in which nothing is in flower is a slice with no visits, not
          * a crash and not a redistribution — the pollinator's effort in that
          * part of the season is simply lost. */
@@ -1460,13 +1551,29 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
          */
         coflowerSum += w.reduce((c, x) => c + (x > 0 ? 1 : 0), 0);
         coflowerSlices++;
+        /*
+         * ⚠️ COFLOWERING IS COUNTED BEFORE THE VISIT CHECK, deliberately. It
+         * asks how many plants were in flower together, which is a fact about
+         * display and not about where the animal chose to go — so the statistic
+         * stays the same quantity under the ablation as without it. What follows
+         * is the pollinator's decision, and under
+         * `PH.displayProportionalVisits` a slice carrying almost no display can
+         * legitimately receive NOTHING.
+         */
+        const nv = visitsAt ? visitsAt[k] : perSlice;
+        if (nv <= 0) {
+          emptyVisitSlices++;
+          continue;
+        }
         const rb = C.runBout(ss, w, {
           ...boutOpts,
-          visits: perSlice,
+          visits: nv,
           seed: boutOpts.seed + 7919 * (k + 1),
         });
+        visitsSpent += nv;
         for (let i = 0; i < n; i++)
           for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
+        for (let i = 0; i < n; i++) visitsTo[i] += rb.visitsTo[i];
       }
     }
     /* Placement is defined RELATIVE TO A BODY, so with two animals a plant has
@@ -1835,6 +1942,18 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
      * generations the allele distribution drifts once selection is removed, so
      * it is measured rather than assumed. null when phenology is off. */
     coflower: coflowerSlices ? coflowerSum / coflowerSlices : null,
+    /*
+     * ⚠️ #51's decisive observable. `visitsTo[i]` is how many times the animal
+     * landed on plant i, summed over every bout of the season — NOT how much
+     * outcrossed pollen moved. The two differ exactly by the geitonogamy term,
+     * which is what makes visits able to separate "empty time is valuable" from
+     * "a concentrated plant pollinates itself". `visitsSpent` is the total
+     * actually spent, so an experiment can ASSERT the two arms got the same
+     * budget instead of trusting that they did.
+     */
+    visitsTo,
+    visitsSpent,
+    emptyVisitSlices,
     /* the flowering times themselves, so an experiment can ask whether the
      * SEASON split even when the shapes did not */
     blooms,
