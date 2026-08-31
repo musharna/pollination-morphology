@@ -178,11 +178,27 @@ function main() {
      * flowering longer MANUFACTURED display. Off by default so that run
      * reproduces.
      *
-     * ⚠️ It rides on `base` and on the two fixed-width cells alike. The fixed
-     * cells are equal-width populations, where conservation is a no-op
-     * (tests/conserved-display.test.js), so those two rows must come back
-     * UNCHANGED — which makes them a built-in control on the flag rather than
-     * two rows that merely happen to be reported beside it.
+     * ⚠️ It rides on `base` and on the two fixed-width cells alike, which makes
+     * those two rows a built-in control on the flag rather than two rows that
+     * merely happen to be reported beside it. THE CONTROL FIRED, and what it
+     * caught was a mis-stated invariant rather than a bug:
+     *
+     *   fixed WIDE   (w=1.0)  : unchanged at S = 8, 16 and 32
+     *   fixed NARROW (w=0.12) : unchanged at S=8, MOVED at S=16 and S=32
+     *
+     * The prereg registered the no-op as a property of equal WIDTH. It is a
+     * property of equal OCCUPANCY: conservation divides by the number of slice
+     * centres inside a plant's window, and a window of length w on centres 1/S
+     * apart catches floor(w*S) or floor(w*S)+1 of them depending on its PHASE.
+     * So it is neutral when w*S is an integer (1.0 at every S here) or when the
+     * only nonzero occupancy is 1 (0.12*8 = 0.96), and not otherwise
+     * (0.12*16 = 1.92 gives {1,2}; 0.12*32 = 3.84 gives {3,4}).
+     *
+     * ⚠️ SO THE NARROW ROW AT S=16 AND S=32 IS NOT COMPARABLE ACROSS THE TWO
+     * ARMS — the model differs there. It stays in the table as the control that
+     * detected this, not as a measurement. Nothing published moves: #37 and
+     * every other fixed-width call site in the project run at S=8, which
+     * tests/conserved-display.test.js now checks by reading #37's own constants.
      */
     const cons = CONSERVE ? { conserveDisplay: true } : {};
     const base = {

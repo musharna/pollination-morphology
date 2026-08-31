@@ -3846,12 +3846,28 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
        * constraint is that a plant has a finite reproductive investment.
        *
        * ⚠️ DEFAULT OFF, and off means THIS CODE DOES NOT RUN — which is what
-       * keeps every earlier result bit-identical. The three draws in
-       * carryover.js (:295, :331, :362) are all scale-invariant in exact
-       * arithmetic, so an equal-width population should be unaffected even with
-       * the flag ON; that is measured by tests/conserved-display.test.js rather
-       * than asserted, because `r = rng() * acc` against `cum[i]` can flip at a
-       * boundary under rounding.
+       * keeps every earlier result bit-identical.
+       *
+       * ⚠️⚠️ WITH THE FLAG ON, THE INVARIANT IS ABOUT OCCUPANCY, NOT WIDTH. The
+       * three draws in carryover.js (:295, :331, :362) are scale-invariant, so a
+       * divisor that is the SAME for every plant cancels — but `occ[i]` is not
+       * that. A window of length w on centres 1/S apart catches floor(w*S) or
+       * floor(w*S)+1 of them DEPENDING ON ITS PHASE, so two plants of identical
+       * width can divide by different numbers. The flag is therefore neutral
+       * exactly when w*S is an integer, or when the only nonzero occupancy is 1
+       * (below w = 1/S). The prereg registered this as an equal-WIDTH claim and
+       * it is false as registered — job 3572 caught it on the fixed-narrow
+       * control cells at S=16 and S=32, and
+       * tests/conserved-display.test.js now asserts both directions from the
+       * occupancy predicate itself.
+       *
+       * ⚠️ That is a second thing this flag removes, unregistered and worth
+       * naming: under the old duplication a plant's season-integrated display
+       * depended on whether its bloom happened to straddle an extra slice
+       * centre, so PHASE ALONE could be worth a factor of two in fitness at
+       * w*S = 1.92. Conservation deletes that lottery along with the
+       * duplication. The threshold comment above (:1355) warns about the
+       * discretisation only BELOW w = 1/S; the lottery lives above it.
        *
        * ⚠️ `occ[i] === 0` is a plant in flower in NO slice — the coverage gap
        * this roadmap already records at width < 1/S. It contributes 0 to every

@@ -60,6 +60,14 @@ Seven things are built and measured, in this order, each gating the next:
    collapses it to **1.698 / 2.707**, so **four fifths of that gradient was manufacture**. The
    direction survives, the explanation does not, and a COST OF DURATION was never the remedy.
    [detail](2026-08-28-conserved-display.md)
+   ✅ **RUN AT FULL SCALE 2026-08-31 (#50, job 3572): the direction SURVIVES conservation and the
+   magnitude is roughly HALVED.** Treatment − shuffled **+0.422 → +0.291**, **+0.445 → +0.084**,
+   **+0.444 → +0.233** at `S =` 8/16/32; clear of zero at 8 and 32, not at 16, and the three
+   intervals overlap so `S=16` is not a finding. **The narrow season still cannot be derived**, but
+   the manufacture is no longer why. ⚠️⚠️ The run's own control also **falsified P3**: the no-op is a
+   property of **OCCUPANCY, not width** — nothing published moves (every fixed-width site is `S=8`),
+   but #37 is protected by its parameters rather than by the principle.
+   [detail](2026-08-31-evolving-width-conserved.md)
 
 ## Next
 
@@ -384,14 +392,42 @@ coefficient — the imposition this route was built to escape. The gradient coll
 at `S=8` and **16.52 → 2.707** at `S=16`, i.e. **four fifths of it was manufacture**, and at 24
 seeds there is still no interior optimum.
 ⚠️ **#47 KEEPS ITS DIRECTION AND LOSES ITS EXPLANATION** — width still evolves wider, but not
-because duration is free. ✅ **#37 IS UNTOUCHED**: conservation is a no-op on equal-width
-populations and every #37 arm is fixed-width, asserted by test rather than by that argument.
+because duration is free. ✅ **#37 IS UNTOUCHED** — but ⚠️ **THE REASON GIVEN HERE WAS WRONG AND
+IS CORRECTED BELOW (2026-08-31)**: conservation is a no-op on equal-**OCCUPANCY** populations,
+not equal-width ones, and #37 is protected by running at `S = 8` rather than by the principle.
 ⚠️ The residual pro-wide gradient is the **per-slice budget being `per/S` regardless of how much
 display is in the slice** — which makes EMPTY TIME VALUABLE, and that is the northstar's own
 negative frequency-dependence arising from pollination rather than imposed on it. The duplication
 was swamping it by a factor of `S`.
 [detail](2026-08-28-conserved-display.md)
 [detail](2026-08-28-conserved-display-prereg.md)
+
+⚠️⚠️ **#50 RAN IT AT FULL SCALE, AND HALF THE EFFECT WAS THE MANUFACTURE (2026-08-31).** Job 3572,
+both arms in one job on one host, `sim/ibm.js` md5 `bdfdbf29…`. Under conserved display the evolved
+width falls **0.915 → 0.808** (`S=8`), **0.915 → 0.731** (16), **0.929 → 0.795** (32), and
+treatment − shuffled falls **+0.422 → +0.291 [0.140, 0.442]**, **+0.445 → +0.084 [−0.061, 0.228]**,
+**+0.444 → +0.233 [0.115, 0.352]**. So the drift is roughly halved, **stays clear of zero at `S=8`
+and `S=32`, and does not reverse.** ⚠️ The three conserved intervals overlap heavily, so `S=16`
+being lowest is **not a finding** — it is one of three draws at n=12. All four registered conditions
+still fail in both arms: **narrow flowering still does not arise on its own.**
+
+⚠️⚠️ **AND THE BUILT-IN CONTROL FIRED: P3 IS FALSE AS REGISTERED.** The two fixed-width cells carry
+the flag, so they test it. Fixed WIDE was unchanged at every `S`; fixed NARROW was unchanged at
+`S=8` and **MOVED at `S=16` and `S=32`**. **The invariance is a property of OCCUPANCY, not of
+width.** Conservation divides by the number of slice centres inside a window, and a window of length
+`w` on centres `1/S` apart catches `floor(w·S)` or `floor(w·S)+1` of them **depending on its PHASE**
+— so it is neutral only when `w·S` is an integer, or when the only nonzero occupancy is 1. Verified
+against the live predicate: the occupancy column predicts the model-level byte comparison in 7/7
+cells (`0.12·16 = 1.92 → {1,2}`, `0.12·32 = 3.84 → {3,4}`; `1.0·S` integer at every `S`).
+✅ **NOTHING PUBLISHED MOVES** — every fixed-width call site in the repo runs at `S = 8` (checked
+across all seven files containing `slices` in `experiments/`, `tools/`, `tests/`), so the
+entanglement reaches exactly this experiment's own two fixed-narrow control cells at `S ≥ 16`, which
+carry no result. ⚠️ But **#37 is protected by its PARAMETERS, not by the principle**, so the test now
+reads #37's own `SLICES` and `WIDTH` out of its source and fails if either moves.
+⚠️ **A SECOND DEFECT THE FLAG REMOVES, NEVER REGISTERED:** under the duplication, at `w·S = 1.92`
+**PHASE ALONE was worth up to 2× in fitness** between two plants of identical width. `:1355` warns
+about the discretisation BELOW `w = 1/S`; this lottery lives ABOVE it.
+[detail](2026-08-31-evolving-width-conserved.md)
 
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
@@ -944,6 +980,22 @@ mutants survived the conserved-display guards, and all three were real.
   blooms at random, where an exact hit on a slice centre has probability zero — while the boundary
   decides the published occupancies. Same repair as `fateOf`: **dyadic rationals land ON the
   threshold**, and both sides get asserted.
+
+⚠️⚠️ **AND THE FIRST OF THOSE THREE RECURRED ONE COMMIT LATER, INSIDE THE TEST WRITTEN TO CATCH IT
+(2026-08-31).** The repaired no-op test swept `width` over `[1.0, 0.12, 0.5]` with `slices` **held at
+8** — and all three of those widths sit in the invisible regime at `S=8` for three DIFFERENT reasons
+(`1.0·8 = 8`, `0.5·8 = 4`, `0.12·8 = 0.96`). The invariance depends on the **product** `w·S`, so the
+test swept the stand-in and pinned the axis that decides. Job 3572's fixed-narrow control caught it
+at `S=16` and `S=32`. **Naming a failure mode in a document does not stop it reappearing in the next
+artefact, because the axis it hides on changes each time** — the first instance hid on
+_equal-width_, the second hid on _S_.
+✅ The replacement asserts **both directions from the live predicate**: occupancy constant ⇒ run must
+be byte-identical, occupancy varying ⇒ run **must move**, with the prediction computed from
+`I.ringDist` rather than hardcoded and a degeneracy guard requiring ≥2 cells on each side. **Seen to
+fail**: a mutant dividing by the constant `S` instead of `occ[i]` — scale-invariant, hence a no-op
+everywhere, hence welcome under the old assertion in every cell — is now killed. ⚠️ The lesson that
+generalises is that **a no-op test needs a cell where the thing is NOT a no-op**, or it cannot tell
+"correctly neutral" from "never ran".
 
 ⚠️⚠️ **AND THE HARNESS ITSELF CORRUPTED FOUR MEASUREMENTS.** It rewrites `sim/ibm.js` in place;
 four runs launched during its window read a mutated model. **The tell was a result that was too

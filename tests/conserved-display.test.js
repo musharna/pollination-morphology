@@ -8,6 +8,12 @@
  * instead. Three things have to hold, and the first two are the ones that
  * protect every result this project has already published.
  *
+ * ⚠️⚠️ ONE OF THE THREE WAS REGISTERED IN THE WRONG VARIABLE. P3 was written as
+ * an equal-WIDTH claim; the quantity conservation divides by is OCCUPANCY, and
+ * equal width does not imply it. Test 2 below is the corrected form and carries
+ * the whole account. The prereg is left as it was written — it is a record of
+ * what was predicted, not a place to put what turned out to be true.
+ *
  * ⚠️ TEST 1 COMPARES AGAINST A DIFFERENT BUILD, for the reason
  * tests/evolving-width.test.js states at length: running today's code twice with
  * the flag off and finding it agrees with itself would pass just as happily if
@@ -145,40 +151,161 @@ test("with conservation off, every phenology stream is byte-identical to the pre
   }
 });
 
-/* ------------- 2. P3: on an EQUAL-WIDTH population conservation is a no-op */
+/* --- 2. P3, AS CORRECTED: conservation is a no-op exactly where OCCUPANCY,
+ *        not width, is constant across the plants that contribute at all. */
 
-test("with every plant at the same width, turning conservation on changes nothing", () => {
-  /*
-   * This is the prediction that protects #37, whose arms are ALL fixed-width.
-   * Conservation divides every plant's display by the same constant, and all
-   * three draws in carryover.js (:295, :331, :362) are scale-invariant, so the
-   * bout should be untouched.
-   *
-   * ⚠️ It is asserted rather than argued because `r = rng() * acc` compared
-   * against `cum[i]` can flip at a boundary under rounding. If this ever fails,
-   * conservation is NOT neutral on equal-width populations and every fixed-width
-   * result in the project is entangled with it.
-   */
-  for (const width of [1.0, WIDTH, 0.5])
+/*
+ * ⚠️⚠️ THE REGISTERED FORM OF P3 WAS FALSE AND THIS TEST PASSED ANYWAY.
+ *
+ * The prereg (docs/2026-08-28-conserved-display-prereg.md) registered P3 as a
+ * WIDTH claim — "on an equal-width population conservation changes nothing" —
+ * and the first version of this test swept `width` over [1.0, 0.12, 0.5] with
+ * `slices` held at 8. Job 3572 then ran experiments/evolving-width.js's
+ * fixed-width control cells at S = 8, 16 and 32 with the flag on, and the
+ * fixed-NARROW row moved at S=16 and S=32 while fixed-wide moved at no S.
+ *
+ * Conservation divides by `occ[i]`, the number of slice centres inside plant
+ * i's window — and a window of length w on a grid of spacing 1/S catches
+ * floor(w*S) or floor(w*S)+1 centres DEPENDING ON ITS PHASE. Equal width is
+ * therefore a STAND-IN for equal occupancy, and the two coincide only when
+ *
+ *     w*S is an integer          — every plant catches exactly w*S; or
+ *     the only nonzero occ is 1  — below w = 1/S. occ = 0 contributes nothing
+ *                                  either way, so the divisor actually applied
+ *                                  is 1 for every plant that contributes.
+ *
+ * The three widths in the original sweep each satisfied one of those AT S=8,
+ * for three different reasons: 1.0*8 = 8, 0.5*8 = 4, and 0.12*8 = 0.96. The
+ * test swept the stand-in and held fixed the one axis the invariance actually
+ * depends on — the PRODUCT. It covered only the regime in which the change is
+ * invisible, which is the failure this file's own test 3 was written to catch,
+ * committed one commit later on the axis that was not swept.
+ *
+ * So the invariant is restated at the layer it lives on, and BOTH sides are
+ * asserted from the same live predicate: where occupancy is constant the run
+ * must be byte-identical, and where it is not the run MUST move. That second
+ * half is what a width-only claim cannot express, and it is what kills a mutant
+ * dividing by a constant (S, or 1) instead of by each plant's own occupancy —
+ * such a mutant is scale-invariant, hence a no-op everywhere, and the old
+ * assertion would have welcomed it in every cell.
+ */
+
+/* occ, from the SAME predicate the model uses (`I.ringDist`, sim/ibm.js:189),
+ * swept over phase rather than sampled: occupancy is periodic in the bloom time
+ * and a sweep cannot miss a phase band that three seeded draws could. */
+function nonzeroOccupancies(width, slices, steps = 20000) {
+  const seen = new Set();
+  for (let n = 0; n < steps; n++) {
+    const b = (n + 0.5) / steps;
+    let occ = 0;
+    for (let k = 0; k < slices; k++)
+      if (I.ringDist(b, k / slices) <= width / 2) occ++;
+    if (occ > 0) seen.add(occ);
+  }
+  return [...seen].sort((a, b) => a - b);
+}
+
+test("conservation is a no-op exactly where occupancy is constant, and moves where it is not", () => {
+  /* (width, slices, why this cell is in the list) */
+  const CELLS = [
+    [1.0, 8, "#37's wide baseline"],
+    [1.0, 16, "wide at S=16 — w*S is still an integer"],
+    [1.0, 32, "wide at S=32"],
+    [WIDTH, 8, "#37's narrow arm — the cell a published result rests on"],
+    [WIDTH, 16, "narrow at S=16 — the cell job 3572 found moving"],
+    [WIDTH, 32, "narrow at S=32 — likewise"],
+    [
+      0.5,
+      8,
+      "w*S = 4: an integer product at a width that is neither 1 nor tiny",
+    ],
+    [0.25, 8, "w*S = 2: the width tests/phenology.test.js:208 pins"],
+  ];
+
+  let nNoop = 0;
+  let nMoves = 0;
+
+  for (const [width, slices, why] of CELLS) {
+    const occs = nonzeroOccupancies(width, slices);
+    const noop = occs.length === 1;
     for (const seed of [1, 2, 3]) {
-      const off = digest(I, { width, slices: SLICES }, seed);
-      const on = digest(
-        I,
-        { width, slices: SLICES, conserveDisplay: true },
-        seed,
-      );
-      assert.deepStrictEqual(
-        on.rows,
-        off.rows,
-        `width ${width} seed ${seed}: conservation moved an equal-width run — ` +
-          `#37 is entangled with it and cannot be protected by the flag`,
-      );
+      const off = digest(I, { width, slices }, seed);
+      const on = digest(I, { width, slices, conserveDisplay: true }, seed);
+      const same =
+        JSON.stringify(on.rows) === JSON.stringify(off.rows) &&
+        on.tail === off.tail;
       assert.strictEqual(
-        on.tail,
-        off.tail,
-        `width ${width} seed ${seed}: stream drift`,
+        same,
+        noop,
+        `w=${width} S=${slices} seed ${seed} (${why}): nonzero occupancies ` +
+          `{${occs.join(",")}} predict conservation is ${noop ? "a NO-OP" : "NOT a no-op"}, ` +
+          `but the run came back ${same ? "IDENTICAL" : "MOVED"}. ` +
+          (noop
+            ? `A constant divisor cancels under the scale-invariant draws in ` +
+              `carryover.js (:295, :331, :362), so a move here means either the ` +
+              `divisor is not what occ says it is, or one of those draws has ` +
+              `stopped being scale-invariant — and #37's protection rests on ` +
+              `exactly this kind of cell.`
+            : `A divisor that DIFFERS between plants cannot cancel, so a run ` +
+              `that does not move means conservation is dividing by something ` +
+              `constant (S, or 1) rather than by each plant's own occupancy — ` +
+              `which is a no-op everywhere and leaves the duplication in place.`),
       );
     }
+    if (noop) nNoop++;
+    else nMoves++;
+  }
+
+  /*
+   * ⚠️ A NEGATIVE RESULT NEEDS A POSITIVE CONTROL AND THE REVERSE. If every cell
+   * landed on one side of the predicate, the loop above would assert only one
+   * direction and would pass on a harness that always reported that direction.
+   */
+  assert.ok(
+    nNoop >= 2 && nMoves >= 2,
+    `the cell list degenerated: ${nNoop} no-op and ${nMoves} moving cells — ` +
+      `both directions must be exercised or this test proves only one of them`,
+  );
+});
+
+/* ---- 2b. exactly how far the correction reaches, checked not asserted ---- */
+
+test("#37's own parameters sit in the no-op regime, read from its source", () => {
+  /*
+   * The narrow scope. #37 (experiments/phenology.js) runs at slices = 8 with
+   * widths 1.0 and 0.12, and every other fixed-width call site in the project —
+   * tests/phenology.test.js, tests/evolving-width.test.js — is also at
+   * slices = 8. So no published result moves under conservation: the
+   * entanglement reaches exactly the two fixed-narrow control cells that
+   * experiments/evolving-width.js runs at S = 16 and S = 32, which carry no
+   * result of their own.
+   *
+   * ⚠️ But #37 is protected by its PARAMETERS, not by the principle that was
+   * registered, and that difference bites the moment someone raises S. Hence a
+   * test that reads #37's OWN constants instead of a comment repeating them: if
+   * that file's SLICES or WIDTH is edited into the moving regime, this fails
+   * there and then, rather than silently invalidating the phenology result.
+   *
+   * ⚠️ The source is READ, not required — requiring it would run the whole
+   * experiment as a side effect of the test suite.
+   */
+  const src = fs.readFileSync(
+    path.join(__dirname, "..", "experiments", "phenology.js"),
+    "utf8",
+  );
+  const num = (name) => {
+    const m = src.match(new RegExp(`^const ${name} = ([0-9.]+);`, "m"));
+    assert.ok(m, `experiments/phenology.js no longer declares ${name}`);
+    return Number(m[1]);
+  };
+  const S = num("SLICES");
+  for (const width of [1.0, num("WIDTH")])
+    assert.strictEqual(
+      nonzeroOccupancies(width, S).length,
+      1,
+      `#37 runs width ${width} at ${S} slices and that is no longer a single ` +
+        `occupancy — the phenology result is now entangled with conservation`,
+    );
 });
 
 /* --------------- 3. SEMANTICS: the duplication is actually gone */

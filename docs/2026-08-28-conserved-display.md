@@ -128,7 +128,20 @@ above are driven by measured occupancy rather than by an assumption about it. Th
 reason a missed prediction here can be attributed to the share model rather than to a guess about
 the grid — and the prereg is left as written rather than quietly re-fitted.
 
-## ✅ P3 HELD — which is what protects #37
+## 🛑 P3 — RETRACTED 2026-08-31: it was registered in the wrong variable
+
+> ⚠️⚠️ **This section said "P3 HELD". It did not.** The claim below is an equal-**WIDTH** claim, and
+> the quantity conservation divides by is **OCCUPANCY**. #50 (job 3572) ran the fixed-width control
+> cells at `S = 8, 16, 32`: fixed WIDE was unchanged at every `S`, fixed NARROW **MOVED at `S=16`
+> and `S=32`**. A window of length `w` on centres `1/S` apart catches `floor(w·S)` or
+> `floor(w·S)+1` of them **depending on its phase**, so equal width gives equal occupancy only when
+> `w·S` is an integer or the only nonzero occupancy is 1. The test that was supposed to catch this
+> swept `width` over `[1.0, 0.12, 0.5]` with `slices` **held at 8**, where all three land in the
+> invisible regime for three different reasons — it held fixed the one axis the invariance depends
+> on, the product. **The conclusion below survives; the reason given for it does not.**
+> ✅ #37 is still untouched — every fixed-width call site in the project runs at `S = 8` — but it is
+> protected **by its parameters, not by the principle**.
+> Full account: [2026-08-31-evolving-width-conserved.md](2026-08-31-evolving-width-conserved.md).
 
 On an equal-width population, turning conservation on changes nothing: conservation divides every
 plant's display by the same constant and all three draws in `sim/carryover.js` (`:295`, `:331`,
