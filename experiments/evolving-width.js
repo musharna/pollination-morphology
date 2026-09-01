@@ -47,6 +47,16 @@ const SLICE_SET = (process.env.EW_SLICES || (SMOKE ? "8" : "8,16,32"))
   .filter(Number.isFinite);
 const N_SEEDS = SMOKE ? 4 : Number(process.env.EW_SEEDS || 12);
 const CONSERVE = process.env.EW_CONSERVE === "1";
+/*
+ * `EW_DPV=1` is #51's ablation, layered on top of conservation: the same total
+ * visits apportioned across slices in proportion to the display each carries,
+ * rather than `per/S` to every slice regardless. It removes the empty-time
+ * premium and leaves geitonogamy in place — see
+ * docs/2026-08-31-empty-time-prereg.md, whose P4 registers this run as
+ * DIRECTIONAL ONLY. The sharp test is the gradient tool, which holds the
+ * population fixed; at n=12 these intervals are wide and already overlap.
+ */
+const DPV = process.env.EW_DPV === "1";
 const SEEDS = Array.from({ length: N_SEEDS }, (_, i) => i + 1);
 /* the mutational step on the width locus. Not swept: the question is whether
  * width moves at all and in which direction, and a rate chosen to make it move
@@ -159,7 +169,8 @@ function main() {
   console.log(
     `evolving flowering-window width · ${N0} plants · ${GENS} generations · ` +
       `${SEEDS.length} seeds · d=${D_EXCL} · widthMut=${WIDTH_MUT} · ` +
-      `display ${CONSERVE ? "CONSERVED" : "per-slice (job 3529 regime)"}`,
+      `display ${CONSERVE ? "CONSERVED" : "per-slice (job 3529 regime)"}` +
+      `${DPV ? " · visits PROPORTIONAL to display (#51 ablation)" : ""}`,
   );
   console.log(
     "founders uniform on (0,1); primary comparison is treatment - shuffled,\n" +
@@ -200,7 +211,10 @@ function main() {
      * every other fixed-width call site in the project run at S=8, which
      * tests/conserved-display.test.js now checks by reading #37's own constants.
      */
-    const cons = CONSERVE ? { conserveDisplay: true } : {};
+    const cons = {
+      ...(CONSERVE ? { conserveDisplay: true } : {}),
+      ...(DPV ? { displayProportionalVisits: true } : {}),
+    };
     const base = {
       slices: S,
       widthLocus: true,
