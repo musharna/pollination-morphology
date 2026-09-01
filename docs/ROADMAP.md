@@ -68,6 +68,15 @@ Seven things are built and measured, in this order, each gating the next:
    property of **OCCUPANCY, not width** — nothing published moves (every fixed-width site is `S=8`),
    but #37 is protected by its parameters rather than by the principle.
    [detail](2026-08-31-evolving-width-conserved.md)
+   ✅ **AND THE REMAINING CAUSE IS NOW SPLIT THREE WAYS, 2026-09-01 (#51, job 3606).** Ablating the
+   empty-time premium — the same total visits apportioned by the display each slice carries — drops
+   the gradient **1.698 → 1.368** (`S=8`) and **2.707 → 1.814** (`S=16`), i.e. **empty time is about
+   40% of it, geitonogamy about 40%, and a named-but-unmodelled higher-order term about 19%.** The
+   decisive check was VISITS, which are blind to geitonogamy: the derived premium `(29+S)/30`
+   predicted the measured 1.2494 / 1.5031 to within 1.3% / 0.2%, and the ablation collapses it to
+   1.008 / 1.005. 🛑 **So the northstar's answer does not move — narrow flowering still does not
+   arise on its own — and its cause has now been corrected three times without ever reversing.**
+   [detail](2026-09-01-empty-time.md)
 
 ## Next
 
@@ -399,6 +408,8 @@ not equal-width ones, and #37 is protected by running at `S = 8` rather than by 
 display is in the slice** — which makes EMPTY TIME VALUABLE, and that is the northstar's own
 negative frequency-dependence arising from pollination rather than imposed on it. The duplication
 was swamping it by a factor of `S`.
+✅ **MEASURED 2026-09-01 (#51): that candidate is REAL AND IS ABOUT 40% OF THE GRADIENT, NOT ALL OF
+IT.** Ablating it leaves the gradient at **1.368 / 1.814**, still pro-wide. See below.
 [detail](2026-08-28-conserved-display.md)
 [detail](2026-08-28-conserved-display-prereg.md)
 
@@ -428,6 +439,40 @@ reads #37's own `SLICES` and `WIDTH` out of its source and fails if either moves
 **PHASE ALONE was worth up to 2× in fitness** between two plants of identical width. `:1355` warns
 about the discretisation BELOW `w = 1/S`; this lottery lives ABOVE it.
 [detail](2026-08-31-evolving-width-conserved.md)
+
+✅ **#51 MEASURED WHAT EMPTY TIME IS WORTH, AND IT IS NOT THE WHOLE RESIDUAL (2026-09-01).** Job
+3606, `sim/ibm.js` md5 `7da6ce55`, registered in `2026-08-31-empty-time-prereg.md` BEFORE the flag
+existed. `PH.displayProportionalVisits` apportions the SAME total visits across slices in
+proportion to the display each carries, by largest remainder — an ABLATION, not a fix.
+⚠️⚠️ **P2, THE DECISIVE PREDICTION, PASSES.** Visits are blind to geitonogamy, so they isolate the
+empty-time premium from the concentration penalty. Derived premium `(29+S)/30` = **1.2333 / 1.5000**;
+measured **1.2494 / 1.5031** (within 1.3% and 0.2%); after ablation **1.0080 / 1.0053** against a
+registered 1.000. **One number arrived at twice by different routes** — `(29+S)/30` is
+independently the P1 registered in the #49 prereg — **and then measured.**
+⚠️ **P1: ONE HIT, ONE MISS, REPORTED AS A MISS.** Flow ratio falls to **1.368** at `S=8` (band
+[1.233, 1.377], inside) and **1.814** at `S=16` (band [1.500, 1.805], **0.49% ABOVE the top**).
+The band carried #49's unexplained higher-order factor forward unchanged; it rose 1.203 → 1.209.
+📊 **THE THREE-FACTOR DECOMPOSITION IS CONFIRMED**: gradient = empty-time × geitonogamy ×
+higher-order = `1.2333 × 1.2336 × 1.116 = 1.698` and `1.500 × 1.500 × 1.203 = 2.707`, against
+measured 1.6984 / 2.7066. As shares of the log gradient, stable across `S`: **empty time ~40%,
+geitonogamy ~40%, higher-order ~19%.**
+🛑 **SO THE ANSWER IS NO — empty time is not what still selects for wider flowering, it is 40% of
+it.** "Narrow flowering does not arise on its own" has now survived three explanations of its own
+cause: duration-is-free (#47, wrong), the manufacture (#49, real but half), and this three-way
+split. Each correction shrank the effect without reversing it.
+⚠️ **AND THE ABLATION IS NOT A CLAIM THAT THE OTHER MODEL IS WRONG.** A constant per-slice budget
+is a fixed forager population; a proportional one is foragers aggregating on abundance. Real
+pollinators sit between, and this run does not settle which. What it establishes is a SCOPE
+CONDITION: ~40% of the pro-wide gradient is a consequence of the allocation convention rather than
+of pollination.
+⚠️ **The budget guard CAUGHT A REAL BUG on its first run**: the apportionment divided the NOMINAL
+`perSlice · S`, while the unablated arm skips display-free slices and LOSES their visits — so the
+ablated arm was also spending what the other arm discards. A bigger budget is exactly the confound
+this ablation must not have. Now `perSlice × (occupied slices)`; `spent` reads 24000 in all four
+tables. ⚠️ And the guard was wrong the OTHER way first: it summed spend over six generations of two
+arms that, being different models, diverge after gen 0 — comparing trajectories, not budgets.
+[detail](2026-09-01-empty-time.md)
+[detail](2026-08-31-empty-time-prereg.md)
 
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
