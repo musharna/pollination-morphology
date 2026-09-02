@@ -134,3 +134,83 @@ Still open and not addressed here: why M2 reads 1.33 with no temporal structure
 (#52); the ~19% higher-order concentration penalty (#49/#51); and why #53's forced
 cells showed a HIGHER `bloomLineage` (0.959/0.965) than the free arms (0.886/0.877)
 while ancestry collapsed completely.
+
+---
+
+# Amendment, before the full run
+
+Everything below was decided after a **6-seed pilot at full configuration** and
+**before** any run that could produce a result. The pilot's primary statistic came
+out `Δ = +0.029 [-1.070, 1.127]`, then `-0.015 [-1.185, 1.155]` after A1 — an
+interval nine times the width of the decision band, i.e. entirely uninformative
+about which branch the verdict will take. None of these changes can have been
+steered by the answer, because the pilot did not contain one. Each was made on a
+coverage or precision observation, and the pilot numbers are recorded here so the
+record shows what was in front of me when I made them.
+
+## A1 — the gap denominator and window are across-seed; the numerator is within-seed
+
+The prereg wrote `v_A` and `v_B` without saying whether they are seed `i`'s own A
+and B runs or the mean over seeds. Implemented first as per-seed, and the pilot
+showed why that is wrong: **4 of 6 seeds contributed nothing.** A seed in which the
+premium happened to do little never clears the `0.05` denominator floor, so it has
+no admissible generations and is dropped — which **selects the sample on the size of
+the very effect being measured**, and hands every surviving seed a different
+averaging window.
+
+Resolved as:
+
+    ancGap_i(g)  = (v_i(g)  - v_{A,i}(g))  / (mean_B v(g)  - mean_A v(g))
+    polyGap_i(g) = (R1_i(g) - R1_{A,i}(g)) / (mean_B R1(g) - mean_A R1(g))
+
+One window for every seed and every arm, decided by the reference arms alone; no
+seed divides by its own near-zero separation; the numerator stays paired within
+seed, which is what the paired t interval needs. After the change all 6 pilot seeds
+contributed at every k.
+
+## A2 — a ratio-of-sums variant was tried and is NOT adopted
+
+Expected the mean of per-generation ratios to be inflated by generations where the
+A→B scale sits just above the floor, and added `Σnumerator / Σdenominator` to damp
+it. **It did not help: ±1.230 against ±1.185 on the same pilot.** The hypothesis was
+wrong — the spread is genuine seed-to-seed variation in how far each seed travels,
+not small denominators. The registered statistic therefore stands as primary and the
+variant is printed as a robustness check the verdict does not read. Swapping the
+primary statistic on theory alone, after seeing pilot output, is the move this
+project pre-registers to prevent.
+
+## A3 — G2 is evaluated at the first ADMISSIBLE post-switch generation
+
+The prereg said `polyGap(k+1) ≤ 0.5`. At `k+1` the A-vs-B separation has not opened
+yet, so `polyGap(k+1)` is a ratio of two near-zero numbers and reports whatever the
+noise did — it would not be measuring relaxation speed at all. G2 is therefore read
+at the first generation that clears the `0.05` floor. The substitution is printed
+beside the gate, so it is visible in the run output and not only here.
+
+## A4 — 300 seeds, and why
+
+The pilot's per-seed `Δ` has sd ≈ 1.1. At the registered n=40 the 95% half-width
+would be ≈ 0.36 against a decision band of 0.15: **the design would return
+INCONCLUSIVE for lack of power almost regardless of the truth**, and that branch
+would then be uninterpretable — indistinguishable from a real straddle. Closing the
+band needs n ≈ (1.1 / 0.075)² ≈ 220, so the full run is at **300 seeds**, all seven
+arms.
+
+The run reports the measured per-seed sd, the achieved half-width, and the n the
+band would require, **on every branch and not only when the result is
+inconclusive** — a power statement produced only where it excuses the outcome is not
+a power statement.
+
+## A5 — C1 and C2 are always evaluated on seeds 1..40
+
+`0.289` and `0.026` are 40-seed fractions. At 300 seeds an arm can reproduce #53
+exactly and still print a different HELD, so comparing a 300-seed fraction against
+them would turn a passing control into a failing one. The reproduction check runs on
+the identical seed set #53 used; the contrast uses all 300. Founding does not depend
+on the arm — `foundTwoLineages` is called from the same streams before any stepping
+— so the kept subset is the same subset #53 kept.
+
+## What is NOT amended
+
+The decision bands (`+0.15`, the asymmetry, and which branch carries the burden),
+the three gates, the five controls, and the reading of each branch are unchanged.
