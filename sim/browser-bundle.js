@@ -2655,6 +2655,17 @@ const ringDist = (a, b) => {
 };
 
 /*
+ * How many slices the season is cut into. Extracted 2026-09-01 (#52) when a
+ * second call site needed it: the per-slice visit vector has to be sized before
+ * the phenology block runs, and a second copy of this expression a thousand
+ * lines away is exactly the shape of the #49 defect, where two copies of the
+ * occupancy rule drifted apart and the display map stopped matching the count
+ * it was normalised by. The `|| 8` fires on 0 as well as on undefined, which is
+ * the behaviour the original had and is preserved deliberately.
+ */
+const sliceCountOf = (PH) => Math.max(2, PH.slices | 0 || 8);
+
+/*
  * ⚠️ THE ADVERTISEMENT DRAWS FROM ITS OWN RANDOM STREAM, and this is load-bearing
  * rather than tidiness.
  *
@@ -3593,6 +3604,17 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
   let visitsSpent = 0;
   let emptyVisitSlices = 0;
   let visitsTo = null;
+  /*
+   * ⚠️ WHERE IN THE SEASON the visits went, added for #52. `visitsSpent` is the
+   * total and `visitsTo` is the per-plant split; neither can say whether the
+   * season CONCENTRATED. Under the constant per-slice budget this is flat by
+   * construction, so the vector is only interesting once something apportions —
+   * which is exactly the alternative #52 has to rule out: "removes a rarity
+   * premium" and "collapses the realised season into its densest slices" both
+   * predict the same drop in retained ancestry, and only this distinguishes
+   * them. Read-only, consumes no random numbers, null when phenology is off.
+   */
+  let visitsPerSlice = null;
   const brn = brng || (PH ? bloomRng(7) : null);
   const wrn = wrng || (PH && PH.widthLocus ? widthRng(7) : null);
   let blooms = null;
@@ -3750,6 +3772,12 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
 
   const T = Array.from({ length: n }, () => new Float64Array(n));
   visitsTo = new Float64Array(n);
+  /* ⚠️ ONE source for the slice count. Writing `Math.max(2, PH.slices | 0 || 8)`
+   * here as well would put a second copy of the expression a thousand lines from
+   * the first, which is precisely how the occupancy count and the display map
+   * drifted apart in #49. Null when phenology is off, so the accumulation below
+   * is guarded rather than assuming this was allocated. */
+  if (PH) visitsPerSlice = new Float64Array(sliceCountOf(PH));
   let sites = null;
   let visitLog = null;
   bees.forEach((bee, bi) => {
@@ -3822,7 +3850,7 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
        * one continuous bout it is a real loss of carryover, and it applies
        * equally to every arm including the controls.
        */
-      const S = Math.max(2, PH.slices | 0 || 8);
+      const S = sliceCountOf(PH);
       const half = (PH.width === undefined ? 0.25 : PH.width) / 2;
       /*
        * ⚠️ PER-PLANT, once width is a locus. With the locus off this is the same
@@ -4033,6 +4061,12 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
           seed: boutOpts.seed + 7919 * (k + 1),
         });
         visitsSpent += nv;
+        /* ⚠️ accumulated AFTER the `nv <= 0` continue above, so a slice that
+         * received nothing stays at zero here and is counted once in
+         * `emptyVisitSlices` — the two observables agree by construction rather
+         * than by a reader checking that they do. Summed across animals, like
+         * `visitsTo`, so it totals to `visitsSpent`. */
+        if (visitsPerSlice) visitsPerSlice[k] += nv;
         for (let i = 0; i < n; i++)
           for (let j = 0; j < n; j++) T[i][j] += rb.T[i][j];
         for (let i = 0; i < n; i++) visitsTo[i] += rb.visitsTo[i];
@@ -4416,6 +4450,10 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
     visitsTo,
     visitsSpent,
     emptyVisitSlices,
+    /* where in the season those visits fell; null when phenology is off. Flat by
+     * construction under the constant per-slice budget, so it only carries
+     * information once something apportions. See the declaration. */
+    visitsPerSlice,
     /* the flowering times themselves, so an experiment can ask whether the
      * SEASON split even when the shapes did not */
     blooms,
