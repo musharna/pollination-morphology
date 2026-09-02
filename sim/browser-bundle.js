@@ -3666,6 +3666,59 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
     if (PH.shuffleBloom) blooms = order.map((i) => blooms[i]);
 
     /*
+     * ⚠️⚠️ `PH.forceBloomDist` — THE #53 INSTRUMENT, per
+     * docs/2026-09-01-bloom-fixed-prereg.md. Default absent, and absent means
+     * this does not run, so every earlier result is bit-identical.
+     *
+     * #52 removed the rarity premium and TWO things moved: the premium itself,
+     * and — downstream, over generations — the flowering-time polymorphism,
+     * which collapsed from a maintained scatter to near-fixation. Those are
+     * confounded inside that ablation, so it cannot say which one carries the
+     * effect on retained ancestry.
+     *
+     * This holds the DISTRIBUTION still. Given a donor multiset for this
+     * generation, each plant keeps its RANK in its own expressed order and
+     * receives the donor value at that rank. The marginal distribution becomes
+     * the donor's exactly — R1, R2 and per-slice occupancy are then the donor's
+     * too, since they depend on nothing else — while relatives who would flower
+     * near each other still do.
+     *
+     * ⚠️ RANK-PRESERVING, NOT VALUE-PRESERVING, and the sort cuts the ring at 0.
+     * Two relatives at 0.99 and 0.01 are ring-CLOSE but rank-FAR, so the mapping
+     * can weaken the bloom-to-lineage tie it is supposed to leave alone. That is
+     * why `bloomLineage` is a registered GATE on the forced cells rather than an
+     * assumption — an instrument that destroys the mechanism it exists to hold
+     * still would otherwise read as a result.
+     *
+     * ⚠️ THE ARMS DIVERGE DEMOGRAPHICALLY, so the donor may hold a different
+     * number of plants. Ranks are therefore mapped by QUANTILE rather than by
+     * index, and an experiment is expected to report how often the sizes differ
+     * — a silent index mismatch would truncate or recycle the tail of the
+     * distribution and quietly stop being the donor's distribution at all.
+     *
+     * ⚠️ SELF-DONATION IS THE IDENTITY: forcing an arm with its own realised
+     * blooms maps every rank onto itself and must return the input unchanged.
+     * That is the positive control on this whole mechanism, and it is what
+     * separates "the forcing works" from "the forcing perturbs what it touches".
+     */
+    if (PH.forceBloomDist && PH.forceBloomDist.length) {
+      const donor = Array.from(PH.forceBloomDist).sort((a, b) => a - b);
+      const m = donor.length;
+      const idx = blooms.map((_, i) => i).sort((a, b) => blooms[a] - blooms[b]);
+      const forced = new Array(blooms.length);
+      for (let r = 0; r < idx.length; r++) {
+        /* quantile position of rank r among n, read off the donor of size m.
+         * With n === m this is exactly r, so self-donation is the identity. */
+        const q =
+          idx.length === m
+            ? r
+            : Math.min(m - 1, Math.round(((r + 0.5) * m) / idx.length - 0.5));
+        forced[idx[r]] = donor[q];
+      }
+      blooms = forced;
+    }
+
+    /*
      * ---- FLOWERING-WINDOW WIDTH, when it is a locus rather than a constant.
      *
      * ⚠️ FOUNDERS START UNIFORM ON (0,1), NOT AT THE WIDE CEILING, AND THE
