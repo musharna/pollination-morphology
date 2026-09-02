@@ -270,3 +270,44 @@ so a later question about the estimator — a different window, a different null
 the decay-rate form instead of the level form — costs no compute **and is answered
 on exactly the run that produced the published numbers**, rather than on a re-run
 that might not reproduce.
+
+---
+
+# Third amendment — a rank companion, and why the per-seed gaps are unbounded
+
+Registered while the full runs were in flight and before any of their output was
+read. Computed afterwards from the per-seed JSON dump (A8), on exactly the run
+that produces the published numbers — no re-simulation, and no opportunity to
+choose the estimator against the answer.
+
+## A9 — the per-seed gaps are NOT bounded in [0,1], and the t interval is the wrong summary
+
+The across-seed *mean* gap runs 0 → 1: it is 0 at the switch by C5's pre-switch
+identity, and approaches 1 as the arm converges onto B. An individual seed's gap
+is not so bounded, because A1 divides a **within-seed numerator** by an
+**across-seed denominator**. A seed whose own A-vs-B separation is much smaller
+than the average overshoots; one whose separation is larger undershoots.
+
+That is the price of A1 — the alternative, per-seed denominators, reintroduces the
+selection bias A1 exists to remove — and it is the real source of the pilot's
+sd ≈ 1.115 on a statistic whose mean lives near zero. **A quantity that heavy-tailed
+is badly summarised by a t interval**, which assumes the tails it does not have.
+
+So alongside the registered t interval, the analysis reports a **Wilcoxon signed-rank
+test and a sign test** on the per-seed `Δ`. These ask the same question — is `Δ`
+displaced from zero, and in which direction — without assuming the tail shape.
+
+**Reading, committed now:** the t interval remains the registered primary and decides
+the bands. If the rank tests **disagree in direction or significance** with it, the
+result is reported as **estimator-dependent** and no branch is claimed, because a
+verdict that depends on which summary of the same numbers is used has not been
+measured. If they agree, the branch stands as registered.
+
+## A10 — what H3 does and does not damage
+
+Both gaps sharing endpoints compresses the *scale* of `Δ` but does not destroy the
+signal: over a fixed window, a curve that rises sooner still has the larger average.
+The DIRECT reading — ancestry arriving before the polymorphism — remains measurable.
+What H3 does is explain why `|Δ|` is small in magnitude relative to its noise, which
+is the same power problem A4 already answered with 300 seeds, arriving from a second
+direction and agreeing.
