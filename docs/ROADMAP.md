@@ -537,6 +537,38 @@ generation. **Open as #53.**
 [detail](2026-09-01-rarity-premium.md)
 [detail](2026-09-01-rarity-premium-prereg.md)
 
+🛑🛑 **#53 RAN THAT CLEAN TEST AND THE INSTRUMENT FAILED — NO VERDICT (2026-09-02).** Job 3636 plus a
+local re-run on the same build (`sim/ibm.js` md5 `39980f6f`, node v18.19.1 both) agree to every
+printed digit. The 2x2: A **0.289** (=#37), B **0.026** (=#52), C (premium OFF + A's polymorphism)
+**0.000**, D (premium ON + B's polymorphism) **0.000**. All five registered controls passed, P1
+FAILED, P2 passed — registered branch NEITHER.
+⚠️⚠️ **NOT FILED, BECAUSE TWO OPPOSITE MANIPULATIONS GIVING IDENTICAL TOTAL COLLAPSE IS ONE COMMON
+CAUSE, NOT TWO NECESSARY FACTORS.** C7 was registered in `2026-09-02-bloom-fixed-addendum-prereg.md`
+after the 2x2 returned and before it was coded: a DOSE-RESPONSE in trajectory mismatch, premium ON
+and A-type distribution throughout. `Aself` (own trajectory) **0.289** = A exactly; `Ashift` (arm A
+at ANOTHER SEED) **0.000**; `Arev` (arm A reversed) **0.000**. **Shear 0 costs nothing and shear 1
+costs everything**, with nothing about the premium or the polymorphism manipulated between those
+rows. The hook destroys the quantity the run measures; C and D are instrument artefacts.
+⚠️⚠️ **C2 WAS THE GATE AND WAS STRUCTURALLY BLIND TO THIS.** Self-donation sets donor = recipient, so
+the donor/recipient TRAJECTORY MISMATCH is identically zero under it. C2 is retained as a control on
+the mapping arithmetic and RETRACTED as licensing anything about foreign donors — its scope was
+narrower than the claim it carried.
+⚠️ **#52's TWO-STEP IS NEITHER CONFIRMED NOR REFUTED — #53 NEVER TESTED IT.** An instrument that
+cannot measure a thing has not measured it, and this is not a result in the two-step's favour. #52's
+own findings are untouched.
+✅ **THE FAILURE IS THE LEAD.** Every forced cell carries its donor's distribution exactly and
+preserves rank, so all that is lost is WHICH ABSOLUTE TIME A LINEAGE OCCUPIES FROM ONE GENERATION TO
+THE NEXT — and losing that alone takes retention to zero. Retained ancestry needs **continuity of
+absolute flowering position across generations**, not a distribution of the right shape. Unexplained
+and sharpening it: forced cells' `bloomLineage` is **HIGHER** than the free arms' (0.959/0.965 vs
+0.886/0.877) — relatives co-flower MORE and ancestry still collapses completely.
+➡️ **The crossed design cannot answer #53 and is abandoned. Replacement = SWITCH-TIME ABLATION**
+(premium on for k generations, then off, on the population's own uninterrupted trajectory — nothing
+imposed from outside, so this confound cannot arise). **Open as #54.**
+[detail](2026-09-02-bloom-fixed.md)
+[detail](2026-09-02-bloom-fixed-addendum-prereg.md)
+[detail](2026-09-01-bloom-fixed-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
