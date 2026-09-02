@@ -492,6 +492,51 @@ test it directly. **Open as its own task.**
 [detail](2026-09-01-empty-time.md)
 [detail](2026-08-31-empty-time-prereg.md)
 
+🛑🛑 **#52 RAN THAT TEST DIRECTLY, AND ROADMAP B'S POSITIVE RESTS ON THE PREMIUM (2026-09-01).** Job
+3631, `sim/ibm.js` md5 `9a27e842`, registered in `2026-09-01-rarity-premium-prereg.md` BEFORE
+`phenology.js` had any flag. ⚠️ **The premise was upgraded from analogy to IDENTITY before the run:**
+#51's collapsing cell used `conserveDisplay` and #37 does not, but at `WIDTH=0.12`/`S=8` every plant
+occupies **0 or 1 slices (4.00% / 96.00%)**, so conservation divides by 1 — verified byte-exactly,
+identical in 12/12 seeds with the flag on and off and **differing in 12/12 at `W=0.3`** as the
+positive control. The two runs are ONE configuration.
+✅ **ARM A REPRODUCES #37 EXACTLY** — `HELD` 0.000 / 0.289 / 0.368 / 0.000 / 0.000, `bloomLineage`
+0.886 → 1.000, pool ratio 0.916. The gate that licenses the comparison passes.
+🛑 **ALL FOUR REGISTERED PREDICTIONS PASS ⇒ COLLAPSE.** `narrow·free HELD` **0.289 → 0.026** (P1,
+band ≤0.079); `H-link` +0.368 [0.211, 0.526] → **0/38 vs 0/38** (P2); **`H-pool` +0.289 [0.158,
+0.447] → +0.026 [0.000, 0.079]** (P3 — the contrast that licensed "heritable temporal assortment"
+over "small mating pools"); wide cells **byte-identical 38/38** (P4).
+⚠️⚠️ **THE MECHANISM IS NOT THE ONE REGISTERED, AND MY OWN STATISTIC REFUTED IT.** M2 was registered
+to test "the rare LINEAGE is subsidised" and reads **1.327 in the WIDE cells, where the premium
+cannot operate at all** (every plant in every slice, M1 undefined, wCrowd exactly 1.000) — while the
+narrow control reads **1.291, BELOW that baseline.** Direct subsidy is refuted by its own registered
+statistic. **What the run shows is a TWO-STEP: the premium MAINTAINS THE FLOWERING-TIME
+POLYMORPHISM** (`R1` 0.457 → **0.941**, `R2` 0.368 → 0.849, scattered → CONCENTRATED; co-flowering
+4.743 → 6.366) **and the polymorphism is what assorts.** ⚠️ Post-hoc but decisive as an internal
+control: the season concentrates ONLY where bloom is heritable — the SHUFFLED arm, which has no
+locus to concentrate, does not move (`R1` 0.708 → 0.690).
+✅ **BOTH RIVAL MECHANISMS EXCLUDED.** M1 −0.843 → **+0.001** (the positive control on the ablation
+itself: the premium was real and is gone). H_B needed the CV of visits to RISE; it **FELL** 0.677 →
+0.082. H_C excluded: the excess over what apportionment mathematically entails is **−0.000**, and no
+display-carrying slice went unvisited.
+⚠️⚠️ **THREE OF MY OWN GUARDS WERE WRONG, IN THREE DIFFERENT WAYS.** (a) M3's weighted crowd is
+`1 + CV²(occupancy)` EXACTLY under apportionment — a function of the occupancy distribution, so it
+cannot tell a collapsed season from an ablation that merely ran; caught BEFORE the run and replaced
+by the excess. (b) M2 was contaminated, and **only the wide no-op cells revealed it** — narrow-only
+cells would have read 1.291 as confirmation. (c) The registered gen-0 criterion was MIS-SPECIFIED BY
+ME: it lumped `bloomAssort`, which is read off the transfer matrix and MUST move, in with
+who-flowers-when. Decomposed, `blooms`/`coflower`/`bloomLineage` are **38/38 identical** and only
+`bloomAssort` differs. ⚠️ And the `visits` column is a TRAJECTORY, not a budget (558,474 vs 354,711
+over 35 divergent generations); the budget guard is one step on the same population, where the arms
+match **38/38**.
+⚠️ **#37 IS NOT RETRACTED — every number reproduces.** The claim is rescoped to "temporal assortment
+reaches placement, GIVEN a constant per-slice visit budget", and the imposition runs deeper than
+`WIDTH=0.12`: the mechanism sustaining the flowering-time variation is imposed too.
+⚠️ **THE TWO-STEP IS INFERRED, NOT ISOLATED** — the ablation removes the premium AND, downstream, the
+polymorphism. The clean test re-imposes arm A's realised bloom multiset on the ablated arm each
+generation. **Open as #53.**
+[detail](2026-09-01-rarity-premium.md)
+[detail](2026-09-01-rarity-premium-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
