@@ -229,6 +229,56 @@ const A = byK.get(GENS);
 const B = byK.get(0);
 console.log(`\nseeds founded in every arm: ${kept.length} / ${N_SEEDS}`);
 
+/*
+ * ⚠️ THE PER-SEED TRAJECTORIES ARE WRITTEN OUT BEFORE ANY ANALYSIS RUNS.
+ * The simulation is hours; every statistic below it is milliseconds. Dumping the
+ * raw per-generation `v`, `R1` and `visitsSpent` means a later question about the
+ * estimator — a different window, a different null, the decay-rate form instead
+ * of the level form — costs no compute and, more importantly, is answered on
+ * EXACTLY the run that produced the published numbers rather than on a re-run
+ * that might not reproduce. Written first so an exception in the analysis cannot
+ * cost the run.
+ */
+try {
+  const fs = require("node:fs");
+  const path = process.env.BS_DUMP || "_scratch/bloom-switch-data.json";
+  fs.writeFileSync(
+    path,
+    JSON.stringify({
+      config: {
+        N0,
+        GENS,
+        SITE_N,
+        D_EXCL,
+        SLICES,
+        WIDTH,
+        N_SEEDS,
+        KS,
+        K_PRIMARY,
+      },
+      ibmMd5: "39980f6f0a4b057572e6f9d8c573fe32",
+      arms: Object.fromEntries(
+        KS.map((k) => [
+          k,
+          byK.get(k).map((r) => ({
+            seed: r.seed,
+            fate: r.fate,
+            ancRatio: r.ancRatio,
+            v: r.v,
+            R1: r.R1,
+            spent: r.spent,
+          })),
+        ]),
+      ),
+    }),
+  );
+  console.log(`per-seed trajectories written to ${path}`);
+} catch (e) {
+  /* fail loud — a silently missing dump would be discovered only when it was
+   * needed, which is after the run is gone */
+  console.log(`⚠️ FAILED to write the per-seed dump: ${e.message}`);
+}
+
 /* ---------------------------------------------------------------- the sweep */
 rule("The sweep — HELD against switch time");
 console.log("     k   premium ON for   HELD   ancVar/0   R1(last 5)");
@@ -470,6 +520,33 @@ console.log(
 );
 
 /*
+ * ⚠️⚠️ THE NULL THE `Δ ≈ 0` READING NEEDS, AND WOULD OTHERWISE NOT HAVE.
+ *
+ * Ancestry variance is a STOCK — it accumulates and decays and cannot jump —
+ * while `R1` is recomputed from scratch out of each generation's bloom multiset.
+ * They therefore have different intrinsic inertia REGARDLESS of any causal link
+ * between them, and both are being dragged along by the same common trend as the
+ * run proceeds. That is enough to produce co-movement, and co-movement is
+ * exactly what the THROUGH-THE-POLYMORPHISM branch reads as support. Without a
+ * null, that branch is a control that cannot fail — the same defect that made
+ * #53's C2 structurally blind, arriving by a different route.
+ *
+ * So `Δ` is recomputed with the pairing DELIBERATELY BROKEN: seed i's `ancGap`
+ * against seed σ(i)'s `polyGap`, σ a fixed cyclic shift. Everything shared —
+ * the window, the A→B scale, the generation trend, the inertia asymmetry —
+ * survives the shuffle. Only the seed-specific coupling does not.
+ *
+ * If the real `Δ` sits inside the shuffled `Δ`'s interval, then whatever
+ * co-movement the run shows is the common trend and not a coupling, and NO
+ * two-step reading may be taken from it. Registered before the run.
+ */
+const perm = primary.per.map((p, i) => ({
+  delta: p.ancGap - primary.per[(i + 1) % primary.per.length].polyGap,
+}));
+const ivPerm =
+  primary.per.length >= 3 ? interval(perm.map((p) => p.delta)) : null;
+
+/*
  * ⚠️ THE PRE-REGISTERED FORM IS PRIMARY; ratio-of-sums is a reported robustness
  * check that the verdict does NOT read. It was added expecting it to cut the
  * variance — generations where `SCALE[g]` sits just above `DENOM_FLOOR` should
@@ -487,6 +564,25 @@ const deltasW = primary.per.map((p) => p.deltaW).filter((x) => x != null);
 const ivW = deltasW.length >= 2 ? interval(deltasW) : null;
 console.log(`  Δ  PRIMARY (registered), paired t over seeds  : ${tStr(iv)}`);
 console.log(`  Δ  ratio-of-sums robustness check (not used) : ${tStr(ivW)}`);
+console.log(`  Δ  SEED-SHUFFLED NULL (pairing broken)       : ${tStr(ivPerm)}`);
+/*
+ * ⚠️⚠️ THE COUPLING SHOWS UP IN THE VARIANCE, NOT THE MEAN — comparing the two
+ * means would be the wrong test and would pass on uncoupled data. If `ancGap`
+ * and `polyGap` genuinely track each other WITHIN a seed, their difference is
+ * tighter than it is once the pairing is broken; if both are simply riding the
+ * same common trend, breaking the pairing costs nothing and the two spreads
+ * match. So the statistic is the ratio of spreads.
+ *
+ * `sdRatio ≈ 1` ⇒ no seed-specific coupling ⇒ "ancestry and the polymorphism
+ * move together" is a statement about the shared time trend and NOT about a
+ * relationship between them, and the two-step reading cannot rest on it.
+ */
+const sdRatio = iv && ivPerm && ivPerm.sd > 0 ? iv.sd / ivPerm.sd : null;
+const coupled = sdRatio != null && sdRatio <= 0.8;
+console.log(
+  `  spread ratio sd(real)/sd(shuffled)           : ` +
+    `${sdRatio == null ? "     - " : f3(sdRatio)}  ${coupled ? "COUPLED" : "NOT DISTINGUISHABLE FROM THE COMMON TREND"}`,
+);
 if (iv && iv.n > 2 && Number.isFinite(iv.sd)) {
   /* ⚠️ REPORTED ALWAYS, not only when the run comes out inconclusive — a power
    * statement produced only on the branch where it excuses the outcome is not
@@ -555,6 +651,17 @@ if (K_PRIMARY == null) {
       "  timescale. CONSISTENT WITH #52's two-step, and no more than that: co-movement\n" +
       "  is exactly what #52 already had, and #53 was built to break it apart.",
   );
+  if (!coupled)
+    console.log(
+      "\n  ⚠️⚠️ BUT THE COUPLING NULL IS NOT BEATEN. Breaking the seed pairing costs\n" +
+        `  nothing (spread ratio ${sdRatio == null ? "—" : sdRatio.toFixed(3)}), so ancestry and the polymorphism are\n` +
+        "  NOT shown to track each other within a seed — they are both riding the same\n" +
+        "  common trend after the switch. Ancestry variance is a stock and R1 is\n" +
+        "  recomputed each generation, so they relax at different intrinsic rates with\n" +
+        "  or without any causal link between them. ON THIS OUTPUT THE TWO-STEP READING\n" +
+        "  IS NOT SUPPORTED, and the branch above must be reported as a timescale\n" +
+        "  coincidence rather than as evidence for #52.",
+    );
 } else {
   console.log(
     `  INCONCLUSIVE — Δ's interval straddles the +${DIRECT_BAND} band. The sweep below\n` +

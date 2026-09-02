@@ -214,3 +214,59 @@ on the arm — `foundTwoLineages` is called from the same streams before any ste
 
 The decision bands (`+0.15`, the asymmetry, and which branch carries the burden),
 the three gates, the five controls, and the reading of each branch are unchanged.
+
+---
+
+# Second amendment — the null the `Δ ≈ 0` reading needs
+
+Added before any full run, after an adversarial re-read of the design. The first
+amendment's runs were stopped ten minutes in and discarded; nothing below was
+written with a result in view.
+
+## A6 — ancestry is a stock, `R1` is not, and that alone produces co-movement
+
+`ancestryVar` is a **stock**: it accumulates over generations, decays, and cannot
+jump. `R1` is **recomputed from scratch** out of each generation's realised bloom
+multiset. The two therefore relax at different intrinsic rates **whether or not
+anything couples them**, and after the switch both are dragged along by the same
+common trend.
+
+That is enough to produce co-movement — and co-movement is exactly what the
+THROUGH-THE-POLYMORPHISM branch reads as support. Without a null, **that branch is
+a control that cannot fail**: the same structural defect that made #53's C2 blind,
+reached by a different route. Left unaddressed it would have been the second
+consecutive result resting on a control narrower than the claim it carried.
+
+## A7 — the seed-shuffled null, and why it is a variance test
+
+`Δ` is recomputed with the pairing deliberately broken: seed `i`'s `ancGap`
+against seed `σ(i)`'s `polyGap`, `σ` a fixed cyclic shift. Everything shared
+survives the shuffle — the window, the A→B scale, the generation trend, the
+inertia asymmetry. **Only the seed-specific coupling does not.**
+
+The test is on the **spread, not the mean**. If `ancGap` and `polyGap` really track
+each other within a seed, their difference is tighter than it is once the pairing
+is broken. If both merely ride the common trend, breaking the pairing costs
+nothing and the two spreads match. Comparing the two *means* would be the wrong
+test and would pass on uncoupled data.
+
+    sdRatio = sd(Δ real) / sd(Δ shuffled)
+
+Committed reading: **the THROUGH-THE-POLYMORPHISM branch additionally requires
+`sdRatio ≤ 0.8`.** If the branch is reached with `sdRatio` near 1, the run prints
+the verdict *and* prints that the coupling null was not beaten, and the result is
+to be reported as a **timescale coincidence, not as evidence for #52's two-step**.
+
+Note the asymmetry this creates, and that it is the right way round: the inertia
+bias pushes `Δ` **downward**, so it works *against* DIRECT. A `Δ` above `+0.15`
+despite that bias is strong; a `Δ` near zero is weak, which is what the bands
+already said and now say for a named mechanical reason rather than out of caution.
+
+## A8 — the per-seed trajectories are written out before any analysis runs
+
+Every per-generation `v`, `R1` and `visitsSpent` is dumped to JSON before a single
+statistic is computed. The simulation is hours and the analysis is milliseconds,
+so a later question about the estimator — a different window, a different null,
+the decay-rate form instead of the level form — costs no compute **and is answered
+on exactly the run that produced the published numbers**, rather than on a re-run
+that might not reproduce.
