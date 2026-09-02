@@ -163,11 +163,49 @@ const A = [],
   C = [],
   D = [],
   Aself = [],
-  Bself = [];
+  Bself = [],
+  Ashift = [],
+  Arev = [],
+  Bshift = [];
+
+/* PASS 1 — the two free arms alone. C7 (below) needs a donor drawn from a
+ * DIFFERENT seed, so every free trajectory has to exist before any forced cell
+ * can be built. Nothing else about the 2x2 changes. */
+const free = [];
 for (const s of SEEDS) {
   const a = replicate(s, { dpv: false, donor: null });
   const b = replicate(s, { dpv: true, donor: null });
   if (!a || !b) continue;
+  free.push({ s, a, b });
+}
+
+/* ⚠️ IS THE SHEAR CELL ACTUALLY SHEARED? A donor that happens to equal the
+ * recipient's own trajectory makes C7 a control that cannot fail — it would
+ * "pass" while testing nothing at all. So the fraction of generations on which
+ * the imposed multiset genuinely differs from the one the recipient would have
+ * produced is measured, reported, and gated on. Compared as sorted multisets,
+ * because that is exactly what the rank map consumes. */
+const key = (xs) =>
+  xs
+    ? Array.from(xs)
+        .sort((p, q) => p - q)
+        .join(",")
+    : "";
+const foreignFrac = (donorByGen, ownByGen) => {
+  const n = Math.min(donorByGen.length, ownByGen.length);
+  if (!n) return 0;
+  let k = 0;
+  for (let g = 0; g < n; g++) if (key(donorByGen[g]) !== key(ownByGen[g])) k++;
+  return k / n;
+};
+const shiftForeign = [],
+  revForeign = [];
+
+/* PASS 2 — the forced cells. */
+for (let i = 0; i < free.length; i++) {
+  const { s, a, b } = free[i];
+  /* a different replicate of the SAME arm, cyclically */
+  const other = free[(i + 1) % free.length];
   A.push(a);
   B.push(b);
   /* C: premium removed, A's polymorphism restored. D: premium kept, B's
@@ -185,6 +223,37 @@ for (const s of SEEDS) {
   const bs = replicate(s, { dpv: true, donor: b.bloomsByGen });
   if (as) Aself.push(as);
   if (bs) Bself.push(bs);
+
+  /* ⚠️ C7 — THE SHEAR CELLS. Registered in
+   * docs/2026-09-02-bloom-fixed-addendum-prereg.md after job 3636 returned and
+   * before this code was written.
+   *
+   * C2 CANNOT SEE WHAT THESE SEE. Self-donation sets donor = recipient, which
+   * makes the donor/recipient TRAJECTORY MISMATCH identically zero by
+   * construction — and that mismatch is the one thing that could make forcing
+   * costly. C2 controls the mapping arithmetic and licenses nothing at all
+   * about foreign donors, yet the verdict block gates on it as though it did.
+   *
+   * Every cell here keeps the premium ON and receives an A-type distribution.
+   * Only how foreign the donor trajectory is varies: own (= Aself, shear 0),
+   * another seed of the same arm (shear 1), the same seed run backwards
+   * (shear 2). If the hook is faithful all three reproduce A. If imposing a
+   * foreign trajectory is itself what destroys retained ancestry, they decline
+   * — and C and D then carry no information about the premium whatever. */
+  if (free.length > 1) {
+    const ash = replicate(s, { dpv: false, donor: other.a.bloomsByGen });
+    const bsh = replicate(s, { dpv: true, donor: other.b.bloomsByGen });
+    if (ash) Ashift.push(ash);
+    if (bsh) Bshift.push(bsh);
+    shiftForeign.push(foreignFrac(other.a.bloomsByGen, a.bloomsByGen));
+  }
+  /* same seed, generations reversed: the donor's LAST distribution reaches a
+   * founding population. Maximal trajectory mismatch, identical distribution
+   * family, and it needs no second replicate to exist. */
+  const revDonor = a.bloomsByGen.slice().reverse();
+  const arv = replicate(s, { dpv: false, donor: revDonor });
+  if (arv) Arev.push(arv);
+  revForeign.push(foreignFrac(revDonor, a.bloomsByGen));
 }
 
 rule("THE 2x2");
@@ -293,6 +362,63 @@ console.log(
     `  (of ${GENS} generations; mapped by quantile when they differ)`,
 );
 
+/* C7 — the dose-response in trajectory mismatch. See the block at the shear
+ * cells for why C2 does not cover this. */
+const hAshift = HELD(Ashift),
+  hArev = HELD(Arev),
+  hBshift = HELD(Bshift);
+/* ⚠️ INERTNESS FIRST. A shear cell whose donor equals the recipient's own
+ * trajectory is not a control, it is a copy of Aself wearing a different label,
+ * and it would report PASS while discriminating nothing. */
+const shF = mean(shiftForeign),
+  rvF = mean(revForeign);
+const C7inert = !(shF > 0.5 && rvF > 0.5);
+const C7pass = !C7inert && hAshift >= 0.158 && hArev >= 0.158;
+const C7dead = !C7inert && (hAshift <= 0.079 || hArev <= 0.079);
+console.log(
+  "\n  C7  IS THE HOOK ITSELF DESTRUCTIVE? premium ON, A-type distribution throughout,\n" +
+    "      varying ONLY how foreign the donor trajectory is:",
+);
+console.log(
+  "        shear  cell                                  HELD  ancVar/0 mismatch",
+);
+const c7row = (sh, label, rows) =>
+  console.log(
+    `        ${sh}      ${label.padEnd(34)}${f3(HELD(rows))}${f3(
+      mean(rows.map((r) => r.ancRatio).filter((x) => x != null)),
+    )}${f3(mm(rows))}`,
+  );
+c7row("-", "A   bloom free (reference)", A);
+c7row("0", "Aself  donor = own trajectory", Aself);
+c7row("1", "Ashift donor = arm A, other seed", Ashift);
+c7row("2", "Arev   donor = arm A, reversed", Arev);
+console.log(
+  `        companion: Bshift (premium OFF, donor = arm B other seed) HELD ${f3(hBshift)}` +
+    `  vs B ${f3(HELD(B))}`,
+);
+console.log(
+  `        donor genuinely differs from the recipient's own trajectory in` +
+    ` ${(100 * shF).toFixed(1)}% (shear 1)` +
+    ` and ${(100 * rvF).toFixed(1)}% (shear 2) of generations`,
+);
+console.log(
+  C7inert
+    ? "      ⚠️⚠️ INERT — the shear cells are not sheared. Their donors match what the\n" +
+        "         recipient would have produced anyway, so C7 is a control that cannot\n" +
+        "         fail and discriminates nothing. No verdict is issued."
+    : C7pass
+      ? "      ✅ the hook tolerates trajectory mismatch at BOTH levels while the premium\n" +
+        "         is on, so C and D are not merely instrument artefacts. ⚠️ NECESSARY, NOT\n" +
+        "         SUFFICIENT: these hold the DISTRIBUTION matched and vary only trajectory,\n" +
+        "         while cell C mismatches both."
+      : C7dead
+        ? "      ⚠️⚠️ FAILED — a foreign donor trajectory collapses retained ancestry even\n" +
+          "         with the premium ON and an A-type distribution. The hook destroys what\n" +
+          "         this run measures, C and D are confounded with the instrument, and C2\n" +
+          "         is retracted as insufficient: it could not have detected this."
+        : "      ⚠️ BETWEEN THE BANDS — the instrument is partly confounded.",
+);
+
 /* ---------------------------------------------------- registered predictions */
 rule("PART 3 — the registered predictions");
 const hA = HELD(A),
@@ -325,6 +451,27 @@ if (!C2)
     "  ⚠️⚠️ NO RESULT — C2 failed. Self-donation is not the identity, so the\n" +
       "  forcing perturbs whatever it touches and every difference in C and D is\n" +
       "  confounded with the instrument. No verdict is issued.",
+  );
+else if (C7inert)
+  console.log(
+    "  ⚠️⚠️ NO RESULT — C7 is inert. The shear cells received donors that match\n" +
+      "  what their recipients would have produced anyway, so the control that was\n" +
+      "  supposed to test the instrument could not have failed. Nothing about the\n" +
+      "  hook has been established and no verdict is issued.",
+  );
+else if (C7dead)
+  console.log(
+    "  ⚠️⚠️ NO RESULT — C7 failed. A foreign donor trajectory collapses retained\n" +
+      "  ancestry with the premium still ON, so the forcing hook destroys the very\n" +
+      "  quantity this run measures. Cells C and D are confounded with the\n" +
+      "  instrument and no mechanism may be read off them. #52's mechanism\n" +
+      "  paragraph stands unchallenged, because #53 never managed to test it.\n" +
+      "  Registered in advance in docs/2026-09-02-bloom-fixed-addendum-prereg.md.",
+  );
+else if (!C7pass)
+  console.log(
+    "  ⚠️ NO RESULT — C7 landed between the registered bands, so the instrument is\n" +
+      "  partly confounded and no mechanism is named.",
   );
 else if (!c1 || !c3 || !c5)
   console.log(
