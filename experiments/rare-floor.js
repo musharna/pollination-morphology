@@ -34,6 +34,10 @@ const REPRO_SEEDS = 40;
  * size; 35 at N0=30 keeps the anchor exactly as #55 ran it */
 const gensFor = (N0) => Math.round((35 * N0) / 30);
 
+/* C9 — cf counts OTHER conspecifics and cannot exceed k-1. Counted rather than
+ * thrown so the whole run reports the violation instead of dying mid-cell. */
+let c9violations = 0;
+
 const mean = (xs) =>
   xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 const sd = (xs) => {
@@ -87,6 +91,22 @@ function replicate(seed, N0, arm) {
    * both arms were always GIVEN the same budget; they differ in how much of it
    * the allocation rule CONSUMES. */
   if (arm === "Bx") opts.visitsPerPlant = VPP * 1.574;
+  /*
+   * #57's selfing arms. `rate` is a maternal weight FLOOR, so a plant nobody
+   * visited reproduces almost entirely by selfing (sim/ibm.js:670-701) — which
+   * is reproductive assurance against exactly the mate limitation #56 measured,
+   * and the one intervention that can lift the k=1 floor at all.
+   *
+   * ⚠️ Sn adds `ancNull`, and the pair exists because the TRACER CONVENTION
+   * decides what "the floor lifted" means. Without it a selfed offspring keeps
+   * the mother's `anc` unaveraged and counts as her lineage; with it that `anc`
+   * is averaged against a random individual and the same seed counts as a
+   * hybrid. The S-minus-Sn difference is the artefact, measured.
+   */
+  if (arm === "S") opts.selfing = { rate: 0.5, cost: 0 };
+  if (arm === "Sn") opts.selfing = { rate: 0.5, cost: 0, ancNull: true };
+  /* the realised parentage, for the tracer-INDEPENDENT fitness measure below */
+  opts.logMatings = true;
   const built = I.foundTwoLineages(N0, rng, srng, D_EXCL, opts);
   if (!built) return null;
 
@@ -121,6 +141,9 @@ function replicate(seed, N0, arm) {
       w = null,
       selfShare = null,
       consPC = null,
+      cf = null,
+      wMat = null,
+      minMothered = null,
       minorIs0 = null;
     if (informative) {
       minorIs0 = n0 < n1;
@@ -174,6 +197,55 @@ function replicate(seed, N0, arm) {
         selfShare = tot > 0 ? selfSum / tot : null;
         consPC = consSum / nMin;
       }
+
+      /*
+       * #57 PRIMARY — CO-FLOWERING CONSPECIFICS. For each minority plant, how
+       * many OTHER minority plants have an overlapping flowering window, by the
+       * model's own in-flower predicate. `k` counts the lineage; this counts the
+       * partners it can actually reach, and the two are only the same if the
+       * lineage flowers together.
+       */
+      if (res.blooms) {
+        const counts = [];
+        for (let j = 0; j < labels.length; j++) {
+          if (labels[j] !== minor) continue;
+          let c = 0;
+          for (let i = 0; i < labels.length; i++) {
+            if (i === j || labels[i] !== minor) continue;
+            if (I.ringDist(res.blooms[i], res.blooms[j]) <= WIDTH) c++;
+          }
+          counts.push(c);
+        }
+        cf = mean(counts);
+        /* C9: cf counts OTHER conspecifics, so it cannot exceed k-1. Exceeding
+         * it would mean the predicate is counting the plant itself or reaching
+         * across lineages, and the primary would be measuring neither thing. */
+        if (cf != null && cf > k - 1 + 1e-9) c9violations++;
+      }
+
+      /*
+       * #57 SECONDARY 2 — FITNESS BY THE MOTHER'S LINEAGE, which the `anc`
+       * averaging convention cannot touch. At k=1 the tracer says w=0, but self
+       * share is self/(self + conspecific outcross) and is silent about pollen
+       * from the OTHER lineage: a lone plant may be mothering hybrids. This
+       * separates "she does not reproduce" from "her lineage does not persist",
+       * and it is the only measure that stays meaningful under `ancNull`.
+       */
+      if (res.matings) {
+        let mMin = 0,
+          mMaj = 0;
+        for (const m of res.matings) {
+          const L = labels[m.m];
+          if (L === minor) mMin++;
+          else if (L >= 0) mMaj++;
+        }
+        const wmMaj = mMaj / nMaj;
+        wMat = wmMaj > 0 ? mMin / nMin / wmMaj : null;
+        /* the ABSOLUTE count, because at k=1 the question is not "how does her
+         * rate compare" but "did she reproduce at all", and a ratio of 0 and a
+         * ratio that is undefined look alike in a mean */
+        minMothered = mMin;
+      }
     }
 
     /* the flat budget's lineage-free signature */
@@ -201,6 +273,13 @@ function replicate(seed, N0, arm) {
       p,
       r,
       w,
+      cf,
+      wMat,
+      minMothered,
+      /* C10: an arm that does not actually self would produce a confident null
+       * about selfing. Recorded so the control is data, not an assumption. */
+      selfedN: (res.matings || []).filter((m) => m.selfed).length,
+      matingsN: (res.matings || []).length,
       selfShare,
       consPC,
       crowdCorr,
@@ -225,6 +304,10 @@ const keyOf = (N0, arm) => `${N0}:${arm}`;
 const ALL = [];
 for (const N0 of N0S) for (const arm of ["A", "B"]) ALL.push([N0, arm]);
 ALL.push([30, "Bx"]);
+/* #57's selfing pair, N0=30 only: S lifts the k=1 floor, Sn measures how much of
+ * that lift is the tracer's arithmetic rather than biology */
+ALL.push([30, "S"]);
+ALL.push([30, "Sn"]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
 if (FROM) {
@@ -319,6 +402,53 @@ for (const [N0, arm] of ALL) {
 console.log(
   `  C5 lineage counts exhaust the population: ${c5 ? "PASS" : "FAIL"}`,
 );
+/* C9 is re-derived from the ROWS rather than trusted from the in-process
+ * counter, because a dump loaded with RF_FROM was produced by another process
+ * whose counter is gone. A control that silently reads 0 because nothing counted
+ * is not a control. */
+{
+  let bad = 0,
+    seen = 0;
+  for (const [N0, arm] of ALL) {
+    const key = keyOf(N0, arm);
+    if (!have(key)) continue;
+    for (const rep of out[key])
+      for (const row of rep.rows) {
+        if (!row.informative || row.cf == null) continue;
+        seen++;
+        if (row.cf > row.k - 1 + 1e-9) bad++;
+      }
+  }
+  console.log(
+    `  C9 co-flowering count never exceeds k-1: ` +
+      (seen === 0
+        ? "NO cf RECORDED — not a pass, the primary has no input"
+        : bad === 0
+          ? `PASS (0 violations in ${seen} informative generations)`
+          : `FAIL (${bad} violations in ${seen})`),
+  );
+}
+/* C10 — the selfing arms must actually self, and the others must not. An inert
+ * arm returns a confident null about the intervention it was supposed to make. */
+console.log(`  C10 selfed share of matings (must be 0 in A/B/Bx, > 0 in S/Sn)`);
+for (const [N0, arm] of ALL) {
+  const key = keyOf(N0, arm);
+  if (!have(key)) continue;
+  let s = 0,
+    t = 0;
+  for (const rep of out[key])
+    for (const row of rep.rows) {
+      s += row.selfedN || 0;
+      t += row.matingsN || 0;
+    }
+  const expectSelf = arm === "S" || arm === "Sn";
+  const frac = t > 0 ? s / t : null;
+  const ok = frac == null ? null : expectSelf ? frac > 0.01 : frac === 0;
+  console.log(
+    `     ${key.padEnd(6)} ${frac == null ? "no matings recorded" : (100 * frac).toFixed(2) + "%"}` +
+      `   ${ok == null ? "" : ok ? "PASS" : "FAIL"}`,
+  );
+}
 console.log(
   "  C3 corr(slice crowding, visits) — negative under the premium, ~0 without",
 );
@@ -606,6 +736,185 @@ for (const N0 of N0S) {
     if (ss.length < MIN_OBS) continue;
     console.log(
       `     ${name.padEnd(6)}  ${mean(ss).toFixed(4)}            ${mean(cp).toFixed(2)}                        ${ss.length}`,
+    );
+  }
+}
+
+/* ==========================================================================
+ * #57 PRIMARY — at fixed minority COUNT, does fitness rise with CO-FLOWERING
+ * partners?
+ *
+ * The design filed for #57 compared how well `w` collapses across N0 when binned
+ * by k against by cf. A pre-flight killed it: under the premium cf is about
+ * 0.9(k-1), because the premium drives each lineage into its own bloom slice, so
+ * the two axes are nearly the SAME axis and the comparison would return NO
+ * VERDICT by construction rather than by evidence.
+ *
+ * What survives is the residual spread — sd(cf | k) = 1.72, and at k=11 cf runs
+ * from 2.0 to 10.0 — which lets the question be asked WITHIN a count stratum:
+ * hold k, split on cf, and see whether w moves. Currency is cf if it does,
+ * k if it does not.
+ * ========================================================================== */
+const MIN_STRATUM = 12;
+
+function rowsOf(keys) {
+  const bySeedKey = [];
+  for (const key of keys) {
+    if (!have(key)) continue;
+    for (const rep of out[key])
+      bySeedKey.push(
+        rep.rows.filter(
+          (r) => r.informative && r.w != null && r.cf != null && r.k >= 2,
+        ),
+      );
+  }
+  return bySeedKey; /* one array per seed, so the bootstrap can resample seeds */
+}
+
+function cfEffect(seedGroups) {
+  const all = [];
+  for (const g of seedGroups) for (const r of g) all.push(r);
+  const byK = new Map();
+  for (const r of all) {
+    if (!byK.has(r.k)) byK.set(r.k, []);
+    byK.get(r.k).push(r);
+  }
+  let num = 0,
+    den = 0,
+    strata = 0;
+  for (const [, rows] of byK) {
+    if (rows.length < MIN_STRATUM) continue;
+    const cfs = rows.map((r) => r.cf).sort((a, b) => a - b);
+    const med = cfs[Math.floor(cfs.length / 2)];
+    const hi = rows.filter((r) => r.cf > med).map((r) => r.w);
+    const lo = rows.filter((r) => r.cf <= med).map((r) => r.w);
+    if (hi.length < 3 || lo.length < 3) continue;
+    strata++;
+    num += rows.length * (mean(hi) - mean(lo));
+    den += rows.length;
+  }
+  return { d: den > 0 ? num / den : null, strata };
+}
+
+function mb32(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const qq = (xs, p) => {
+  const s = xs.slice().sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.max(0, Math.round(p * (s.length - 1))))];
+};
+
+console.log(
+  `\n#57 PRIMARY — at fixed k, does w rise with co-flowering partners cf?`,
+);
+console.log(
+  `  registered: CI excludes 0 above -> cf is a currency beyond k; CI contains 0 with`,
+);
+console.log(
+  `  half-width < 0.15 -> k alone suffices; CI contains 0 and wider -> NO VERDICT.`,
+);
+for (const [label2, keys] of [
+  ["arm A, all N0 pooled", N0S.map((n) => keyOf(n, "A"))],
+  ["arm A, N0=30 only", [keyOf(30, "A")]],
+  ["arm A, N0=60 only", [keyOf(60, "A")]],
+  ["arm B, N0=30", [keyOf(30, "B")]],
+]) {
+  const groups = rowsOf(keys);
+  if (!groups.length) continue;
+  const pt = cfEffect(groups);
+  if (pt.d == null || pt.strata < 4) {
+    console.log(
+      `  ${label2.padEnd(22)} UNESTIMABLE — ${pt.strata} usable k strata (need 4). ` +
+        `A stratified statistic over fewer is not reported.`,
+    );
+    continue;
+  }
+  const rnd = mb32(20260903);
+  const boot = [];
+  for (let b = 0; b < 2000; b++) {
+    const rs = [];
+    for (let i = 0; i < groups.length; i++)
+      rs.push(groups[(rnd() * groups.length) | 0]);
+    const e = cfEffect(rs);
+    if (e.d != null && e.strata >= 4) boot.push(e.d);
+  }
+  const lo = qq(boot, 0.025),
+    hi = qq(boot, 0.975);
+  const half = (hi - lo) / 2;
+  const verdict =
+    lo > 0
+      ? "cf IS a currency beyond k"
+      : hi < 0
+        ? "cf NEGATIVE — unregistered direction, reported not interpreted"
+        : half < 0.15
+          ? "k ALONE SUFFICES (informative null)"
+          : "NO VERDICT — underpowered";
+  console.log(
+    `  ${label2.padEnd(22)} d = ${pt.d.toFixed(4)}  [${lo.toFixed(4)}, ${hi.toFixed(4)}]` +
+      `  half-width ${half.toFixed(4)}  ${pt.strata} strata  ->  ${verdict}`,
+  );
+}
+
+/* the named fallback reading, structural and independent of w entirely */
+console.log(
+  `\n#57 FALLBACK READING — cf/(k-1): does the PREMIUM make census count equal partner count?`,
+);
+for (const [N0, arm] of ALL) {
+  const key = keyOf(N0, arm);
+  if (!have(key)) continue;
+  const xs = [];
+  for (const rep of out[key])
+    for (const r of rep.rows)
+      if (r.informative && r.cf != null && r.k >= 2) xs.push(r.cf / (r.k - 1));
+  if (xs.length < 20) continue;
+  console.log(
+    `  ${key.padEnd(6)} mean cf/(k-1) = ${mean(xs).toFixed(3)}  (n=${xs.length} generations)`,
+  );
+}
+
+/* SECONDARY 2 — is a lone plant sterile, or just not perpetuating her lineage? */
+console.log(
+  `\n#57 SECONDARY 2 — fitness by the MOTHER's lineage (tracer-independent) vs by the tracer`,
+);
+console.log(
+  `  ⚠️ wMat equals w wherever nothing blends — an offspring's own label IS its`,
+);
+console.log(
+  `  mother's unless a cross happened. It earns its place at k=1, where it says`,
+);
+console.log(
+  `  whether the lone plant mothered ANYTHING (hybrids included) or nothing at all.`,
+);
+console.log(
+  `  cell     k     w (tracer)     wMat (by mother)   offspring mothered   n`,
+);
+for (const [N0, arm] of ALL) {
+  const key = keyOf(N0, arm);
+  if (!have(key)) continue;
+  for (const k of [1, 2, 3]) {
+    const ws = [],
+      wm = [],
+      mo = [];
+    for (const rep of out[key])
+      for (const r of rep.rows) {
+        if (!r.informative || r.k !== k) continue;
+        if (r.w != null) ws.push(r.w);
+        if (r.wMat != null) wm.push(r.wMat);
+        if (r.minMothered != null) mo.push(r.minMothered);
+      }
+    if (!ws.length && !wm.length) continue;
+    console.log(
+      `  ${key.padEnd(6)}  ${k}    ${ws.length ? mean(ws).toFixed(4) : "  —  "}         ` +
+        `${wm.length ? mean(wm).toFixed(4) : "  —  "}            ` +
+        `${mo.length ? mean(mo).toFixed(3).padStart(8) : "    —   "}         ` +
+        `${Math.max(ws.length, wm.length)}`,
     );
   }
 }
