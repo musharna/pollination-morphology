@@ -397,6 +397,38 @@ function table(field, bins, byCount, arm) {
   }
 }
 
+/*
+ * THE SPEND-MATCHED COMPARISON, at N0=30 only. All three arms there share a
+ * population size, so they can be put side by side: A has the premium, B does
+ * not, and Bx does not but is handed enough extra budget that its realised SPEND
+ * matches A's. If A's advantage were really about delivering more visits rather
+ * than about allocating them differently, Bx would look like A.
+ */
+function armsAt30(field, bins, byCount) {
+  const arms = ["A", "B", "Bx"];
+  if (!arms.every((a) => have(keyOf(30, a)))) return;
+  console.log(
+    `\n  ${field === "w" ? "fitness ratio w" : "visit ratio r"} by minority ${byCount ? "COUNT" : "FREQUENCY"}, N0=30, all three arms`,
+  );
+  console.log(`    bin        ` + arms.map((a) => `${a.padEnd(15)}`).join(""));
+  for (const [lo, hi, name] of bins) {
+    const cs = arms.map((a) => cells(keyOf(30, a), field, lo, hi, byCount));
+    if (!cs.some((c) => c.length)) continue;
+    console.log(
+      `    ${name.padEnd(10)} ` +
+        cs
+          .map((c) => {
+            const m = mean(c);
+            return (
+              (m == null ? "  —  " : m.toFixed(3)) +
+              ` (${String(c.length).padStart(3)})  `
+            );
+          })
+          .join(""),
+    );
+  }
+}
+
 /* ---- primary: which axis collapses the three curves */
 const MIN_OBS = 5;
 const MIN_BINS = 4;
@@ -420,12 +452,69 @@ function dispersion(bins, byCount, arm) {
   return { shared, D: mean(sds) / scale, scale };
 }
 
+/*
+ * AN INTERVAL ON THE RATIO, not just a point. The registered thresholds are 1.25
+ * and 0.80 and a point estimate landing outside them says nothing about how
+ * firmly. Seeds are resampled WITHIN each cell — a seed is one trajectory and
+ * its generations are not independent draws, so resampling generations would
+ * understate the spread the way it would have in #55.
+ */
+function mulberry32(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function bootstrapRatio(arm, nb) {
+  const rnd = mulberry32(20260903);
+  const orig = {};
+  for (const n of N0S) orig[keyOf(n, arm)] = out[keyOf(n, arm)];
+  const ratios = [];
+  for (let b = 0; b < nb; b++) {
+    for (const n of N0S) {
+      const key = keyOf(n, arm);
+      const src = orig[key];
+      const res = [];
+      for (let i = 0; i < src.length; i++)
+        res.push(src[(rnd() * src.length) | 0]);
+      out[key] = res;
+    }
+    const dk = dispersion(K_BINS, true, arm);
+    const dp = dispersion(P_BINS, false, arm);
+    if (dk.D != null && dp.D != null && dk.D > 0) ratios.push(dp.D / dk.D);
+  }
+  for (const n of N0S) out[keyOf(n, arm)] = orig[keyOf(n, arm)];
+  return ratios;
+}
+const quant = (xs, p) => {
+  const s = xs.slice().sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.max(0, Math.round(p * (s.length - 1))))];
+};
+
 for (const arm of ["A", "B"]) {
   if (!N0S.every((n) => have(keyOf(n, arm)))) continue;
   table("w", K_BINS, true, arm);
   table("w", P_BINS, false, arm);
 }
 table("r", K_BINS, true, "A");
+armsAt30("r", K_BINS, true);
+armsAt30("w", K_BINS, true);
+{
+  const h = (a) => {
+    const v = HELD(keyOf(30, a));
+    return v == null ? "—" : v.toFixed(3);
+  };
+  if (have(keyOf(30, "Bx")))
+    console.log(
+      `\n  HELD at N0=30 (seeds 1..${REPRO_SEEDS}):  A ${h("A")}   B ${h("B")}   Bx ${h("Bx")}` +
+        `\n  Bx is arm B handed enough budget to SPEND what arm A spends. If A's advantage were` +
+        `\n  about the number of visits delivered rather than their allocation, Bx would match A.`,
+    );
+}
 
 console.log(
   `\nPRIMARY — does w collapse on COUNT or on FREQUENCY? (arm A; >1.25 count, <0.80 frequency)`,
@@ -452,9 +541,19 @@ for (const arm of ["A", "B"]) {
       : ratio < 0.8
         ? "FREQUENCY"
         : "NO VERDICT (0.80-1.25)";
+  const boot = bootstrapRatio(arm, 2000);
+  const lo = boot.length ? quant(boot, 0.025) : null;
+  const hi = boot.length ? quant(boot, 0.975) : null;
+  const pCount = boot.length
+    ? boot.filter((x) => x > 1.25).length / boot.length
+    : null;
   console.log(
     `  arm ${arm}: D_count=${dk.D.toFixed(3)} (${dk.shared} bins)  D_freq=${dp.D.toFixed(3)} (${dp.shared} bins)  ` +
-      `ratio D_p/D_k = ${ratio.toFixed(3)}  ->  ${verdict}`,
+      `ratio D_p/D_k = ${ratio.toFixed(3)}  ->  ${verdict}` +
+      (lo != null
+        ? `\n          bootstrap over seeds: [${lo.toFixed(3)}, ${hi.toFixed(3)}], ` +
+          `P(ratio > 1.25) = ${pCount.toFixed(3)}  (n=${boot.length}/2000 resamples estimable)`
+        : ``),
   );
 }
 

@@ -664,6 +664,50 @@ explanation head-on.
 [detail](2026-09-02-rare-advantage.md)
 [detail](2026-09-02-rare-advantage-prereg.md)
 
+✅✅ **#56 ANSWERS IT: THE FLOOR IS A COUNT, AND A LINEAGE OF ONE HAS ZERO FITNESS AT EVERY
+POPULATION SIZE (2026-09-03).** N0 in {20, 30, 60}, 38 founded of 40 seeds per cell, per-plant
+service held constant with `visitsPerPlant=800` — which is a VERIFIED no-op at N0=30 (10/10
+seed-arms bit-identical in ancestry and spend) and verified NOT inert at N0=60 (48000 vs 24000),
+so the N0=30 cell is a byte-level anchor. ✅ **C1 0.289 and C2 0.026 both reproduce, and C8 — the
+#43 guard — finds this file's independent `w`/`r` identical to #55's across 665 generation rows
+to 1e-12**, failing with exit 3 on a single value perturbed by 1e-9.
+
+⚠️⚠️ **THE DECISIVE FACT NEEDS NO STATISTIC. At k=1 the minority's fitness is EXACTLY 0.000, its
+self-pollen share EXACTLY 1.0000 and its conspecific outcross receipt EXACTLY 0.00 — at all three
+N0, in both arms.** Those cells span a THREE-FOLD range of frequency (0.050 / 0.033 / 0.017) and
+give an identical outcome; at matched FREQUENCY 0.05-0.10 the same quantity reads 0.000 / 0.734 /
+1.204. A lone plant has no conspecific partner, so every grain it receives is its own. **#55's
+suggested geitonogamy explanation is CONFIRMED BY DIRECT MEASUREMENT** — self share falls 1.00 ->
+0.68 -> 0.51 -> 0.40 -> 0.32 as k goes 1,2,3,4,6, and collapses on COUNT across N0. (57% of all
+pollen this model moves is self-pollen even at parity.)
+
+The registered collapse statistic agrees — ratio D_p/D_k = **1.647 arm A, 1.352 arm B**, both over
+the 1.25 COUNT threshold independently — and so do the crossings: **k\* = 2.04 / 2.79 / 2.22 (CV
+0.17) against p\* = 0.102 / 0.097 / 0.040 (CV 0.43)**, the count axis ~2.6x more consistent.
+⚠️ **BUT A POST-HOC BOOTSTRAP SHOWS THE COLLAPSE RATIO IS SOFT: arm A [0.608, 2.700], P(>1.25) =
+0.70.** The registered procedure returns COUNT; the ratio ALONE does not exclude frequency, and the
+verdict rests on the k=1 structural result and the crossing consistency instead. ⚠️ N0=20 and 30
+give nearly the same p\* (0.102, 0.097) — **the discrimination rests substantially on the single
+N0=60 cell.**
+
+✅ **AND IT CLOSES #55's SPEND CONFOUND.** Arm Bx is arm B handed enough budget to SPEND what arm A
+spends (16,236 vs 15,956, within 2%). Its visit ratio is **flat at ~1.0 exactly like B** (1.029 /
+1.033 / 1.026 at k=1,2,3 against A's 4.587 / 2.939 / 2.348), its crowding correlation +0.033 like
+B's +0.017 rather than A's -0.431, and **HELD reads A 0.289, B 0.026, Bx 0.000** — the extra budget
+does not help coexistence at all. **The advantage is the ALLOCATION RULE, not the number of visits.**
+⚠️ #55's own statement of that limitation was imprecise: both arms were always GIVEN 24,000; they
+differ in how much of it the rule CONSUMES.
+
+➡️ **WHAT THIS OPENS.** Coexistence under this mechanism has a HARD MINIMUM in absolute numbers —
+about 2 to 3 plants here — below which no amount of preferential visitation helps, and **scaling the
+whole community up does not scale the floor with it**. That is a different shape of prediction from
+anything earlier in this arc: the protection is NOT density-independent, and a large community and a
+small one fail in the same absolute place. ⚠️ Untested and the obvious next lever: **selfing is off**
+(`selfing: null`), so a lone plant's own pollen produces nothing; any selfing at all would soften the
+k=1 floor, and by how much is unmeasured.
+[detail](2026-09-03-rare-floor.md)
+[detail](2026-09-03-rare-floor-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
