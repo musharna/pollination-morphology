@@ -1882,6 +1882,27 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
       : u;
     return child;
   };
+  /*
+   * ⚠️ OBSERVATION ONLY. The realized (mother, father) of every offspring, null
+   * unless opts.logMatings asked for it — same gating as visitLog, so the
+   * default path allocates nothing and draws no random numbers. Nothing in the
+   * generation reads it back.
+   *
+   * WHY IT EXISTS. `anc` is the parental MEAN, so ancestry variance obeys an
+   * exact identity: V(t+1) = (Var(X) + Var(Y) + 2 Cov(X,Y)) / 4 over the
+   * realized mothers X and fathers Y. That splits the loss of ancestry variance
+   * into a parent-sampling term and an ASSORTMENT term, exactly rather than by
+   * fitting — which is what tasks #52-#54 kept trying to infer from trajectory
+   * shape and could not.
+   *
+   * ⚠️ WHAT IT ACTUALLY ESTABLISHED, which was not what it was added for: in the
+   * phenology configuration #52-#54 use, only 2 of 39,900 matings joined parents
+   * that differed in ancestry. The tracer is effectively a two-valued LINEAGE
+   * LABEL, so ancestry variance falls by EXCLUSION, not by blending, and no
+   * mating correlation on ancestry is estimable. See
+   * docs/2026-09-02-rare-advantage-prereg.md.
+   */
+  let matings = opts.logMatings ? [] : null;
   while (next.length < target) {
     // ---- parentage from the transfer matrix ----
     /*
@@ -1922,8 +1943,12 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
        * inflates ancestry variance — and HELD with it — for reasons that are
        * arithmetic rather than biological. ancNull restores the averaging
        * against a random individual so the inflation can be measured. */
+      /* hoisted so the pairing can be RECORDED. The draw stays inside the
+       * ancNull branch, so with the null off no random number is consumed and
+       * the stream is bit-identical to every run published before this. */
+      const partner = S.ancNull ? Math.floor(rng() * n) : mother;
       const anc = S.ancNull
-        ? ((pop[mother].anc || 0) + (pop[Math.floor(rng() * n)].anc || 0)) / 2
+        ? ((pop[mother].anc || 0) + (pop[partner].anc || 0)) / 2
         : pop[mother].anc || 0;
       next.push(
         withPos(
@@ -1935,6 +1960,9 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
           mother,
         ),
       );
+      /* f === mother reproduces `anc` exactly under the identity, since
+       * (anc_m + anc_m)/2 === anc_m; under ancNull it is the random partner. */
+      if (matings) matings.push({ m: mother, f: partner, selfed: true });
       return true;
     };
 
@@ -1989,6 +2017,7 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
         mother,
       ),
     );
+    if (matings) matings.push({ m: mother, f: father, selfed: false });
   }
 
   return {
@@ -2005,6 +2034,9 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
     signals,
     /* null unless opts.logBout asked for it — the sampled bout, for drawing. */
     visitLog,
+    /* null unless opts.logMatings asked for it — the realized parentage, for the
+     * exact ancestry-variance decomposition. See the declaration. */
+    matings,
     sites,
     target,
     recruits: next.length,
