@@ -33,10 +33,19 @@ const floor = load(floorPath);
 const ref = load(refPath);
 
 const mine = floor.cells["30:A"] || [];
-const theirs = ref.arms.A || [];
+/* deliberately arm A only: C8 anchors the N0=30 PREMIUM cell, which is the one
+ * bit-identical to #55's arm A. Pointing this at another arm's dump finds
+ * nothing rather than disagreeing, so the message has to say so out loud. */
+const theirs = (ref.arms && ref.arms.A) || [];
 if (!mine.length || !theirs.length) {
   console.error(
-    `nothing to compare: #56 30:A has ${mine.length} seeds, #55 arm A has ${theirs.length}`,
+    `nothing to compare — THIS IS NOT A PASS:\n` +
+      `  ${floorPath} cell 30:A has ${mine.length} seeds\n` +
+      `  ${refPath} arm A has ${theirs.length} seeds` +
+      (theirs.length === 0
+        ? `\n  (arm A is empty in the reference. This tool anchors cell 30:A against #55's\n` +
+          `   ARM A specifically; it does not compare other arms, so a wrong dump lands here.)`
+        : ``),
   );
   process.exit(2);
 }
