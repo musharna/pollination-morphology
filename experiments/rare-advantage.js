@@ -267,40 +267,63 @@ function replicate(seed, arm) {
  */
 const ARMS = ["A", "B", "RM"];
 const out = {};
+for (const arm of ARMS) out[arm] = [];
+
+/* RA_FROM takes ONE OR MORE dumps, comma-separated, and merges their arms — so
+ * arms run as separate jobs can be reported together. */
 const FROM = process.env.RA_FROM || null;
 if (FROM) {
-  const loaded = JSON.parse(fs.readFileSync(FROM, "utf8"));
-  for (const arm of ARMS) out[arm] = loaded.arms[arm] || [];
+  for (const f of FROM.split(",")) {
+    const loaded = JSON.parse(fs.readFileSync(f.trim(), "utf8"));
+    for (const arm of ARMS)
+      if (loaded.arms[arm] && loaded.arms[arm].length)
+        out[arm] = out[arm].concat(loaded.arms[arm]);
+  }
   process.stderr.write(
     `re-reporting from ${FROM}: ` +
       ARMS.map((a) => `${a}=${out[a].length} seeds`).join(", ") +
       `\n`,
   );
 }
-for (const arm of FROM ? [] : ARMS) {
+
+/* RA_ARMS runs a SUBSET of the arms. Each arm is ~11 minutes at 40 seeds, which
+ * fits comfortably inside a background job's lifetime; all three together do
+ * not, and were killed twice. */
+const RUN_ARMS = process.env.RA_ARMS
+  ? process.env.RA_ARMS.split(",").map((x) => x.trim())
+  : ARMS;
+
+function writeDump(tag) {
+  if (!DUMP) return;
+  fs.writeFileSync(
+    DUMP,
+    JSON.stringify({
+      config: { N0, GENS, SITE_N, D_EXCL, SLICES, WIDTH, N_SEEDS },
+      arms: out,
+    }),
+  );
+  process.stderr.write(`  ${tag} dump updated: ${DUMP}\n`);
+}
+
+/*
+ * ⚠️ THE DUMP IS WRITTEN EVERY FEW SEEDS, NOT ONCE AN ARM FINISHES. Writing it
+ * per arm was already an improvement on writing it once at the end, and it was
+ * still not enough: the second attempt was killed at arm B seed 37 of 40 and
+ * lost the whole arm, because nothing had been written for it yet. A kill now
+ * costs at most DUMP_EVERY seeds.
+ */
+const DUMP_EVERY = 5;
+for (const arm of FROM ? [] : RUN_ARMS) {
   out[arm] = [];
   for (let s = 1; s <= N_SEEDS; s++) {
     const rep = replicate(s, arm);
     if (rep) out[arm].push(rep);
-    /* ⚠️ PROGRESS ON STDERR, AND THE DUMP WRITTEN PER ARM. A 40-seed run is ~44
-     * minutes and the first version printed nothing until every arm was done, so
-     * when it was killed at its timeout it left an empty log and no dump — three
-     * quarters of an hour of compute with nothing to show. Progress goes to
-     * stderr so it never mixes into the report on stdout. */
     process.stderr.write(
       `  [${arm}] seed ${s}/${N_SEEDS} founded=${out[arm].length}\n`,
     );
+    if (s % DUMP_EVERY === 0) writeDump(`[${arm}] seed ${s}:`);
   }
-  if (DUMP) {
-    fs.writeFileSync(
-      DUMP,
-      JSON.stringify({
-        config: { N0, GENS, SITE_N, D_EXCL, SLICES, WIDTH, N_SEEDS },
-        arms: out,
-      }),
-    );
-    process.stderr.write(`  [${arm}] arm complete, dump updated: ${DUMP}\n`);
-  }
+  writeDump(`[${arm}] arm complete:`);
 }
 
 /* ------------------------------------------------------------- the primary
@@ -524,6 +547,95 @@ for (const [lo, hi] of BINS) {
     return m == null
       ? "     —      "
       : `${m.toFixed(3)} (n=${String(xs.length).padStart(4)})`;
+  };
+  console.log(
+    `    ${lo.toFixed(1)}-${hi.toFixed(1)}  ${cell("A")}  ${cell("B")}  ${cell("RM")}`,
+  );
+}
+
+/*
+ * THE RESTORING FORCE ITSELF, with no ratio anywhere in it. For each generation
+ * that still has both lineages, take the MINORITY lineage and follow THAT SAME
+ * lineage into the next generation: E[dp | p]. A protective mechanism shows up
+ * as dp > 0 where the minority is rare — a restoring force pushing it back up —
+ * and a floor shows up as dp turning NEGATIVE below some frequency. This is what
+ * governs whether a lineage is lost, and unlike P(w>1) or mean w it involves no
+ * ratio, so it cannot be argued about on the grounds of which summary was used.
+ */
+console.log(
+  "\n  mean change in minority frequency, E[dp | p], by frequency bin",
+);
+console.log("    p bin      arm A              arm B              arm RM");
+for (const [lo, hi] of BINS) {
+  const cell = (arm) => {
+    const xs = [];
+    for (const rep of out[arm])
+      for (let k = 0; k + 1 < rep.rows.length; k++) {
+        const a = rep.rows[k],
+          b = rep.rows[k + 1];
+        if (!a.informative || a.p == null) continue;
+        if (a.p < lo || a.p >= hi) continue;
+        const tot0 = a.n0 + a.n1,
+          tot1 = b.n0 + b.n1;
+        if (!tot0 || !tot1) continue;
+        const minorIs0 = a.n0 < a.n1;
+        const p0 = (minorIs0 ? a.n0 : a.n1) / tot0;
+        const p1 = (minorIs0 ? b.n0 : b.n1) / tot1;
+        xs.push(p1 - p0);
+      }
+    const m = mean(xs);
+    return m == null
+      ? "      —       "
+      : `${(m >= 0 ? "+" : "") + m.toFixed(4)} (n=${String(xs.length).padStart(4)})`;
+  };
+  console.log(
+    `    ${lo.toFixed(1)}-${hi.toFixed(1)}  ${cell("A")}  ${cell("B")}  ${cell("RM")}`,
+  );
+}
+
+/*
+ * ⚠️ THE SAME FORCE WITHOUT THE SELECTION BIAS. The table above picks whichever
+ * lineage is CURRENTLY the minority, and a type selected for being below average
+ * regresses back toward it — which biases E[dp] UPWARD wherever the label was
+ * assigned by chance. The floor survives that (the bias pushes against a
+ * negative reading) but a modest positive above it does not.
+ *
+ * So here the SAME lineage — lineage 0, whether it happens to be common or rare
+ * — is followed across the whole frequency range. No selection on current state,
+ * therefore no regression artefact. Negative frequency dependence is a NEGATIVE
+ * SLOPE through 0.5: lineage 0 gains when it is rare and loses when it is
+ * common, symmetrically.
+ */
+console.log(
+  "\n  E[dp] for a FIXED lineage (no minority selection, so no regression bias)",
+);
+console.log("    p(lin 0)   arm A              arm B              arm RM");
+for (let b = 0; b < 10; b++) {
+  const lo = b / 10,
+    hi = (b + 1) / 10;
+  const cell = (arm) => {
+    const xs = [];
+    for (const rep of out[arm])
+      for (let k = 0; k + 1 < rep.rows.length; k++) {
+        const a = rep.rows[k],
+          c = rep.rows[k + 1];
+        const t0 = a.n0 + a.n1,
+          t1 = c.n0 + c.n1;
+        if (!t0 || !t1) continue;
+        /* ⚠️ ABSORBED STATES CARRY NO FORCE AND MUST NOT DILUTE ONE. Once a
+         * lineage is gone, p is pinned at 0 or 1 and dp is identically 0
+         * forever. Left in, they made the lowest bin read -0.0007 over n=321 of
+         * which almost all were already-lost runs contributing a hard zero. */
+        if (!a.informative) continue;
+        const p0 = a.n0 / t0;
+        if (p0 <= 0 || p0 >= 1) continue;
+        if (p0 < lo || p0 >= hi) continue;
+        xs.push(c.n0 / t1 - p0);
+      }
+    const m = mean(xs);
+    return m == null
+      ? "      —       "
+      : `${(m >= 0 ? "+" : "") + m.toFixed(4)} (n=${String(xs.length).padStart(4)})`;
   };
   console.log(
     `    ${lo.toFixed(1)}-${hi.toFixed(1)}  ${cell("A")}  ${cell("B")}  ${cell("RM")}`,
