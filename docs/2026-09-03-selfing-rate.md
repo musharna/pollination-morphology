@@ -110,13 +110,30 @@ the lineage frequency and there is no averaging for selfing to skip. The inflati
 about needs blending to suppress, and there is under 1% of it — decreasing with rate, since
 selfing reduces outcrossing.
 
-⚠️ **`ancNull` is NOT a clean null here, and #57's numbers show why.** At rate 0.5 it takes HELD
-from 0.289 to **0.000** — not because it removes an inflation but because it _manufactures_
-hybrids: a selfed offspring's `anc` averaged against a random individual is scored an admixture,
-so at 33% selfing a third of each generation stops counting as either lineage and the pure
-counts collapse. It changes the trajectory, not just the accounting. This confirms the caveat
-#57 attached to it rather than contradicting it, and it is why the artefact is sized by the
-hybrid-share table above instead.
+⚠️ **`ancNull` is NOT a clean null — measured directly, at the one rate where coexistence moved.**
+The registered control arm (rate 2.0 plus `ancNull`, 109 founded seeds):
+
+| quantity                 | rate 2.0       | rate 2.0 + `ancNull` |
+| ------------------------ | -------------- | -------------------- |
+| selfed share of matings  | 66.84%         | 66.58%               |
+| hybrid plant-generations | **0.18%**      | **93.74%**           |
+| HELD, all seeds          | 0.404 (44/109) | **0.000** (0/109)    |
+| k=1 offspring mothered   | 0.580          | **0.857**            |
+| k=1 tracer `w`           | 0.599          | **0.000**            |
+
+Selfing is identical in the two arms — 66.6% against 66.8% — so every other difference is the
+tracer convention alone. `ancNull` converts **94% of plant-generations into hybrids**, which is
+not netting out an inflation but destroying the quantity being measured: with almost no
+pure-lineage plants left, HELD is 0 by construction.
+
+⚠️⚠️ **At k = 1 this is starker than #57's factor of seven.** Those plants mother **0.857**
+offspring — _more_ than the 0.580 of the arm without `ancNull` — while the tracer reports
+**exactly 0.000**. Same plants, same seed set, one convention apart.
+
+So the HELD rise at rate 2.0 **cannot** be netted against this arm. The inflation `ancNull`
+exists to size is instead ruled out directly by the hybrid-share table above — under 1%, and
+falling with rate. This confirms the caveat #57 attached to `ancNull` rather than contradicting
+it.
 
 ## Shape — unresolved, as the pre-registration allows
 

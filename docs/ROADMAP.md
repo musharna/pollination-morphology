@@ -773,10 +773,14 @@ the floor** — lifting the floor is not the same as rescuing coexistence.
 `sim/ibm.js:696` warns a selfed offspring inherits `anc` UNAVERAGED, inflating ancestry variance and
 HELD BY CONSTRUCTION. It does not bite here: hybrids are **0.18-0.92% of plant-generations in every
 cell and DECREASE with rate**, so `anc` stays two-valued, ancVar is just p(1-p), and there is no
-averaging for selfing to skip. ⚠️ **`ancNull` is NOT a clean null** — at rate 0.5 it takes HELD from
-0.289 to **0.000**, not by removing an inflation but by MANUFACTURING hybrids (a third of each
-generation stops counting as either lineage). It changes the trajectory, not the accounting, exactly
-as #57 cautioned.
+averaging for selfing to skip. ⚠️⚠️ **`ancNull` IS NOT A CLEAN NULL, MEASURED DIRECTLY at the rate where coexistence moved.** The
+registered control (rate 2.0 + ancNull, 109 founded) selfs identically to its partner — 66.58% vs
+66.84% — so every other difference is the CONVENTION: it converts **93.74% of plant-generations into
+hybrids** (against 0.18%), which drives HELD to **0.000** by construction rather than by netting out
+an inflation. **At k=1 those plants mother 0.857 offspring — MORE than the 0.580 of the arm without
+it — while the tracer reports EXACTLY 0.000.** Starker than #57's factor of seven; same plants, same
+seed, one convention apart. So the HELD rise CANNOT be netted against this arm, and the inflation is
+ruled out instead by the hybrid share.
 
 ⚠️ **A CONTROL OF MINE CRIED WOLF.** C10's predicate listed only the arms named `S`/`Sn`, so the four
 `R*` rate cells were scored FAIL while selfing at precisely the rates asked for. **A control that
