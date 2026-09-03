@@ -771,11 +771,18 @@ function rowsOf(keys) {
   return bySeedKey; /* one array per seed, so the bootstrap can resample seeds */
 }
 
-function cfEffect(seedGroups) {
+/* `field` defaults to w, the registered primary. Running the SAME statistic on
+ * `r` diagnoses an unregistered sign rather than leaving it unexplained: under a
+ * flat per-slice budget, minority plants that co-flower more tightly occupy
+ * fewer slices, so fewer slices draw a full allowance for them. If the negative
+ * effect on fitness is that crowding, it must show up in visits first. */
+function cfEffect(seedGroups, field) {
+  const f = field || "w";
   const all = [];
   for (const g of seedGroups) for (const r of g) all.push(r);
   const byK = new Map();
   for (const r of all) {
+    if (r[f] == null) continue;
     if (!byK.has(r.k)) byK.set(r.k, []);
     byK.get(r.k).push(r);
   }
@@ -786,8 +793,8 @@ function cfEffect(seedGroups) {
     if (rows.length < MIN_STRATUM) continue;
     const cfs = rows.map((r) => r.cf).sort((a, b) => a - b);
     const med = cfs[Math.floor(cfs.length / 2)];
-    const hi = rows.filter((r) => r.cf > med).map((r) => r.w);
-    const lo = rows.filter((r) => r.cf <= med).map((r) => r.w);
+    const hi = rows.filter((r) => r.cf > med).map((r) => r[f]);
+    const lo = rows.filter((r) => r.cf <= med).map((r) => r[f]);
     if (hi.length < 3 || lo.length < 3) continue;
     strata++;
     num += rows.length * (mean(hi) - mean(lo));
@@ -917,4 +924,50 @@ for (const [N0, arm] of ALL) {
         `${Math.max(ws.length, wm.length)}`,
     );
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * DIAGNOSING THE UNREGISTERED SIGN. The primary came back NEGATIVE in arm A: at
+ * fixed k, minority lineages whose plants co-flower MORE have slightly LOWER
+ * fitness. That is the opposite of a mate-limitation effect, so it is not
+ * interpreted as one — but leaving a sign unexplained is worse than testing the
+ * obvious mechanism against it.
+ *
+ * Under a flat per-slice budget the visits in a slice are shared among whoever
+ * flowers there, so a minority packed into ONE slice has fewer slices drawing a
+ * full allowance for it. If the fitness effect is that crowding rather than
+ * anything about mating, the same statistic on the VISIT ratio must be negative
+ * too — and it must be ABSENT in arm B, which has no flat budget to crowd.
+ * ------------------------------------------------------------------------- */
+console.log(
+  `\n#57 DIAGNOSTIC (post-hoc, labelled as such) — the same statistic on the VISIT ratio r`,
+);
+console.log(
+  `  crowding predicts NEGATIVE in the premium arms and ABSENT in arm B`,
+);
+for (const [lbl, keys] of [
+  ["arm A, all N0 pooled", N0S.map((n) => keyOf(n, "A"))],
+  ["arm A, N0=60 only", [keyOf(60, "A")]],
+  ["arm B, N0=30", [keyOf(30, "B")]],
+]) {
+  const groups = rowsOf(keys);
+  if (!groups.length) continue;
+  const pt = cfEffect(groups, "r");
+  if (pt.d == null || pt.strata < 4) {
+    console.log(`  ${lbl.padEnd(22)} UNESTIMABLE (${pt.strata} strata)`);
+    continue;
+  }
+  const rnd = mb32(20260904);
+  const boot = [];
+  for (let b = 0; b < 2000; b++) {
+    const rs = [];
+    for (let i = 0; i < groups.length; i++)
+      rs.push(groups[(rnd() * groups.length) | 0]);
+    const e = cfEffect(rs, "r");
+    if (e.d != null && e.strata >= 4) boot.push(e.d);
+  }
+  console.log(
+    `  ${lbl.padEnd(22)} d(r) = ${pt.d.toFixed(4)}  ` +
+      `[${qq(boot, 0.025).toFixed(4)}, ${qq(boot, 0.975).toFixed(4)}]  ${pt.strata} strata`,
+  );
 }

@@ -708,6 +708,51 @@ k=1 floor, and by how much is unmeasured.
 [detail](2026-09-03-rare-floor.md)
 [detail](2026-09-03-rare-floor-prereg.md)
 
+✅✅ **#57 ANSWERS IT: THE CURRENCY IS PLANTS, NOT CO-FLOWERING PLANTS — AND A LONE PLANT MOTHERS
+NOTHING AT ALL (2026-09-03).** 38 founded of 40 seeds per cell; C1 0.289 / C2 0.026 / C5 / C8 (1330
+rows identical to 1e-12, re-run rather than inherited because `logMatings` is now ON) / C9 (0
+violations in 3,194 generations) / C10 (0.00% selfed in A/B against 33.2% in S — both directions)
+all PASS.
+
+⚠️ **THE DESIGN AS FILED WAS KILLED BY ITS OWN PRE-FLIGHT, and that is the cheapest thing in this
+entry.** #57 was filed to compare how well `w` collapses across N0 on count against on co-flowering
+count. Measured first on 8 seeds: **under the premium cf ≈ 0.9(k-1)**, because the premium drives
+each lineage into its own bloom slice — so the two axes are nearly the SAME axis and the comparison
+would have returned NO VERDICT BY CONSTRUCTION, the exact failure #53 and #54 paid for. One pre-flight
+instead of six cells. The replacement uses the residual spread (sd(cf|k)=1.72) to ask the question
+WITHIN a count stratum, needing no N0 contrast at all.
+
+**The registered hypothesis is NOT supported.** At fixed k, more co-flowering does not raise fitness:
+arm A pooled **d = -0.067 [-0.135, -0.010]**, N0=60 **-0.101 [-0.169, -0.037]** — the CI lies BELOW
+zero, which the prereg classified in advance as "unregistered direction, reported not interpreted".
+⚠️ **AND THE SIGN IS AN ALLOCATION ARTEFACT, NOT A MATING ONE** — the same statistic on the VISIT
+ratio gives **-0.279 [-0.335, -0.197]** in arm A and **+0.013 [-0.030, +0.101]** in arm B: a minority
+packed into ONE slice has fewer slices drawing a full flat allowance. Present exactly where the flat
+budget is, absent where it is not.
+
+⚠️⚠️ **THE REGISTERED SECONDARY PREDICTION WAS FALSIFIED IN THE INFORMATIVE DIRECTION, AND IT
+STRENGTHENS #56.** The prereg predicted a lone plant would mother HYBRIDS even though her lineage
+ended (wMat > 0 at k=1). She does not: **0.000 offspring mothered at N0=20 and 30, in BOTH arms.**
+She is not being chosen at all. #56 said a lone plant produces no PURE-LINEAGE offspring; the correct
+statement is stronger — **she produces no offspring.**
+
+⚠️⚠️ **AND THE TRACER ARTEFACT IS ENORMOUS — READ OFF THE TRACER ALONE THIS WOULD HAVE BEEN WRONG BY
+A FACTOR OF SEVEN.** At k=1 arm Sn reports fitness **0.0000** while the very same plants mother
+**0.769** offspring, because `ancNull` averages a selfed offspring's `anc` against a random individual
+and scores it a hybrid. Selfing DOES lift the floor (S: 0.111 mothered at k=1 against 0.000 without,
+on 33% selfed matings) but only partially. **This is exactly what `ancNull` was built to expose, and
+the tracer-independent measure is what makes it visible.**
+
+⚠️ **A CORRECTION TO THIS EXPERIMENT'S OWN PREREG:** it quotes the 8-seed pre-flight's cf/(k-1) as
+"0.90 against arm B's 0.65". At 38 seeds it is **0.739 against 0.636** — a gap of 0.10, not 0.25. The
+pre-flight was adequate for deciding whether the axes separate at all; as an effect size it was
+inflated by its own sample.
+
+➡️ **OPEN.** One selfing rate at one population size — how far the floor moves with rate is
+unmeasured. The negative co-flowering sign is post-hoc, controlled but not registered.
+[detail](2026-09-03-rare-currency.md)
+[detail](2026-09-03-rare-currency-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
