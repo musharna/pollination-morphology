@@ -257,10 +257,27 @@ function replicate(seed, arm) {
   };
 }
 
-/* ---------------------------------------------------------------- run arms */
+/* ---------------------------------------------------------------- run arms
+ * ⚠️ THE ANALYSIS IS SEPARABLE FROM THE SIMULATION. RA_FROM=<dump> re-reports
+ * from an existing dump instead of re-simulating, using THIS FILE's own
+ * statistics — not a second copy of them, which is how #43 ended up with two
+ * implementations of one predicate disagreeing in silence. It exists because a
+ * 40-minute run that is killed near its timeout would otherwise be unanalysable
+ * even though the per-arm dump on disk is complete for the arms that finished.
+ */
 const ARMS = ["A", "B", "RM"];
 const out = {};
-for (const arm of ARMS) {
+const FROM = process.env.RA_FROM || null;
+if (FROM) {
+  const loaded = JSON.parse(fs.readFileSync(FROM, "utf8"));
+  for (const arm of ARMS) out[arm] = loaded.arms[arm] || [];
+  process.stderr.write(
+    `re-reporting from ${FROM}: ` +
+      ARMS.map((a) => `${a}=${out[a].length} seeds`).join(", ") +
+      `\n`,
+  );
+}
+for (const arm of FROM ? [] : ARMS) {
   out[arm] = [];
   for (let s = 1; s <= N_SEEDS; s++) {
     const rep = replicate(s, arm);
@@ -316,7 +333,14 @@ const HELD = (reps) => {
   return r.length ? r.filter((x) => x.fate === "HELD").length / r.length : null;
 };
 
-console.log(`\n#55 rare-advantage — ${N_SEEDS} seeds, ${GENS} generations`);
+/* ⚠️ the header reports what was ACTUALLY analysed, not what was requested. When
+ * re-reporting from a partial dump these differ, and a header claiming 40 seeds
+ * over 2 seeds of data is the kind of mislabelling that outlives the run. */
+console.log(
+  `\n#55 rare-advantage — ${GENS} generations, founded seeds per arm: ` +
+    ARMS.map((a) => `${a}=${out[a].length}`).join(" ") +
+    (FROM ? `  (re-reported from ${FROM})` : ` of ${N_SEEDS} requested`),
+);
 console.log(
   `arms: A premium ON, B premium OFF, RM premium ON + randomMating\n`,
 );
