@@ -265,6 +265,24 @@ for (const arm of ARMS) {
   for (let s = 1; s <= N_SEEDS; s++) {
     const rep = replicate(s, arm);
     if (rep) out[arm].push(rep);
+    /* ⚠️ PROGRESS ON STDERR, AND THE DUMP WRITTEN PER ARM. A 40-seed run is ~44
+     * minutes and the first version printed nothing until every arm was done, so
+     * when it was killed at its timeout it left an empty log and no dump — three
+     * quarters of an hour of compute with nothing to show. Progress goes to
+     * stderr so it never mixes into the report on stdout. */
+    process.stderr.write(
+      `  [${arm}] seed ${s}/${N_SEEDS} founded=${out[arm].length}\n`,
+    );
+  }
+  if (DUMP) {
+    fs.writeFileSync(
+      DUMP,
+      JSON.stringify({
+        config: { N0, GENS, SITE_N, D_EXCL, SLICES, WIDTH, N_SEEDS },
+        arms: out,
+      }),
+    );
+    process.stderr.write(`  [${arm}] arm complete, dump updated: ${DUMP}\n`);
   }
 }
 
