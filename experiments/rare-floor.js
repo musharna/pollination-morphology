@@ -105,6 +105,15 @@ function replicate(seed, N0, arm) {
    */
   if (arm === "S") opts.selfing = { rate: 0.5, cost: 0 };
   if (arm === "Sn") opts.selfing = { rate: 0.5, cost: 0, ancNull: true };
+  /*
+   * #58's rate sweep. "R<n>" means rate = n/100, so R25 is 0.25 and R200 is 2.0.
+   * ⚠️ `cost` stays 0 throughout, which is the MOST GENEROUS possible case for
+   * selfing — a selfed offspring always establishes. Every rescue measured here
+   * is therefore an UPPER bound, and inbreeding depression is a second axis this
+   * sweep does not touch.
+   */
+  const rm = /^R(\d+)$/.exec(arm);
+  if (rm) opts.selfing = { rate: Number(rm[1]) / 100, cost: 0 };
   /* the realised parentage, for the tracer-INDEPENDENT fitness measure below */
   opts.logMatings = true;
   const built = I.foundTwoLineages(N0, rng, srng, D_EXCL, opts);
@@ -308,6 +317,9 @@ ALL.push([30, "Bx"]);
  * that lift is the tracer's arithmetic rather than biology */
 ALL.push([30, "S"]);
 ALL.push([30, "Sn"]);
+/* #58's rate sweep at N0=30. Arm A is the rate=0 cell of this sweep, so it is
+ * not duplicated here. RF_CONFIGS selects which cells actually run. */
+for (const r of [25, 50, 100, 200]) ALL.push([30, `R${r}`]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
 if (FROM) {
@@ -970,4 +982,134 @@ for (const [lbl, keys] of [
     `  ${lbl.padEnd(22)} d(r) = ${pt.d.toFixed(4)}  ` +
       `[${qq(boot, 0.025).toFixed(4)}, ${qq(boot, 0.975).toFixed(4)}]  ${pt.strata} strata`,
   );
+}
+
+/* ==========================================================================
+ * #58 — HOW FAR DOES SELFING MOVE THE FLOOR?
+ *
+ * Registered in docs/2026-09-03-selfing-rate-prereg.md.
+ *
+ * PRIMARY: offspring mothered PER MINORITY PLANT, pooled over k <= 2, at each
+ * selfing rate, bootstrapped over seeds and differenced against rate 0.
+ *
+ * k <= 2 is the floor region and k <= 3 is not — #56 measured w = 0.000 at k=1
+ * and 0.734 at k=2 but 1.646 at k=3, so k=3 would dilute the floor with counts
+ * that have already escaped it.
+ *
+ * ⚠️ THE PRIMARY IS THE MOTHER-BASED MEASURE, and the tracer measure is printed
+ * beside it at every rate. #57 found them differing by a factor of SEVEN at k=1
+ * — 0.0000 against 0.769 — decided entirely by whether a selfed offspring's
+ * `anc` is averaged against a random individual. A rate sweep read off the
+ * tracer alone would produce a clean, confident, wrong curve.
+ * ========================================================================== */
+const RATE_CELLS = [
+  ["rate 0.00", keyOf(30, "A")],
+  ["rate 0.25", keyOf(30, "R25")],
+  ["rate 0.50", keyOf(30, "R50")],
+  ["rate 1.00", keyOf(30, "R100")],
+  ["rate 2.00", keyOf(30, "R200")],
+];
+const KMAX = 2;
+const MIN_FLOOR_OBS = 20;
+
+/* per seed: the mother-based per-plant rescue, and the tracer measure beside it */
+function floorSeeds(key, field) {
+  if (!have(key)) return null;
+  const groups = [];
+  for (const rep of out[key]) {
+    const vals = [];
+    for (const r of rep.rows) {
+      if (!r.informative || r.k == null || r.k > KMAX) continue;
+      if (field === "mothered") {
+        if (r.minMothered != null) vals.push(r.minMothered / r.k);
+      } else if (r[field] != null) vals.push(r[field]);
+    }
+    groups.push(vals);
+  }
+  return groups;
+}
+const flat = (gs) => gs.reduce((a, g) => a.concat(g), []);
+
+if (RATE_CELLS.some(([, k]) => have(k))) {
+  console.log(
+    `\n#58 PRIMARY — offspring mothered per minority plant at k<=${KMAX}, by selfing rate`,
+  );
+  console.log(
+    `  registered: CI of (rate r - rate 0) above 0 for any r -> selfing lifts the floor;`,
+  );
+  console.log(
+    `  all CIs containing 0 with half-widths < 0.15 -> a null; wider -> NO VERDICT.`,
+  );
+  console.log(
+    `  rate       selfed%   mothered/plant [95% CI]        vs rate 0 [95% CI]        tracer w    obs`,
+  );
+  const base = floorSeeds(keyOf(30, "A"), "mothered");
+  for (const [lbl, key] of RATE_CELLS) {
+    if (!have(key)) {
+      console.log(`  ${lbl.padEnd(10)} (not run)`);
+      continue;
+    }
+    const gs = floorSeeds(key, "mothered");
+    const obs = flat(gs).length;
+    /* selfed share, the C10 control, re-asserted at full n */
+    let s = 0,
+      t = 0;
+    for (const rep of out[key])
+      for (const row of rep.rows) {
+        s += row.selfedN || 0;
+        t += row.matingsN || 0;
+      }
+    const wgs = floorSeeds(key, "w");
+    if (obs < MIN_FLOOR_OBS) {
+      console.log(
+        `  ${lbl.padEnd(10)} ${((100 * s) / t).toFixed(1).padStart(6)}%   UNESTIMABLE — ${obs} informative generations at k<=${KMAX} (need ${MIN_FLOOR_OBS})`,
+      );
+      continue;
+    }
+    const rnd = mb32(20260905);
+    const self = [],
+      diff = [];
+    for (let b = 0; b < 2000; b++) {
+      const pick = (g) => {
+        const rs = [];
+        for (let i = 0; i < g.length; i++) rs.push(g[(rnd() * g.length) | 0]);
+        return mean(flat(rs));
+      };
+      const a = pick(gs);
+      if (a != null) self.push(a);
+      if (base) {
+        const bb = pick(base);
+        if (a != null && bb != null) diff.push(a - bb);
+      }
+    }
+    const m = mean(flat(gs));
+    const wm = mean(flat(wgs));
+    const dlo = diff.length ? qq(diff, 0.025) : null,
+      dhi = diff.length ? qq(diff, 0.975) : null;
+    console.log(
+      `  ${lbl.padEnd(10)} ${((100 * s) / t).toFixed(1).padStart(6)}%   ` +
+        `${m.toFixed(3)} [${qq(self, 0.025).toFixed(3)}, ${qq(self, 0.975).toFixed(3)}]   ` +
+        `${key === keyOf(30, "A") ? "     (reference)      " : `${(dhi + dlo) / 2 >= 0 ? "+" : ""}${((dhi + dlo) / 2).toFixed(3)} [${dlo.toFixed(3)}, ${dhi.toFixed(3)}]`.padEnd(22)}  ` +
+        `${wm != null ? wm.toFixed(3) : "  —  "}      ${obs}`,
+    );
+  }
+  /* k=1 alone, the structural extreme, reported separately as registered */
+  console.log(`\n  k = 1 alone (the structural extreme):`);
+  console.log(`  rate       mothered/plant   tracer w    lone-generations`);
+  for (const [lbl, key] of RATE_CELLS) {
+    if (!have(key)) continue;
+    const mo = [],
+      ws = [];
+    for (const rep of out[key])
+      for (const r of rep.rows) {
+        if (!r.informative || r.k !== 1) continue;
+        if (r.minMothered != null) mo.push(r.minMothered);
+        if (r.w != null) ws.push(r.w);
+      }
+    if (!mo.length) continue;
+    console.log(
+      `  ${lbl.padEnd(10)} ${mean(mo).toFixed(3).padStart(8)}        ` +
+        `${ws.length ? mean(ws).toFixed(3) : "  —  "}        ${mo.length}`,
+    );
+  }
 }
