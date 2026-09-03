@@ -596,13 +596,73 @@ directly answers #23's question of whether divergence maintains itself here — 
 ⚠️ **#52's TWO-STEP IS STILL NEITHER CONFIRMED NOR REFUTED, FOR THE SECOND EXPERIMENT RUNNING.** #53
 failed because its instrument destroyed what it measured; #54 because its discriminator and its
 artefact are indistinguishable. Nothing from #52 or #53 is overturned.
-➡️ **#55 = PULSE THE PREMIUM** (off then on again, over varying durations). Lead/lag cannot separate
-a one-stage filter from a two-stage cascade — that is this result's lesson — but a **phase delay**
-can: a stock responding directly to the premium is a low-pass filter of it, a cascade through the
-polymorphism adds a second lag. Plus a **bounded per-seed statistic** (per-generation binary, a
-proportion in [0,1], no tail), derivable from the dumped trajectories at zero compute cost.
 [detail](2026-09-02-bloom-switch.md)
 [detail](2026-09-02-bloom-switch-prereg.md)
+
+✅✅ **#55 ANSWERS IT, AND THE ANSWER IS THAT THE PREMIUM CANCELS A FORCE RATHER THAN SUPPLYING ONE
+(2026-09-02).** The pulse design filed as #55 was abandoned before any compute was spent: four
+instruments were built to read filter order off the response shape and **every one failed on its own
+control** (the in-system one-stage reference read 2.57 against a theoretical 3.32; bootstrap put
+S(ancestry) anywhere in [2.55, 6.21]; R1 — which must prefer the one-stage model — preferred the
+two-stage one in 63% of resamples; a bounded per-seed score put arm A at 0.746 and arm B at 0.687
+while its floor censored 63-93% of seeds ON THE OUTCOME). ⚠️ **Six attempts across #53, #54 and this
+pre-flight sit in ONE mechanism class — infer the pathway from the dynamics of two collinear noisy
+quantities — and under a single step the premium and the polymorphism are collinear for the whole
+trajectory, so the hypotheses differ only in fine curve shape that noise swamps.** The replacement
+measures the SELECTIVE FORCE per generation instead, which needed one new observable: `step` now
+returns the realised parentage under `opts.logMatings` (inert; bit-identical with the flag off and
+on; suite 293/293).
+
+**What it found, 38 founded seeds per arm, C1 0.289 and C2 0.026 both reproducing #52-#54 to the
+digit on the instrumented build.** The premium creates a large GRADED per-capita VISIT advantage for
+whichever lineage is rarer — **3.52x [2.545, 4.662] below minority frequency 0.1**, falling smoothly
+to 1.08 at parity — and arm B has **none of it, reading 0.99 to 1.02 in every bin**. ⚠️ **THIS
+FREQUENCY DEPENDENCE IS EMERGENT: `allocExponent` is null, so NO RULE IN THE MODEL MENTIONS RARITY.**
+It falls out of giving every occupied slice the same budget. The lineage-free signature confirms it —
+corr(slice crowding, visits) is -0.431 in arm A and -0.617 in the randomMating arm (both premium ON)
+against +0.017 in arm B, so it tracks the ALLOCATION RULE and not the mating system.
+
+⚠️ **BUT THE VISIT ADVANTAGE DOES NOT BECOME A FITNESS ADVANTAGE, AND THAT IS THE RESULT.** Following
+a FIXED lineage across the whole frequency range (no minority selection, so no regression artefact),
+**arm B is monotone: negative in every bin below 0.5 and positive in every bin above it** — whichever
+lineage drifts rare gets rarer, POSITIVE frequency dependence, runaway exclusion, and 36 of 38 arm-B
+runs end with a lineage gone. **Arm A flattens that to approximately zero.** So:
+
+> **the premium does not rescue a rare lineage — it stops the common one from running away**
+
+That explains #54's non-bankability with no further assumption: a cancelled force leaves no residue,
+so switching the premium off restores the destabilising force immediately at whatever frequency the
+population sits at. ✅ **SUFFICIENCY PASSES IN BOTH ARMS WITH NO FREE PARAMETERS** — a two-type
+Wright-Fisher driven by the measured w(p) and the measured Ne (13.2 and 11.7 against a census of 30)
+predicts HELD 0.192 vs 0.289 observed in A and 0.003 vs 0.026 in B, both inside registered bands.
+**First time in this arc a mechanism has been shown quantitatively ENOUGH rather than merely
+present.**
+
+⚠️ **THE CANCELLATION HAS A FLOOR.** Below minority frequency 0.1 arm A's realised fitness ratio is
+**0.477 [0.130, 0.732]** — significantly below parity — and that is exactly where the visit advantage
+is LARGEST at 3.5x. `visitsTo` counts landings, "NOT how much outcrossed pollen moved — the two
+differ exactly by the geitonogamy term" (`sim/ibm.js:2058`): a rare bloom-isolated lineage is visited
+generously and has almost no co-flowering conspecific to be visited FROM. Untested here.
+
+⚠️ **NOT ESTABLISHED, stated rather than buried.** A fitness advantage ABOVE the floor (only the
+0.3-0.4 bin excludes 1). **Q2 has NO VERDICT** — 414 of 520 observations sit in the top segregation
+bin, so the within-arm mediated-vs-direct contrast rests on almost nothing. The arms do not spend the
+same budget (A/B = 1.574), which `r` is immune to as a within-arm ratio but `w`, HELD and the
+sufficiency test are not. ⚠️ **AND A CORRECTION TO THIS PAGE'S OWN FIRST DRAFT: the arms do NOT
+"differ 400-fold in gene flow" — true lineage crosses are 2 in A against 3 in B.** The 842 figure was
+the looser "parents differ in anc at all", which counts the CONSEQUENCES of a cross rather than
+crosses; what differs is hybrid PERSISTENCE (2 vs 881 hybrid plant-generations), and at n=2 and 3
+founding events that is an observation, not a mechanism.
+
+➡️ **#56 = IS THE FLOOR A COUNT OR A FREQUENCY?** At N=30 a minority frequency of 0.1 IS three
+plants, so mate limitation and frequency dependence are confounded. N0 in {20, 30, 60} separates
+them: a mate-finding floor stays at ~3 plants and MOVES to p ~ 0.05 at N=60; a frequency floor stays
+at p ~ 0.1. **The predictions are opposite in p and identical in count, so unlike #53 and #54 the
+design cannot come back ambiguous.** Carries the budget-matched arm (`opts.visits`) and a direct
+measurement of per-lineage outcross receipt from the transfer matrix `T`, which tests the geitonogamy
+explanation head-on.
+[detail](2026-09-02-rare-advantage.md)
+[detail](2026-09-02-rare-advantage-prereg.md)
 
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
