@@ -569,6 +569,41 @@ imposed from outside, so this confound cannot arise). **Open as #54.**
 [detail](2026-09-02-bloom-fixed-addendum-prereg.md)
 [detail](2026-09-01-bloom-fixed-prereg.md)
 
+🛑🛑 **#54 RAN THE REPLACEMENT AND IT ALSO CANNOT ANSWER — NO VERDICT (2026-09-02).** The switch-time
+ablation worked as designed: nothing imposed, so #53's confound did not recur, and all five controls
+passed (C1 0.289 / C2 0.026 reproducing #53 to the digit on `sim/ibm.js` md5 39980f6f, C5 0/4080
+fingerprints differing). Both gates on timescale separability passed. **The run was NOT underpowered
+— achieved half-width 0.147 against the 0.15 band at n=272, with n≈271 required.**
+⚠️⚠️ **IT FAILS BECAUSE THE DISCRIMINATOR AND THE ARTEFACT HAVE THE SAME SIGNATURE.** Ancestry
+variance is a STOCK that cannot jump; `R1` is RECOMPUTED each generation. So **ancestry must lag the
+polymorphism whether or not anything couples them** — registered as A6 before the run. The one
+significant result is that ancestry lags (sign test 91+/181−, p<0.0001, and negative medians at all
+five switch times). **That is the artefact's pre-stated signature, and it is what the two-step
+predicts too.** The seed-shuffled null exists to separate them — the two-step needs ancestry to track
+ITS OWN seed's polymorphism, the artefact needs no coupling — and the spread ratio is **0.913**,
+above the registered 0.8 bar. **The observation matches the artefact, not the mechanism.**
+⚠️ **AND THE SUMMARIES DISAGREE, SO A9 FORBIDS CLAIMING A BRANCH**: mean Δ +0.057 [−0.090, +0.204]
+(positive, ns), median −0.394, sign test p<0.0001 negative, Wilcoxon p=0.111. A heavy right tail from
+A1's mixed within/across-seed normalisation drags the mean across zero. **A verdict that depends on
+which summary of the same numbers is used has not been measured.**
+✅ **THE FINDING THAT NEEDS NONE OF THAT MACHINERY — THE PREMIUM IS NOT BANKABLE.** HELD against
+switch time: `.026 .000 .026 .000 .026 .053 .289` for k = 0,5,10,15,20,25,35. Flat at arm B's level
+all the way to k=25. At n=272, k=15 is −0.235 [−0.287, −0.188] below A and +0.004 [−0.011, +0.018]
+from B. **Twenty-five of thirty-five generations of premium leaves a population indistinguishable
+from one that never had it.** Retention is a RATE property, not a stock — ten generations at B's rate
+erase what twenty-five at A's built. **The premium is a permanent scaffold, not an initiator:
+directly answers #23's question of whether divergence maintains itself here — it does not.**
+⚠️ **#52's TWO-STEP IS STILL NEITHER CONFIRMED NOR REFUTED, FOR THE SECOND EXPERIMENT RUNNING.** #53
+failed because its instrument destroyed what it measured; #54 because its discriminator and its
+artefact are indistinguishable. Nothing from #52 or #53 is overturned.
+➡️ **#55 = PULSE THE PREMIUM** (off then on again, over varying durations). Lead/lag cannot separate
+a one-stage filter from a two-stage cascade — that is this result's lesson — but a **phase delay**
+can: a stock responding directly to the premium is a low-pass filter of it, a cascade through the
+polymorphism adds a second lag. Plus a **bounded per-seed statistic** (per-generation binary, a
+proportion in [0,1], no tail), derivable from the dumped trajectories at zero compute cost.
+[detail](2026-09-02-bloom-switch.md)
+[detail](2026-09-02-bloom-switch-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
