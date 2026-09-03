@@ -748,8 +748,46 @@ the tracer-independent measure is what makes it visible.**
 pre-flight was adequate for deciding whether the axes separate at all; as an effect size it was
 inflated by its own sample.
 
-➡️ **OPEN.** One selfing rate at one population size — how far the floor moves with rate is
-unmeasured. The negative co-flowering sign is post-hoc, controlled but not registered.
+➡️ **OPEN.** The negative co-flowering sign is post-hoc, controlled but not registered.
+
+✅✅ **#58 SWEEPS THE RATE: SELFING LIFTS THE FLOOR FROM AN EXACT ZERO, BUT COEXISTENCE FOLLOWS ONLY
+AT THE EXTREME (2026-09-03).** Five cells at N0=30, arm A, **120 seeds each (109 founded)**; C1
+0.289 on seeds 1..40 of a 109-seed cell, C5, C9 (0 violations in 9,642 generations), C10 (0.0 /
+20.0 / 33.3 / 50.1 / 66.8% selfed) all PASS. The lever was verified to SPREAD on 12 seeds before any
+cell was paid for.
+
+**At k=1 — the structural extreme — offspring mothered per plant runs 0.000 → 0.196 → 0.355 → 0.438
+→ 0.580** across those selfed shares, on 23 to 73 lone-generations a rate. #57 established a lone
+plant mothers NOTHING; this is how far each rate moves her off that exact zero. ✅ The registered
+primary (k<=2) agrees: **+0.241 [+0.007, +0.475] at rate 2.0**, the CI excluding zero, which the
+prereg fixed in advance as sufficient. ⚠️ The intermediate rates are **UNDERPOWERED, NOT NULL**
+(half-widths 0.23-0.26 against a registered null threshold of 0.15) and the **SHAPE IS UNRESOLVED** —
+every per-increment interval overlaps zero, so smooth vs saturating vs thresholded is not decided.
+
+⚠️⚠️ **THE FLOOR RESCUE IS GRADUAL AND THE COEXISTENCE RESPONSE IS NOT, AND THAT GAP IS THE
+FINDING.** HELD is flat at 0.266 / 0.303 / 0.284 / 0.294 through rate 1.0 and rises only at rate 2.0
+to **0.404, +0.138 [+0.009, +0.266]**. **A lineage saved from the last extinction step still sits at
+the floor** — lifting the floor is not the same as rescuing coexistence.
+
+✅ **AND THE HELD RISE IS NOT THE TRACER ARTEFACT, WHICH IS CHECKABLE RATHER THAN ARGUABLE.**
+`sim/ibm.js:696` warns a selfed offspring inherits `anc` UNAVERAGED, inflating ancestry variance and
+HELD BY CONSTRUCTION. It does not bite here: hybrids are **0.18-0.92% of plant-generations in every
+cell and DECREASE with rate**, so `anc` stays two-valued, ancVar is just p(1-p), and there is no
+averaging for selfing to skip. ⚠️ **`ancNull` is NOT a clean null** — at rate 0.5 it takes HELD from
+0.289 to **0.000**, not by removing an inflation but by MANUFACTURING hybrids (a third of each
+generation stops counting as either lineage). It changes the trajectory, not the accounting, exactly
+as #57 cautioned.
+
+⚠️ **A CONTROL OF MINE CRIED WOLF.** C10's predicate listed only the arms named `S`/`Sn`, so the four
+`R*` rate cells were scored FAIL while selfing at precisely the rates asked for. **A control that
+fails on correct behaviour is as broken as one that passes on bad behaviour — it just fails in the
+direction that looks conscientious.** Fixed and recorded.
+
+⚠️ **`cost` = 0 IN EVERY CELL** — a selfed offspring always establishes, the most generous case — so
+**every rescue here is an UPPER BOUND**. Inbreeding depression is untouched and is the obvious next
+axis.
+[detail](2026-09-03-selfing-rate.md)
+[detail](2026-09-03-selfing-rate-prereg.md)
 [detail](2026-09-03-rare-currency.md)
 [detail](2026-09-03-rare-currency-prereg.md)
 

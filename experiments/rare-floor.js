@@ -112,8 +112,17 @@ function replicate(seed, N0, arm) {
    * is therefore an UPPER bound, and inbreeding depression is a second axis this
    * sweep does not touch.
    */
-  const rm = /^R(\d+)$/.exec(arm);
-  if (rm) opts.selfing = { rate: Number(rm[1]) / 100, cost: 0 };
+  const rm = /^R(\d+)(n?)$/.exec(arm);
+  if (rm)
+    opts.selfing = {
+      rate: Number(rm[1]) / 100,
+      cost: 0,
+      /* trailing "n" = ancNull, the MECHANICAL-NULL control for the tracer. A
+       * selfed offspring normally inherits the mother's `anc` UNAVERAGED, which
+       * inflates ancestry variance and therefore HELD BY CONSTRUCTION. Run at
+       * one rate only, to size that artefact where HELD actually moved. */
+      ...(rm[2] === "n" ? { ancNull: true } : {}),
+    };
   /* the realised parentage, for the tracer-INDEPENDENT fitness measure below */
   opts.logMatings = true;
   const built = I.foundTwoLineages(N0, rng, srng, D_EXCL, opts);
@@ -320,6 +329,8 @@ ALL.push([30, "Sn"]);
 /* #58's rate sweep at N0=30. Arm A is the rate=0 cell of this sweep, so it is
  * not duplicated here. RF_CONFIGS selects which cells actually run. */
 for (const r of [25, 50, 100, 200]) ALL.push([30, `R${r}`]);
+/* the mechanical-null companion, at the one rate where HELD moved */
+ALL.push([30, "R200n"]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
 if (FROM) {
@@ -453,7 +464,12 @@ for (const [N0, arm] of ALL) {
       s += row.selfedN || 0;
       t += row.matingsN || 0;
     }
-  const expectSelf = arm === "S" || arm === "Sn";
+  /* ⚠️ THE R-ARMS SELF TOO, and the first version of this predicate did not know
+   * that: it listed only S and Sn, so #58's rate cells were reported FAIL while
+   * selfing at exactly the rates they were asked for. A control that cries wolf
+   * on correct behaviour is as broken as one that passes on bad behaviour — it
+   * just fails in the direction that looks conscientious. */
+  const expectSelf = arm === "S" || arm === "Sn" || /^R\d+$/.test(arm);
   const frac = t > 0 ? s / t : null;
   const ok = frac == null ? null : expectSelf ? frac > 0.01 : frac === 0;
   console.log(
@@ -1089,10 +1105,62 @@ if (RATE_CELLS.some(([, k]) => have(k))) {
     console.log(
       `  ${lbl.padEnd(10)} ${((100 * s) / t).toFixed(1).padStart(6)}%   ` +
         `${m.toFixed(3)} [${qq(self, 0.025).toFixed(3)}, ${qq(self, 0.975).toFixed(3)}]   ` +
-        `${key === keyOf(30, "A") ? "     (reference)      " : `${(dhi + dlo) / 2 >= 0 ? "+" : ""}${((dhi + dlo) / 2).toFixed(3)} [${dlo.toFixed(3)}, ${dhi.toFixed(3)}]`.padEnd(22)}  ` +
+        /* ⚠️ the rate-0 reference may simply not be loaded — a single-cell run
+         * has nothing to difference against. Say so rather than throwing on a
+         * null, which is what this did: the SIMULATION finished and only the
+         * report died, and the per-5-seed checkpoint is why nothing was lost. */
+        `${
+          key === keyOf(30, "A")
+            ? "     (reference)      "
+            : dlo == null
+              ? "  (no rate-0 loaded)  "
+              : `${(dhi + dlo) / 2 >= 0 ? "+" : ""}${((dhi + dlo) / 2).toFixed(3)} [${dlo.toFixed(3)}, ${dhi.toFixed(3)}]`.padEnd(
+                  22,
+                )
+        }  ` +
         `${wm != null ? wm.toFixed(3) : "  —  "}      ${obs}`,
     );
   }
+  /* the outcome-level question: does any of this change coexistence?
+   * ⚠️ HELD is read on seeds 1..40 for comparability with #52-#57, and the
+   * rate-0 cell must give 0.289 while the selfing arms MUST NOT — they are a
+   * different model, and a control demanding they matched would be wrong in the
+   * direction of looking rigorous. */
+  console.log(
+    `\n  HELD by rate. Seeds 1..${REPRO_SEEDS} anchor the rate-0 cell to 0.289; the interval` +
+      `\n  uses ALL seeds, bootstrapped over runs, differenced against rate 0.`,
+  );
+  console.log(`  rate       seeds1-40   all seeds          vs rate 0 [95% CI]`);
+  const heldRuns = (key) =>
+    have(key) ? out[key].map((r) => (r.fate === "HELD" ? 1 : 0)) : null;
+  const base0 = heldRuns(keyOf(30, "A"));
+  for (const [lbl, key] of RATE_CELLS) {
+    if (!have(key)) continue;
+    const h40 = HELD(key);
+    const runs = heldRuns(key);
+    const all = mean(runs);
+    let cell = "     (reference)";
+    if (base0 && key !== keyOf(30, "A")) {
+      const rnd = mb32(20260906);
+      const diff = [];
+      const pick = (g) => {
+        let s = 0;
+        for (let i = 0; i < g.length; i++) s += g[(rnd() * g.length) | 0];
+        return s / g.length;
+      };
+      for (let b = 0; b < 4000; b++) diff.push(pick(runs) - pick(base0));
+      const lo = qq(diff, 0.025),
+        hi = qq(diff, 0.975);
+      cell =
+        `${lo > 0 ? "+" : ""}${((lo + hi) / 2).toFixed(3)} [${lo.toFixed(3)}, ${hi.toFixed(3)}]` +
+        (lo > 0 ? "  EXCLUDES 0" : "");
+    }
+    console.log(
+      `  ${lbl.padEnd(10)} ${h40 == null ? "  —  " : h40.toFixed(3)}       ` +
+        `${all.toFixed(3)} (${runs.filter((x) => x).length}/${runs.length})     ${cell}`,
+    );
+  }
+
   /* k=1 alone, the structural extreme, reported separately as registered */
   console.log(`\n  k = 1 alone (the structural extreme):`);
   console.log(`  rate       mothered/plant   tracer w    lone-generations`);
