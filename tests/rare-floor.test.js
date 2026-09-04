@@ -286,6 +286,44 @@ test("selfingFor recognises every arm the sweeps actually use", () => {
     cost: 0.25,
     ancNull: true,
   });
+  /*
+   * ⚠️ #62's dose dimension — the THIRD naming axis, and the one this file's
+   * whole comment block predicted would arrive. `d` means the assurance floor is
+   * proportional to the plant's own self-pollen instead of a shared scalar.
+   * Asserted here, at the name-to-config seam, because tests/selfing-dose.test.js
+   * exercises the CONFIG OBJECT against sim/ibm.js and never goes through
+   * selfingFor — so without these lines the sweep could run a cell called
+   * "R200d" that silently self-configured as the flat R200 and the two arms
+   * would report an honest, carefully-controlled null.
+   */
+  assert.deepStrictEqual(selfingFor("R200d"), {
+    rate: 2,
+    cost: 0,
+    dose: true,
+  });
+  assert.deepStrictEqual(selfingFor("R25d"), {
+    rate: 0.25,
+    cost: 0,
+    dose: true,
+  });
+  /* dose composes with cost and with the tracer null, in that order */
+  assert.deepStrictEqual(selfingFor("R200c50d"), {
+    rate: 2,
+    cost: 0.5,
+    dose: true,
+  });
+  assert.deepStrictEqual(selfingFor("R200c25dn"), {
+    rate: 2,
+    cost: 0.25,
+    dose: true,
+    ancNull: true,
+  });
+  /* and the arms that already exist must NOT acquire a dose by accident */
+  for (const arm of ["R200", "R200c25", "R200n", "R200c25n", "S", "Sn"])
+    assert.ok(
+      !("dose" in selfingFor(arm)),
+      `${arm} silently became dose-dependent — every archive before #62 is now incomparable`,
+    );
 });
 
 test("selfingFor returns null for the arms that must NOT self", () => {
@@ -298,8 +336,20 @@ test("selfingFor returns null for the arms that must NOT self", () => {
       null,
       `arm ${arm} must not be configured to self`,
     );
-  /* and it must not accept a name it does not understand */
-  for (const arm of ["R", "Rx", "R200c", "200", "", "SS"])
+  /* and it must not accept a name it does not understand — including near-misses
+   * of the new dose suffix, which is where a third naming axis would slip in */
+  for (const arm of [
+    "R",
+    "Rx",
+    "R200c",
+    "200",
+    "",
+    "SS",
+    "R200dd",
+    "R200nd",
+    "Rd",
+    "R200dc25",
+  ])
     assert.equal(
       selfingFor(arm),
       null,

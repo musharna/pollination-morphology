@@ -4281,6 +4281,36 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
        * depending on pollination at all */
       selfW = new Array(n).fill(1);
       weight = new Array(n).fill(1);
+    } else if (opts.selfing.dose) {
+      /*
+       * ---- #62: DOSE-DEPENDENT ASSURANCE. The flat floor below gives every
+       * plant the SAME scalar, so a plant carrying thousands of grains of its
+       * own pollen and a plant carrying none get identical assurance. That is
+       * not a rounding detail: measured on arm A, the within-generation CV of
+       * the diagonal is 1.43, the most-selfed plant carries 29.5x the least,
+       * and a plant with EXACTLY ZERO self-pollen is present in two of every
+       * three generations.
+       *
+       * Here assurance is proportional to what is actually on the stigma —
+       * `T[i][i]`, the diagonal that `received` deliberately skips (:1749).
+       *
+       * ⚠️ C-MATCH, AND IT IS THE WHOLE EXPERIMENT. `s` is solved per
+       * generation so the TOTAL selfed weight equals the flat floor's total
+       * exactly: sum_i s*self[i] == rate * sum(received) == n * floor. The two
+       * arms therefore spend the same assurance and differ ONLY in how it is
+       * distributed. Scale it any other way and the comparison silently becomes
+       * a test of how MUCH selfing there is, which #58 already answered and
+       * which would swamp this.
+       */
+      const self = new Array(n).fill(0);
+      for (let i = 0; i < n; i++) self[i] = r.T[i][i];
+      const totSelf = self.reduce((a, b) => a + b, 0);
+      const target = opts.selfing.rate * received.reduce((a, b) => a + b, 0);
+      /* nobody carries any self-pollen: there is no dose to be dependent on, and
+       * inventing one would be the flat floor wearing a different name */
+      const s = totSelf > 0 ? target / totSelf : 0;
+      selfW = self.map((x) => s * x);
+      weight = weight.map((w, i) => w + selfW[i]);
     } else {
       const floor =
         (opts.selfing.rate * received.reduce((a, b) => a + b, 0)) / n;
@@ -4504,6 +4534,15 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
     recruits: next.length,
     popN: n,
     totalSeed,
+    /*
+     * #62's C-match needs a number it can assert on. The maternal assurance
+     * weights themselves, so a caller can check that the dose arm and the flat
+     * arm spend the SAME TOTAL — the control that makes the comparison a test
+     * of shape rather than of amount. null when selfing is off, exactly as
+     * `selfW` is, so nothing downstream can mistake "no selfing" for "zero
+     * assurance spent".
+     */
+    selfW,
     spread: spreadOf(places),
     cluster: twoClusterSeparation(places),
     signalCluster: ringSeparation(signals),

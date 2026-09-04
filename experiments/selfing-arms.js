@@ -21,7 +21,16 @@
  *
  * Naming: "R<n>" means rate = n/100, so R25 is 0.25 and R200 is 2.0; an optional
  * "c<n>" means cost = n/100, so R200c95 is rate 2.0 with 95% inbreeding
- * depression; a trailing "n" is `ancNull`.
+ * depression; an optional "d" is #62's DOSE-DEPENDENT floor; a trailing "n" is
+ * `ancNull`. Order is fixed: R<rate>[c<cost>][d][n].
+ *
+ * ⚠️ "d" IS THE THIRD NAMING DIMENSION THIS COMMENT PREDICTED. It arrived, and
+ * the prediction held in the useful direction: because both the simulation and
+ * the C10 control now ask THIS function instead of re-reading the name, adding
+ * it required changing one regex and nothing else — where the previous two
+ * dimensions each silently broke a control. tests/rare-floor.test.js asserts the
+ * new suffix at this seam, and near-misses ("R200dd", "R200nd", "R200dc25") must
+ * still return null.
  *
  * `rate` is a maternal weight FLOOR of rate x mean(received), applied to every
  * plant on identical terms (sim/ibm.js:670-701), so a plant nobody visited
@@ -51,12 +60,13 @@
 function selfingFor(arm) {
   if (arm === "S") return { rate: 0.5, cost: 0 };
   if (arm === "Sn") return { rate: 0.5, cost: 0, ancNull: true };
-  const rm = /^R(\d+)(?:c(\d+))?(n?)$/.exec(arm);
+  const rm = /^R(\d+)(?:c(\d+))?(d?)(n?)$/.exec(arm);
   if (!rm) return null;
   return {
     rate: Number(rm[1]) / 100,
     cost: rm[2] === undefined ? 0 : Number(rm[2]) / 100,
-    ...(rm[3] === "n" ? { ancNull: true } : {}),
+    ...(rm[3] === "d" ? { dose: true } : {}),
+    ...(rm[4] === "n" ? { ancNull: true } : {}),
   };
 }
 

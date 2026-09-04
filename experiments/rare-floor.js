@@ -286,6 +286,16 @@ function replicate(seed, N0, arm) {
       selfedN: (res.matings || []).filter((m) => m.selfed).length,
       matingsN: (res.matings || []).length,
       /*
+       * ⚠️ #62's C-MATCH, RECORDED PER GENERATION SO IT IS CHECKED ON THE REAL
+       * SWEEP AND NOT ONLY ON A FIXTURE. The dose arm and the flat arm must
+       * spend an identical TOTAL of maternal assurance; if they do not, the
+       * comparison is a test of how MUCH selfing there is rather than of its
+       * shape, and #58 already answered that. A unit test on one seed cannot
+       * see a drift that only appears at some population state, so the total
+       * travels in the archive and the analysis asserts on it row by row.
+       */
+      selfWTot: res.selfW ? res.selfW.reduce((a, b) => a + b, 0) : null,
+      /*
        * ⚠️ #59: `matings` is pushed only when a seed ESTABLISHES, so under
        * inbreeding depression `selfedN/matingsN` is the share of SURVIVING
        * offspring that were selfed — which falls with cost even though the
@@ -338,6 +348,14 @@ ALL.push([30, "R200n"]);
  * so the only rate where inbreeding depression has something to take away. The
  * cost-0 cell of this sweep IS 30:R200 and is not duplicated. */
 for (const c of [25, 50, 75, 95]) ALL.push([30, `R200c${c}`]);
+/*
+ * #62's dose-dependent arm, at the same rate 2.0 so its comparator is the
+ * EXISTING 30:R200 cell rather than a new one. The two spend an identical total
+ * of maternal assurance per generation (C-match, asserted in
+ * tests/selfing-dose.test.js) and differ only in how it is distributed, so the
+ * pair isolates the SHAPE of the floor from its SIZE — which #58 already swept.
+ */
+ALL.push([30, "R200d"]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
 /*
