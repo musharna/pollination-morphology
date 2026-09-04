@@ -789,9 +789,65 @@ direction that looks conscientious.** Fixed and recorded.
 
 ⚠️ **`cost` = 0 IN EVERY CELL** — a selfed offspring always establishes, the most generous case — so
 **every rescue here is an UPPER BOUND**. Inbreeding depression is untouched and is the obvious next
-axis.
+axis. ✅ **COLLECTED BY #59 BELOW.**
 [detail](2026-09-03-selfing-rate.md)
 [detail](2026-09-03-selfing-rate-prereg.md)
+
+✅✅ **#59 SWEEPS THE COST: INBREEDING DEPRESSION CLOSES THE COEXISTENCE ESCAPE COMPLETELY, BUT THE
+LONE-PLANT RESCUE IS FAR TOUGHER THAN PROPORTIONAL ACCOUNTING PREDICTS (2026-09-03).** Five cells at
+N0=30, arm A, rate 2.0, cost ∈ {0, .25, .5, .75, .95}, **120 seeds each (109 founded)**. C5, C9 (0
+violations in 10,163 generations), C10′ all PASS; **C8′ is the strong one — the re-run cost-0 cell
+reproduces #58's archived R200 EXACTLY: 3,815 generations, 55,767 values, 18 fields, to 1e-12**,
+which is what licenses comparing #59's cells against #58's numbers at all.
+
+⚠️⚠️ **COST IS A COMPETITIVE PENALTY HERE, NOT A DEMOGRAPHIC ONE — MEASURED, NOT ASSUMED.** With
+demography off the loop runs `while (next.length < target)`, so a selfed seed killed by cost costs a
+**DRAW, NOT A RECRUIT** (`sim/ibm.js:1941` returns false; the caller does `failed++; continue`) and
+the slot goes to whoever the visit-weighted draw favours. **Recruits/generation is exactly 30.000
+with 0 stalls and 0 shortfall in every cell**, so the brief's worry — cost doing demographic damage
+on top of genetic — has nothing to confound with.
+
+**At k=1, mothered per plant runs 0.580 → 0.637 → 0.554 → 0.286 → 0.150.** ✅ **HALF THE SELFED SEED
+CAN DIE AND THE LONE PLANT STILL MOTHERS WHAT SHE DID BEFORE**; only cost 0.75 and 0.95 excludes zero
+(**−0.289 [−0.530, −0.049]** and **−0.400 [−0.675, −0.126]**). ✅ **THE REGISTERED SHAPE TEST
+RESOLVES: proportional loss m(0)(1−c) is EXCLUDED at cost 0.25 and 0.50, and re-draw compensation
+m(0)(1−c)/(1−sc) is consistent with all four points** — the registered prediction, made from reading
+the loop rather than from a pilot. ⚠️ The registered PRIMARY (k<=2) returns **NO VERDICT**: every
+interval contains zero with half-widths 0.178-0.266 against the registered 0.15 threshold.
+
+⚠️⚠️ **BUT COEXISTENCE CLOSES ALL THE WAY.** HELD falls 0.404 → 0.321 → 0.294 → 0.294 → **0.266**,
+and only the top cost excludes zero: **−0.138 [−0.257, −0.018]**, the exact negative of #58's +0.138
+for turning selfing ON. **0.266 (29/109) IS ARM A's NO-SELFING BASELINE** — at 95% depression
+reproductive assurance buys nothing in coexistence terms. ⚠️ **The RATE returns, but not the RUNS:
+only 12 of the two 29-seed HELD sets are shared** (≈7.7 expected by chance), so high-cost selfing
+reshuffles WHICH lineages survive while restoring HOW MANY. **Selfing's contribution to coexistence
+is the part inbreeding depression takes away first.**
+
+✅ Registered prediction HELD: HELD declines toward arm A's 0.266 without falling below it — it landed
+exactly on it. ❌ **REGISTERED PREDICTION FALSIFIED: I predicted lone-generation counts would FALL
+with cost; they run 69 → 91 → 74 → 49 → 40, rising substantially first.** Not explained.
+
+⚠️ **THE TRACER SPLITS FROM THE MOTHER-BASED MEASURE AGAIN, AT THE EXTREME**: at cost 0.95, 0.150
+mothered against 0.050 tracer — a factor of three, absent below cost 0.75. Measured cause: hybrids
+per lone-generation rise **0.159 → 1.125**; a lone plant has no conspecific mate, so as her selfed
+seed dies her surviving offspring are increasingly HYBRIDS, which the tracer refuses to call hers.
+Same class as #57's factor of seven. Overall hybrids stay under 1.5%, so #58's two-valued-`anc`
+argument carries over.
+
+⚠️⚠️ **C10 CRIED WOLF A SECOND TIME, AND THE FIX IS THE POINT.** #58 widened its predicate from an
+S/Sn name list to `/^R\d+$/`; #59's four cost cells then failed identically, while selfing at exactly
+the rates asked. The cause was never the regex: **"does this arm self" was DERIVED TWICE** — in
+`replicate()` from the arm string, and again in C10 by re-parsing it — so every new arm name broke
+whichever copy was not the source of truth. Widening a third time would be a TRIPWIRE removal (a
+hypothetical `R200c25n` defeats both the old pattern and the obvious widening), so the DUPLICATION
+was removed: `experiments/selfing-arms.js` is now the one place a name becomes a config and C10 ASKS
+it. **This is the #43 single-sourcing lesson arriving for a CONTROL rather than a statistic.**
+
+⚠️ **CORRECTION TO #58, found by the bit-identical re-run:** its HELD table had the seeds-1..40 and
+all-seeds columns SWAPPED in the rate-2.0 row (0.395 is seeds 1..40; 0.404 (44/109) is all seeds).
+The registered interval was computed on all seeds and is unaffected.
+[detail](2026-09-03-selfing-cost.md)
+[detail](2026-09-03-selfing-cost-prereg.md)
 [detail](2026-09-03-rare-currency.md)
 [detail](2026-09-03-rare-currency-prereg.md)
 

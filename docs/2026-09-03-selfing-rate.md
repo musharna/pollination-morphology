@@ -79,13 +79,20 @@ reaching that state are not a fixed sample across rates.
 
 ## Coexistence follows only at the extreme
 
-| rate | HELD, seeds 1..40  | HELD, all seeds | vs rate 0 [95% CI]          |
-| ---- | ------------------ | --------------- | --------------------------- |
-| 0.00 | 0.289              | 0.266 (29/109)  | (reference)                 |
-| 0.25 | 0.263              | 0.303 (33/109)  | +0.037 [-0.083, +0.156]     |
-| 0.50 | 0.289              | 0.284 (31/109)  | +0.014 [-0.101, +0.128]     |
-| 1.00 | 0.263              | 0.294 (32/109)  | +0.028 [-0.092, +0.147]     |
-| 2.00 | **0.404** (44/109) | —               | **+0.138 [+0.009, +0.266]** |
+| rate | HELD, seeds 1..40 | HELD, all seeds    | vs rate 0 [95% CI]          |
+| ---- | ----------------- | ------------------ | --------------------------- |
+| 0.00 | 0.289             | 0.266 (29/109)     | (reference)                 |
+| 0.25 | 0.263             | 0.303 (33/109)     | +0.037 [-0.083, +0.156]     |
+| 0.50 | 0.289             | 0.284 (31/109)     | +0.014 [-0.101, +0.128]     |
+| 1.00 | 0.263             | 0.294 (32/109)     | +0.028 [-0.092, +0.147]     |
+| 2.00 | 0.395             | **0.404** (44/109) | **+0.138 [+0.009, +0.266]** |
+
+⚠️ **Corrected 2026-09-03 by [#59](2026-09-03-selfing-cost.md).** This row
+originally read `0.404 (44/109)` in the seeds-1..40 column with `—` in "all
+seeds": the two columns were swapped, and `(44/109)` gives it away as the
+all-seeds figure. #59 re-ran this exact cell and the run is bit-identical (C8′:
+3,815 generations, 55,767 values, 1e-12), so the seeds-1..40 value is **0.395**.
+The registered interval was computed on all seeds and is unaffected.
 
 Flat through rate 1.0, then a rise whose interval just excludes zero. So the floor rescue is
 **gradual** while the coexistence response is **not** — the two do not track each other, and

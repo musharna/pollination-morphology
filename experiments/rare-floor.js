@@ -19,6 +19,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const fs = require("node:fs");
+const zlib = require("node:zlib");
 /* the SINGLE source for "does this arm self, and how" — the simulation and the
  * C10 control both ask it, so a new arm name cannot make them disagree. See the
  * long note in that file for the two times they did. */
@@ -339,9 +340,24 @@ ALL.push([30, "R200n"]);
 for (const c of [25, 50, 75, 95]) ALL.push([30, `R200c${c}`]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
+/*
+ * ⚠️ RF_FROM MUST READ THE ARCHIVES, NOT JUST THE SCRATCH DUMPS. Everything in
+ * docs/data/ is gzipped, and this loader used to JSON.parse the raw bytes — so
+ * the runner could not re-report from its own published archives, only from the
+ * uncommitted _scratch copies that happened to still be lying around. It failed
+ * loudly rather than silently, which is the only reason it was not worse: a
+ * reproducibility archive nothing can read is not an archive.
+ */
+function loadDump(path) {
+  const raw = path.endsWith(".gz")
+    ? zlib.gunzipSync(fs.readFileSync(path))
+    : fs.readFileSync(path);
+  return JSON.parse(raw.toString("utf8"));
+}
+
 if (FROM) {
   for (const f of FROM.split(",")) {
-    const loaded = JSON.parse(fs.readFileSync(f.trim(), "utf8"));
+    const loaded = loadDump(f.trim());
     for (const key of Object.keys(loaded.cells))
       if (loaded.cells[key].length)
         out[key] = (out[key] || []).concat(loaded.cells[key]);
