@@ -20,6 +20,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
+const { selfingFor } = require("../experiments/selfing-arms.js");
 
 const SITE_N = 160,
   D_EXCL = 8,
@@ -252,4 +253,56 @@ test("cost suppresses ESTABLISHED selfing while leaving ATTEMPTED selfing alone"
     Math.abs(a0 - a9) < 0.1,
     `ATTEMPTED selfing moved with cost (${a0.toFixed(3)} -> ${a9.toFixed(3)}); the decision rate should be untouched, so selfed+unmated is not recovering it`,
   );
+});
+
+test("selfingFor recognises every arm the sweeps actually use", () => {
+  /* ⚠️ THE REGRESSION C10 SUFFERED TWICE. The control used to decide whether an
+   * arm selfs by matching its NAME against a list of shapes, so each new naming
+   * dimension silently made it fail correct cells: #58's R-rate arms broke the
+   * S/Sn list, and #59's R*c* cost arms broke the widened `/^R\d+$/`. Both
+   * times the simulation was right and the control was wrong.
+   *
+   * This asserts the mapping directly, INCLUDING the combination that defeats
+   * both historical patterns (R200c25n), so a third naming dimension has to
+   * break a test rather than a silent FAIL in a report nobody re-reads. */
+  assert.deepStrictEqual(selfingFor("S"), { rate: 0.5, cost: 0 });
+  assert.deepStrictEqual(selfingFor("Sn"), {
+    rate: 0.5,
+    cost: 0,
+    ancNull: true,
+  });
+  assert.deepStrictEqual(selfingFor("R25"), { rate: 0.25, cost: 0 });
+  assert.deepStrictEqual(selfingFor("R200"), { rate: 2, cost: 0 });
+  assert.deepStrictEqual(selfingFor("R200n"), {
+    rate: 2,
+    cost: 0,
+    ancNull: true,
+  });
+  assert.deepStrictEqual(selfingFor("R200c25"), { rate: 2, cost: 0.25 });
+  assert.deepStrictEqual(selfingFor("R200c95"), { rate: 2, cost: 0.95 });
+  /* the combination that defeats BOTH historical predicates */
+  assert.deepStrictEqual(selfingFor("R200c25n"), {
+    rate: 2,
+    cost: 0.25,
+    ancNull: true,
+  });
+});
+
+test("selfingFor returns null for the arms that must NOT self", () => {
+  /* The other half, and the one that makes the control able to fail: if this
+   * ever returned a config for arm A, C10 would stop demanding a 0% selfed
+   * share there and the premium arms could self unnoticed. */
+  for (const arm of ["A", "B", "Bx"])
+    assert.equal(
+      selfingFor(arm),
+      null,
+      `arm ${arm} must not be configured to self`,
+    );
+  /* and it must not accept a name it does not understand */
+  for (const arm of ["R", "Rx", "R200c", "200", "", "SS"])
+    assert.equal(
+      selfingFor(arm),
+      null,
+      `"${arm}" is not a valid arm name but was given a selfing config`,
+    );
 });

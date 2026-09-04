@@ -19,6 +19,10 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const fs = require("node:fs");
+/* the SINGLE source for "does this arm self, and how" — the simulation and the
+ * C10 control both ask it, so a new arm name cannot make them disagree. See the
+ * long note in that file for the two times they did. */
+const { selfingFor } = require("./selfing-arms.js");
 
 const SITE_N = 160,
   D_EXCL = 8,
@@ -103,38 +107,8 @@ function replicate(seed, N0, arm) {
    * is averaged against a random individual and the same seed counts as a
    * hybrid. The S-minus-Sn difference is the artefact, measured.
    */
-  if (arm === "S") opts.selfing = { rate: 0.5, cost: 0 };
-  if (arm === "Sn") opts.selfing = { rate: 0.5, cost: 0, ancNull: true };
-  /*
-   * #58's rate sweep and #59's cost sweep. "R<n>" means rate = n/100, so R25 is
-   * 0.25 and R200 is 2.0; an optional "c<n>" means cost = n/100, so R200c95 is
-   * rate 2.0 with 95% inbreeding depression.
-   *
-   * ⚠️ #58 ran `cost: 0` throughout — the MOST GENEROUS possible case, where a
-   * selfed offspring always establishes — so every rescue it measured is an
-   * UPPER bound. #59 is the axis that takes that back.
-   *
-   * ⚠️⚠️ COST IS NOT A FECUNDITY PENALTY HERE. With demography off the
-   * recruitment loop runs `while (next.length < target)` and a dead selfed seed
-   * only makes the loop DRAW ANOTHER MOTHER (sim/ibm.js:1941 returns false,
-   * the caller does `failed++; continue`). The slot is not lost — it is handed
-   * to whoever is drawn next, which is whoever the visit-weighted distribution
-   * favours. So cost is a COMPETITIVE penalty on selfers, not a demographic one,
-   * and it should bite hardest exactly on the mate-limited plants that selfing
-   * was rescuing. `recruits`/`unmated` are recorded below so this is measured
-   * rather than assumed.
-   */
-  const rm = /^R(\d+)(?:c(\d+))?(n?)$/.exec(arm);
-  if (rm)
-    opts.selfing = {
-      rate: Number(rm[1]) / 100,
-      cost: rm[2] === undefined ? 0 : Number(rm[2]) / 100,
-      /* trailing "n" = ancNull, the MECHANICAL-NULL control for the tracer. A
-       * selfed offspring normally inherits the mother's `anc` UNAVERAGED, which
-       * inflates ancestry variance and therefore HELD BY CONSTRUCTION. Run at
-       * one rate only, to size that artefact where HELD actually moved. */
-      ...(rm[3] === "n" ? { ancNull: true } : {}),
-    };
+  const self = selfingFor(arm);
+  if (self) opts.selfing = self;
   /* the realised parentage, for the tracer-INDEPENDENT fitness measure below */
   opts.logMatings = true;
   const built = I.foundTwoLineages(N0, rng, srng, D_EXCL, opts);
@@ -504,7 +478,9 @@ console.log(
 }
 /* C10 — the selfing arms must actually self, and the others must not. An inert
  * arm returns a confident null about the intervention it was supposed to make. */
-console.log(`  C10 selfed share of matings (must be 0 in A/B/Bx, > 0 in S/Sn)`);
+console.log(
+  `  C10 selfed share of matings — must be 0 where selfingFor(arm) is null, > 0 where it is not`,
+);
 for (const [N0, arm] of ALL) {
   const key = keyOf(N0, arm);
   if (!have(key)) continue;
@@ -515,16 +491,24 @@ for (const [N0, arm] of ALL) {
       s += row.selfedN || 0;
       t += row.matingsN || 0;
     }
-  /* ⚠️ THE R-ARMS SELF TOO, and the first version of this predicate did not know
-   * that: it listed only S and Sn, so #58's rate cells were reported FAIL while
-   * selfing at exactly the rates they were asked for. A control that cries wolf
-   * on correct behaviour is as broken as one that passes on bad behaviour — it
-   * just fails in the direction that looks conscientious. */
-  const expectSelf = arm === "S" || arm === "Sn" || /^R\d+$/.test(arm);
+  /* ⚠️⚠️ THE EXPECTATION IS READ FROM THE ARM'S CONFIG, NOT FROM ITS NAME.
+   * This predicate cried wolf twice — a name list that knew only S/Sn failed
+   * #58's four rate cells, and the widened `/^R\d+$/` then failed #59's four
+   * cost cells — both times while the simulation was doing exactly what it was
+   * asked. A control that fails on correct behaviour is as broken as one that
+   * passes on bad behaviour; it just fails in the direction that looks
+   * conscientious. Asking selfingFor() removes the second derivation rather
+   * than widening it a third time. */
+  const cfg = selfingFor(arm);
   const frac = t > 0 ? s / t : null;
-  const ok = frac == null ? null : expectSelf ? frac > 0.01 : frac === 0;
+  /* ⚠️ under inbreeding depression the ESTABLISHED share is legitimately far
+   * below the attempted rate — at cost 0.95 it reads ~9% — so a selfing arm is
+   * only required to be non-zero here. #59's C10' carries the attempted-rate
+   * check, which is the one that can tell an inert lever from a lethal one. */
+  const ok = frac == null ? null : cfg ? frac > 0.01 : frac === 0;
   console.log(
     `     ${key.padEnd(6)} ${frac == null ? "no matings recorded" : (100 * frac).toFixed(2) + "%"}` +
+      `${cfg ? `  (configured rate ${cfg.rate}, cost ${cfg.cost})` : "  (no selfing configured)"}` +
       `   ${ok == null ? "" : ok ? "PASS" : "FAIL"}`,
   );
 }
