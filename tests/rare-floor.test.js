@@ -133,3 +133,123 @@ test("T's diagonal is self-pollen, is non-zero, and is exactly what `received` o
     `received is not the column sum minus the diagonal (worst ${worst})`,
   );
 });
+
+/* ------------------------------------------------------------------ #59 */
+
+/* arm A (premium on) at #58's rate 2.0, with inbreeding depression dialled in */
+function runCost(seed, cost, gens) {
+  const rng = E.makeRng(seed);
+  const srng = I.signalRng(seed);
+  const brng = I.bloomRng(seed);
+  const phen = { slices: S, width: W };
+  const opts = {
+    ...I.DEFAULTS,
+    siteN: SITE_N,
+    phenology: phen,
+    visitsPerPlant: 800,
+    selfing: { rate: 2.0, cost },
+    logMatings: true,
+  };
+  const built = I.foundTwoLineages(30, rng, srng, D_EXCL, opts);
+  if (!built) return null;
+  let pop = built.pop;
+  const out = [];
+  for (let g = 0; g < gens; g++) {
+    if (pop.length < 2) break;
+    phen.displayProportionalVisits = false;
+    const res = I.step(pop, opts, rng, g, srng, brng);
+    out.push({
+      recruits: res.recruits,
+      target: res.target,
+      unmated: res.unmated,
+      selfed: (res.matings || []).filter((m) => m.selfed).length,
+      matings: (res.matings || []).length,
+    });
+    pop = res.pop;
+  }
+  return out;
+}
+
+test("inbreeding depression is a COMPETITIVE penalty, not a demographic one", () => {
+  /* ⚠️ THE INTERPRETIVE CLAIM #59'S WHOLE READING RESTS ON. With demography off
+   * the recruitment loop runs `while (next.length < target)`, so a selfed seed
+   * killed by `cost` does not cost the population a recruit — the loop draws
+   * another mother and the slot goes to whoever the visit-weighted draw
+   * favours. If that were wrong, every cost cell would be confounded with a
+   * shrinking population and the sweep would be measuring two things at once.
+   * Asserted rather than assumed, because the task brief flags exactly this. */
+  for (const seed of [1, 2, 3]) {
+    const hi = runCost(seed, 0.95, 5);
+    assert.ok(hi && hi.length, `seed ${seed}: founding failed`);
+    for (const r of hi)
+      assert.equal(
+        r.recruits,
+        r.target,
+        `seed ${seed}: cost 0.95 left a generation short (${r.recruits}/${r.target}) — cost IS demographic here`,
+      );
+    assert.ok(
+      hi.some((r) => r.unmated > 0),
+      `seed ${seed}: cost 0.95 killed nothing — the lever is inert`,
+    );
+  }
+});
+
+test("`unmated` is the cost-death counter — it is exactly 0 when cost is 0", () => {
+  /* The positive control for the line above. `unmated` is read as "selfed seeds
+   * that failed to establish", which is only legitimate if nothing ELSE
+   * increments it on this path — the father<0 branch is documented unreachable
+   * off `floorOnly`. If this ever fires, the attempted-selfing rate computed as
+   * selfed+unmated is measuring something else too. */
+  for (const seed of [1, 2, 3]) {
+    const zero = runCost(seed, 0, 5);
+    assert.ok(zero && zero.length, `seed ${seed}: founding failed`);
+    for (const r of zero)
+      assert.equal(
+        r.unmated,
+        0,
+        `seed ${seed}: cost 0 still reported ${r.unmated} unmated — something other than inbreeding depression increments it`,
+      );
+  }
+});
+
+test("cost suppresses ESTABLISHED selfing while leaving ATTEMPTED selfing alone", () => {
+  /* ⚠️ #58's C10 blind spot, turned into an assertion. `matings` is pushed only
+   * when a seed establishes, so selfedN/matingsN COLLAPSES with cost even
+   * though the selfing DECISION rate is untouched. Reading C10 off that alone
+   * would report "the arm stopped selfing" and hand back a confident null about
+   * cost when the arm is selfing exactly as hard and the seeds are dying. */
+  let est0 = 0,
+    estD0 = 0,
+    att0 = 0,
+    attD0 = 0;
+  let est9 = 0,
+    estD9 = 0,
+    att9 = 0,
+    attD9 = 0;
+  for (const seed of [1, 2, 3]) {
+    for (const r of runCost(seed, 0, 5)) {
+      est0 += r.selfed;
+      estD0 += r.matings;
+      att0 += r.selfed + r.unmated;
+      attD0 += r.matings + r.unmated;
+    }
+    for (const r of runCost(seed, 0.95, 5)) {
+      est9 += r.selfed;
+      estD9 += r.matings;
+      att9 += r.selfed + r.unmated;
+      attD9 += r.matings + r.unmated;
+    }
+  }
+  const e0 = est0 / estD0,
+    e9 = est9 / estD9;
+  const a0 = att0 / attD0,
+    a9 = att9 / attD9;
+  assert.ok(
+    e0 - e9 > 0.3,
+    `established selfed share barely moved (${e0.toFixed(3)} -> ${e9.toFixed(3)}); cost is not suppressing establishment`,
+  );
+  assert.ok(
+    Math.abs(a0 - a9) < 0.1,
+    `ATTEMPTED selfing moved with cost (${a0.toFixed(3)} -> ${a9.toFixed(3)}); the decision rate should be untouched, so selfed+unmated is not recovering it`,
+  );
+});

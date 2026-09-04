@@ -106,22 +106,34 @@ function replicate(seed, N0, arm) {
   if (arm === "S") opts.selfing = { rate: 0.5, cost: 0 };
   if (arm === "Sn") opts.selfing = { rate: 0.5, cost: 0, ancNull: true };
   /*
-   * #58's rate sweep. "R<n>" means rate = n/100, so R25 is 0.25 and R200 is 2.0.
-   * ⚠️ `cost` stays 0 throughout, which is the MOST GENEROUS possible case for
-   * selfing — a selfed offspring always establishes. Every rescue measured here
-   * is therefore an UPPER bound, and inbreeding depression is a second axis this
-   * sweep does not touch.
+   * #58's rate sweep and #59's cost sweep. "R<n>" means rate = n/100, so R25 is
+   * 0.25 and R200 is 2.0; an optional "c<n>" means cost = n/100, so R200c95 is
+   * rate 2.0 with 95% inbreeding depression.
+   *
+   * ⚠️ #58 ran `cost: 0` throughout — the MOST GENEROUS possible case, where a
+   * selfed offspring always establishes — so every rescue it measured is an
+   * UPPER bound. #59 is the axis that takes that back.
+   *
+   * ⚠️⚠️ COST IS NOT A FECUNDITY PENALTY HERE. With demography off the
+   * recruitment loop runs `while (next.length < target)` and a dead selfed seed
+   * only makes the loop DRAW ANOTHER MOTHER (sim/ibm.js:1941 returns false,
+   * the caller does `failed++; continue`). The slot is not lost — it is handed
+   * to whoever is drawn next, which is whoever the visit-weighted distribution
+   * favours. So cost is a COMPETITIVE penalty on selfers, not a demographic one,
+   * and it should bite hardest exactly on the mate-limited plants that selfing
+   * was rescuing. `recruits`/`unmated` are recorded below so this is measured
+   * rather than assumed.
    */
-  const rm = /^R(\d+)(n?)$/.exec(arm);
+  const rm = /^R(\d+)(?:c(\d+))?(n?)$/.exec(arm);
   if (rm)
     opts.selfing = {
       rate: Number(rm[1]) / 100,
-      cost: 0,
+      cost: rm[2] === undefined ? 0 : Number(rm[2]) / 100,
       /* trailing "n" = ancNull, the MECHANICAL-NULL control for the tracer. A
        * selfed offspring normally inherits the mother's `anc` UNAVERAGED, which
        * inflates ancestry variance and therefore HELD BY CONSTRUCTION. Run at
        * one rate only, to size that artefact where HELD actually moved. */
-      ...(rm[2] === "n" ? { ancNull: true } : {}),
+      ...(rm[3] === "n" ? { ancNull: true } : {}),
     };
   /* the realised parentage, for the tracer-INDEPENDENT fitness measure below */
   opts.logMatings = true;
@@ -298,6 +310,22 @@ function replicate(seed, N0, arm) {
        * about selfing. Recorded so the control is data, not an assumption. */
       selfedN: (res.matings || []).filter((m) => m.selfed).length,
       matingsN: (res.matings || []).length,
+      /*
+       * ⚠️ #59: `matings` is pushed only when a seed ESTABLISHES, so under
+       * inbreeding depression `selfedN/matingsN` is the share of SURVIVING
+       * offspring that were selfed — which falls with cost even though the
+       * selfing DECISION rate is untouched. Reading C10 off that alone would
+       * report "the arm stopped selfing" when the arm is selfing exactly as
+       * hard and the seeds are dying, which is a confident null about cost
+       * hiding an inert-looking lever. `unmated` is the model's own count of
+       * seeds that failed to establish (sim/ibm.js `failed`), and with the
+       * default path's father<0 branch unreachable it is the cost deaths — so
+       * ATTEMPTED selfing is `selfedN + unmated`, measured, not inferred from
+       * the cost parameter. Positive control: at cost 0 `unmated` must be ~0.
+       */
+      recruits: res.recruits,
+      unmated: res.unmated,
+      target: res.target,
       selfShare,
       consPC,
       crowdCorr,
@@ -331,6 +359,10 @@ ALL.push([30, "Sn"]);
 for (const r of [25, 50, 100, 200]) ALL.push([30, `R${r}`]);
 /* the mechanical-null companion, at the one rate where HELD moved */
 ALL.push([30, "R200n"]);
+/* #59's cost sweep, at rate 2.0 — the only rate where #58 saw coexistence move,
+ * so the only rate where inbreeding depression has something to take away. The
+ * cost-0 cell of this sweep IS 30:R200 and is not duplicated. */
+for (const c of [25, 50, 75, 95]) ALL.push([30, `R200c${c}`]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
 if (FROM) {
@@ -366,6 +398,25 @@ function writeDump(tag) {
     }),
   );
   process.stderr.write(`  ${tag} dump updated: ${DUMP}\n`);
+}
+
+/*
+ * ⚠️ FAIL LOUD ON A CELL THAT DOES NOT EXIST. WANT is filtered against ALL, so
+ * an RF_CONFIGS entry naming an unregistered cell used to be dropped in
+ * silence: the run reported on whatever cells DID match and said nothing about
+ * the ones it skipped. #59's own pre-flight asked for four cells and got two
+ * that way — the cost arms had not been added to ALL yet — and nothing in the
+ * output distinguished that from the cells having been run. A sweep that
+ * quietly drops half its arms produces a report that is not wrong about any
+ * number it prints, which is the worst way to be wrong.
+ */
+const UNKNOWN = WANT.filter((k) => !ALL.some(([n, a]) => keyOf(n, a) === k));
+if (UNKNOWN.length) {
+  process.stderr.write(
+    `RF_CONFIGS names ${UNKNOWN.length} unknown cell(s): ${UNKNOWN.join(", ")}\n` +
+      `known cells: ${ALL.map(([n, a]) => keyOf(n, a)).join(", ")}\n`,
+  );
+  process.exit(2);
 }
 
 if (!FROM)
@@ -1178,6 +1229,347 @@ if (RATE_CELLS.some(([, k]) => have(k))) {
     console.log(
       `  ${lbl.padEnd(10)} ${mean(mo).toFixed(3).padStart(8)}        ` +
         `${ws.length ? mean(ws).toFixed(3) : "  —  "}        ${mo.length}`,
+    );
+  }
+}
+
+/* ==========================================================================
+ * #59 — DOES INBREEDING DEPRESSION CLOSE THE SELFING ESCAPE?
+ *
+ * Registered in docs/2026-09-03-selfing-cost-prereg.md.
+ *
+ * #58 lifted the k=1 floor from an exact 0.000 to 0.580 with `cost` pinned at
+ * 0 — a selfed offspring ALWAYS established. Every rescue it measured is
+ * therefore an upper bound. This sweeps `cost` at rate 2.0, the only rate where
+ * #58 saw coexistence move and so the only rate where a cost has something to
+ * take away.
+ *
+ * ⚠️⚠️ COST IS A COMPETITIVE PENALTY HERE, NOT A DEMOGRAPHIC ONE, and the whole
+ * reading depends on it. With demography off the recruitment loop runs
+ * `while (next.length < target)`, so a selfed seed killed by `cost` does not
+ * cost the population a recruit — the loop draws another mother and the slot
+ * goes to whoever the visit-weighted draw favours. The brief flagged the
+ * opposite possibility (cost doing demographic damage on top of genetic), so it
+ * is MEASURED below rather than assumed, and asserted in tests/rare-floor.test.js.
+ *
+ * ⚠️⚠️ C10 MUST BE READ ON ATTEMPTED SELFING, NOT ESTABLISHED SELFING. `matings`
+ * is pushed only when a seed establishes, so `selfedN/matingsN` falls with cost
+ * even though the selfing DECISION rate is untouched — at cost 0.95 roughly
+ * nineteen of every twenty selfed seeds die and the arm LOOKS like it stopped
+ * selfing. Reporting that as C10 would hand back a confident null about cost
+ * while the real story was an inert-looking lever. #58's C10 already had to be
+ * widened once for this class of blind spot; this is the same trap wearing a
+ * different coat. `unmated` is the model's own count of seeds that failed to
+ * establish, so ATTEMPTS = selfedN + unmated, measured.
+ * ========================================================================== */
+const COST_CELLS = [
+  ["cost 0.00", keyOf(30, "R200"), 0],
+  ["cost 0.25", keyOf(30, "R200c25"), 0.25],
+  ["cost 0.50", keyOf(30, "R200c50"), 0.5],
+  ["cost 0.75", keyOf(30, "R200c75"), 0.75],
+  ["cost 0.95", keyOf(30, "R200c95"), 0.95],
+];
+
+/* per seed, so k=1 can carry an interval this time — #58 reported the k=1
+ * series as bare means and explicitly declined to promote it to a shape claim
+ * on that basis. The brief asks for intervals here. */
+function k1Seeds(key, field) {
+  if (!have(key)) return null;
+  return out[key].map((rep) => {
+    const vals = [];
+    for (const r of rep.rows) {
+      if (!r.informative || r.k !== 1) continue;
+      const v = field === "mothered" ? r.minMothered : r[field];
+      if (v != null) vals.push(v);
+    }
+    return vals;
+  });
+}
+
+/* resample SEEDS and pool the generations inside them — the same estimator
+ * #58's primary used, kept identical so the two sweeps stay comparable even
+ * though a paired bootstrap would be tighter (the arms do share seeds). */
+function bootSeeds(gs, rnd, nb) {
+  const bs = [];
+  for (let b = 0; b < nb; b++) {
+    const rs = [];
+    for (let i = 0; i < gs.length; i++) rs.push(gs[(rnd() * gs.length) | 0]);
+    const m = mean(flat(rs));
+    if (m != null && isFinite(m)) bs.push(m);
+  }
+  return bs;
+}
+
+/* the C10' aggregates: attempted vs established selfing, and the demographic
+ * check the brief demanded */
+function costStats(key) {
+  let selfed = 0,
+    matings = 0,
+    unmated = 0,
+    recruits = 0,
+    target = 0,
+    gens = 0,
+    stalls = 0,
+    haveDemog = 0;
+  for (const rep of out[key])
+    for (const r of rep.rows) {
+      gens++;
+      selfed += r.selfedN || 0;
+      matings += r.matingsN || 0;
+      if (r.recruits != null && r.target != null) {
+        haveDemog++;
+        unmated += r.unmated || 0;
+        recruits += r.recruits;
+        target += r.target;
+        if (r.recruits < r.target) stalls++;
+      }
+    }
+  return {
+    gens,
+    haveDemog,
+    est: matings ? selfed / matings : null,
+    /* ATTEMPTS = established selfed seeds + the ones cost killed */
+    att:
+      haveDemog && matings + unmated
+        ? (selfed + unmated) / (matings + unmated)
+        : null,
+    recrPerGen: haveDemog ? recruits / haveDemog : null,
+    unmatedPerGen: haveDemog ? unmated / haveDemog : null,
+    stallPct: haveDemog ? (100 * stalls) / haveDemog : null,
+    shortfall: haveDemog ? target - recruits : null,
+  };
+}
+
+if (COST_CELLS.some(([, k]) => have(k))) {
+  /* ---- C10' and the demographic check, FIRST, because they decide whether any
+   * number below means anything ---- */
+  console.log(
+    `\n#59 C10' — is each cell still a SELFING arm, and is cost demographic?`,
+  );
+  console.log(
+    `  registered: ATTEMPTED selfing must stay non-zero and roughly FLAT across cost;`,
+  );
+  console.log(
+    `  established selfing may fall freely. Recruits/gen must stay at target (30) —`,
+  );
+  console.log(
+    `  a shortfall would mean cost is doing demographic damage on top of genetic.`,
+  );
+  console.log(
+    `  cell        attempted%   established%   recruits/gen   unmated/gen   stall%   shortfall`,
+  );
+  for (const [lbl, key] of COST_CELLS) {
+    if (!have(key)) {
+      console.log(`  ${lbl.padEnd(11)} (not run)`);
+      continue;
+    }
+    const s = costStats(key);
+    if (!s.haveDemog) {
+      console.log(
+        `  ${lbl.padEnd(11)} ${((100 * s.est) | 0).toString().padStart(9)}%   ` +
+          `(loaded from a dump written before recruits/unmated were recorded — demographic check UNAVAILABLE)`,
+      );
+      continue;
+    }
+    console.log(
+      `  ${lbl.padEnd(11)} ${(100 * s.att).toFixed(2).padStart(9)}%   ` +
+        `${(100 * s.est).toFixed(2).padStart(11)}%   ` +
+        `${s.recrPerGen.toFixed(3).padStart(12)}   ` +
+        `${s.unmatedPerGen.toFixed(2).padStart(11)}   ` +
+        `${s.stallPct.toFixed(2).padStart(6)}   ` +
+        `${String(s.shortfall).padStart(9)}`,
+    );
+  }
+
+  /* ---- PRIMARY: mothered per minority plant at k<=2 ---- */
+  console.log(
+    `\n#59 PRIMARY — offspring mothered per minority plant at k<=${KMAX}, by inbreeding-depression cost`,
+  );
+  console.log(
+    `  registered: CI of (cost c - cost 0) BELOW 0 -> depression erodes the rescue;`,
+  );
+  console.log(
+    `  all CIs containing 0 with half-widths < 0.15 -> the rescue survives; wider -> NO VERDICT.`,
+  );
+  console.log(
+    `  cost       mothered/plant [95% CI]        vs cost 0 [95% CI]        tracer w    obs`,
+  );
+  const cbase = floorSeeds(keyOf(30, "R200"), "mothered");
+  for (const [lbl, key] of COST_CELLS) {
+    if (!have(key)) {
+      console.log(`  ${lbl.padEnd(10)} (not run)`);
+      continue;
+    }
+    const gs = floorSeeds(key, "mothered");
+    const obs = flat(gs).length;
+    const wgs = floorSeeds(key, "w");
+    if (obs < MIN_FLOOR_OBS) {
+      console.log(
+        `  ${lbl.padEnd(10)} UNESTIMABLE — ${obs} informative generations at k<=${KMAX} (need ${MIN_FLOOR_OBS})`,
+      );
+      continue;
+    }
+    const rnd = mb32(20260907);
+    const self = bootSeeds(gs, rnd, 2000);
+    const diff = [];
+    if (cbase)
+      for (let b = 0; b < 2000; b++) {
+        const pick = (g) => {
+          const rs = [];
+          for (let i = 0; i < g.length; i++) rs.push(g[(rnd() * g.length) | 0]);
+          return mean(flat(rs));
+        };
+        const a = pick(gs),
+          bb = pick(cbase);
+        if (a != null && bb != null) diff.push(a - bb);
+      }
+    const m = mean(flat(gs));
+    const wm = mean(flat(wgs));
+    const dlo = diff.length ? qq(diff, 0.025) : null,
+      dhi = diff.length ? qq(diff, 0.975) : null;
+    console.log(
+      `  ${lbl.padEnd(10)} ${m.toFixed(3)} [${qq(self, 0.025).toFixed(3)}, ${qq(self, 0.975).toFixed(3)}]   ` +
+        `${
+          key === keyOf(30, "R200")
+            ? "     (reference)      "
+            : dlo == null
+              ? "  (no cost-0 loaded)  "
+              : `${(dhi + dlo) / 2 >= 0 ? "+" : ""}${((dhi + dlo) / 2).toFixed(3)} [${dlo.toFixed(3)}, ${dhi.toFixed(3)}]`.padEnd(
+                  22,
+                )
+        }  ` +
+        `${wm != null ? wm.toFixed(3) : "  —  "}      ${obs}`,
+    );
+  }
+
+  /* ---- k = 1, WITH intervals, and the registered shape discriminator ---- */
+  console.log(
+    `\n  k = 1 alone (the structural extreme), with intervals this time:`,
+  );
+  console.log(
+    `  cost       mothered/plant [95% CI]        vs cost 0 [95% CI]        tracer w   lone-gens`,
+  );
+  const k1base = k1Seeds(keyOf(30, "R200"), "mothered");
+  const k1meas = {};
+  for (const [lbl, key] of COST_CELLS) {
+    if (!have(key)) continue;
+    const gs = k1Seeds(key, "mothered");
+    const obs = flat(gs).length;
+    if (!obs) continue;
+    const rnd = mb32(20260908);
+    const self = bootSeeds(gs, rnd, 2000);
+    const diff = [];
+    if (k1base)
+      for (let b = 0; b < 2000; b++) {
+        const pick = (g) => {
+          const rs = [];
+          for (let i = 0; i < g.length; i++) rs.push(g[(rnd() * g.length) | 0]);
+          return mean(flat(rs));
+        };
+        const a = pick(gs),
+          bb = pick(k1base);
+        if (a != null && bb != null) diff.push(a - bb);
+      }
+    const m = mean(flat(gs));
+    const ws = k1Seeds(key, "w");
+    const wm = mean(flat(ws));
+    k1meas[key] = { m, lo: qq(self, 0.025), hi: qq(self, 0.975), obs };
+    const dlo = diff.length ? qq(diff, 0.025) : null,
+      dhi = diff.length ? qq(diff, 0.975) : null;
+    console.log(
+      `  ${lbl.padEnd(10)} ${m.toFixed(3)} [${qq(self, 0.025).toFixed(3)}, ${qq(self, 0.975).toFixed(3)}]   ` +
+        `${
+          key === keyOf(30, "R200")
+            ? "     (reference)      "
+            : dlo == null
+              ? "  (no cost-0 loaded)  "
+              : `${(dhi + dlo) / 2 >= 0 ? "+" : ""}${((dhi + dlo) / 2).toFixed(3)} [${dlo.toFixed(3)}, ${dhi.toFixed(3)}]`.padEnd(
+                  22,
+                )
+        }  ` +
+        `${wm != null ? wm.toFixed(3) : "  —  "}      ${obs}`,
+    );
+  }
+
+  /*
+   * THE REGISTERED SHAPE TEST. Both readings agree the rescue shrinks; they
+   * disagree about HOW FAST, and the disagreement is arithmetic rather than
+   * rhetorical, so it can be written down before the run.
+   *
+   *   H1 "proportional loss" — a selfed seed establishes with probability
+   *      (1 - cost), so the rescue is simply scaled: m(c) = m(0) * (1 - c).
+   *
+   *   H2 "re-draw compensation" — a killed seed does not end the generation,
+   *      it costs a DRAW, and the loop keeps drawing until the slot is filled.
+   *      Total draws inflate by 1/(1 - s*c) with s the attempted-selfing share,
+   *      and a mate-limited mother's share of draws is unchanged, so she gets
+   *      more attempts as cost rises: m(c) = m(0) * (1 - c) / (1 - s*c).
+   *
+   * They diverge most in the middle — at cost 0.5 H2 predicts about 1.5x H1 —
+   * which is where the discriminating power sits, and why the sweep is not just
+   * its endpoints. `s` is MEASURED at cost 0, not assumed.
+   */
+  const c0 = k1meas[keyOf(30, "R200")];
+  const s0 = have(keyOf(30, "R200")) ? costStats(keyOf(30, "R200")).att : null;
+  if (c0 && s0 != null) {
+    console.log(
+      `\n  Registered shape test at k=1. s = attempted-selfing share at cost 0 = ${s0.toFixed(4)}.`,
+    );
+    console.log(
+      `  cost      measured [95% CI]         H1 (1-c)    H2 (1-c)/(1-sc)    excluded by the CI`,
+    );
+    for (const [lbl, key, c] of COST_CELLS) {
+      const mm = k1meas[key];
+      if (!mm || key === keyOf(30, "R200")) continue;
+      const h1 = c0.m * (1 - c);
+      const h2 = (c0.m * (1 - c)) / (1 - s0 * c);
+      const ex = [];
+      if (h1 < mm.lo || h1 > mm.hi) ex.push("H1");
+      if (h2 < mm.lo || h2 > mm.hi) ex.push("H2");
+      console.log(
+        `  ${lbl.padEnd(9)} ${mm.m.toFixed(3)} [${mm.lo.toFixed(3)}, ${mm.hi.toFixed(3)}]   ` +
+          `${h1.toFixed(3).padStart(9)}    ${h2.toFixed(3).padStart(12)}    ` +
+          `${ex.length ? ex.join(" and ") + " excluded" : "neither — UNRESOLVED"}`,
+      );
+    }
+  }
+
+  /* ---- HELD: does any of this reach coexistence? ---- */
+  console.log(
+    `\n  HELD by cost, all seeds, bootstrapped over runs, differenced against cost 0.` +
+      `\n  ⚠️ cost 0 here is the SELFING arm at rate 2.0 (#58 measured 0.404), NOT arm A.`,
+  );
+  console.log(`  cost       seeds1-40   all seeds          vs cost 0 [95% CI]`);
+  const heldRunsC = (key) =>
+    have(key) ? out[key].map((r) => (r.fate === "HELD" ? 1 : 0)) : null;
+  const cbase0 = heldRunsC(keyOf(30, "R200"));
+  for (const [lbl, key] of COST_CELLS) {
+    if (!have(key)) continue;
+    const h40 = HELD(key);
+    const runs = heldRunsC(key);
+    let cell = "     (reference)";
+    if (cbase0 && key !== keyOf(30, "R200")) {
+      const rnd = mb32(20260909);
+      const diff = [];
+      const pick = (g) => {
+        let s = 0;
+        for (let i = 0; i < g.length; i++) s += g[(rnd() * g.length) | 0];
+        return s / g.length;
+      };
+      for (let b = 0; b < 4000; b++) diff.push(pick(runs) - pick(cbase0));
+      const lo = qq(diff, 0.025),
+        hi = qq(diff, 0.975);
+      cell =
+        `${lo > 0 ? "+" : ""}${((lo + hi) / 2).toFixed(3)} [${lo.toFixed(3)}, ${hi.toFixed(3)}]` +
+        (hi < 0
+          ? "  EXCLUDES 0 (below)"
+          : lo > 0
+            ? "  EXCLUDES 0 (above)"
+            : "");
+    }
+    console.log(
+      `  ${lbl.padEnd(10)} ${h40 == null ? "  —  " : h40.toFixed(3)}       ` +
+        `${mean(runs).toFixed(3)} (${runs.filter((x) => x).length}/${runs.length})     ${cell}`,
     );
   }
 }
