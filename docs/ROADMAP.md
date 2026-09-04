@@ -900,6 +900,67 @@ INFERENCE (intervals, windows, conventions), not the discovery. Measured: the ab
 [detail](2026-09-03-rare-currency.md)
 [detail](2026-09-03-rare-currency-prereg.md)
 
+✅✅ **#61 GETS TO THE BOTTOM OF THE FLOOR: THE k=1 WALL IS A MATING-WEIGHT ZERO, AND SHE IS NOT
+SHORT OF POLLEN (2026-09-04).** Re-analysis of #58/#59's archives plus ONE ANCHORED re-run to
+measure a quantity the archives do not store. Suite 323/323.
+
+🛑 **AT k=1 THE LONE MINORITY PLANT RECEIVES 4,590 GRAINS OF POLLEN AND EVERY ONE IS HER OWN.**
+Measured, not inferred: outcross received EXACTLY 0 in 23/23; self-pollen on her stigma non-zero in
+23/23. `received[j]` skips i===j — the line's own comment is "selfing is not mating success"
+(sim/ibm.js:1749-1753) — and the mother is drawn IN PROPORTION TO `received` (:1793). So her draw
+weight is exactly 0 and she is never picked. **THAT is why the number is an EXACT zero and not a
+small one: it is not a low probability, it is a plant with zero weight in a weighted draw.**
+⚠️ **SHE IS NOT SHORT OF POLLINATORS, SHE IS SHORT OF PARTNERS** — which is #57's "co-flowering
+conspecifics is the currency" arrived at from the mechanism instead of the correlation.
+✅ And it says why SELFING SPECIFICALLY works: the selfing floor is added to `weight` as
+`rate x mean(received)` (:1824), INDEPENDENTLY of her own `received` — the one mechanism that gives
+a partnerless plant non-zero draw weight.
+
+📊 PRIMARY: minMothered = 0 in **23/23** k=1 generations of arm A, CI [1.000, 1.000], mean 0.000.
+H2 (definitionally hybridised) and H3 (demographic) BOTH REQUIRE HER TO REPRODUCE and are refuted.
+H1's PREDICTION is right and **H1's STATED REASON IS WRONG** — she is pollinated massively.
+
+⚠️⚠️ **THE WALL I DERIVED IN ADVANCE IS REAL AND IS DOING NO WORK.** P1, registered from source
+before measuring: outcross gives anc=(anc_m+anc_f)/2 (:2015), a selfed seed keeps anc_mother EXACTLY
+(:1952), label() is pure only at 0 or 1 — so at k=1 NO assignment of fathers yields a pure offspring;
+a pure lineage needs TWO pure parents. True, and VACUOUS, because she never becomes a mother at all.
+**TWO NESTED WALLS, and only the front one is ever tested.** The prereg fixed the reading in advance
+("if minMothered=0 and nh~0, report H1, however attractive the arithmetic is") — without it the
+arithmetic was seductive enough to have been written up as the answer.
+**Tell: A DERIVATION THAT SAYS WHAT CANNOT HAPPEN DOES NOT ESTABLISH THAT THE THING THAT FAILED IS
+THE THING IT FORBIDS.**
+
+⚠️ **C-BASE FIRED AND STOPPED A MECHANISM CLAIM FROM A ZERO.** arm A shows nh=0 in all 23 k=1
+generations, which reads like isolation making a sire impossible. It is not: cross-lineage mating
+DOES happen in arm A (85 rows, 5 of 109 runs), so at the arm's own base rate 0.0223 the expected
+count in 23 draws is 0.51 and observing zero is exactly chance. Every arm's observed count sits at
+its own expectation. **The absence of hybrids at k=1 carries NO mechanism** — the claim rests
+entirely on the measured received=0.
+
+⚠️ **A NEAR-MISS I PUBLISHED AND THEN KILLED:** the draft claimed arm A's k=2 mothering rate (0.734)
+independently reproduced #56's quoted per-capita fitness at k=2 (0.734). It does not — the archived
+`w` for that arm is **0.8096**; `w` normalises by the majority's per-capita and minMothered/k does
+not. Different statistics, coincidence in one arm. **Tell: A NUMBER THAT MATCHES A NUMBER YOU
+REMEMBER IS A HYPOTHESIS, NOT A CROSS-CHECK.**
+
+✅ BONUS — **#59's FALSIFIED PREDICTION IS EXPLAINED.** Lone-generation counts rise then fall
+(23/69/91/74/49/40) because **the count is a DWELL TIME**: dwell = 1/(1-P(k=1->k=1)) to three
+decimals in 5 of 6 cells. Selfing raises P(stay), depression lowers it. Arm A's P(stay) is 0.000 and
+dwell exactly 1.000 — she cannot linger because she cannot reproduce. ⚠️ corr 0.989 but **n=6 CELLS,
+NOT SEEDS** — descriptive, not promotable.
+⚠️ **AND THE FIRST DRAFT OF THAT TABLE HAD A CONDITIONING BUG THAT DELETED THE KEY ARM**: requiring
+the successor row to be `informative` conditions on SURVIVAL, because a row goes non-informative
+exactly when a pure count hits zero — which IS the exit being counted. Arm A returned NaN and
+vanished. Builder extracted to `experiments/k1-episodes.js`, 12 tests, both traps seen to fail on a
+mutant.
+
+⚠️ CONTROLS: C8′ as built compares a re-run to its archive and #61 re-runs nothing, so running it
+would have CHECKED NOTHING. Replaced with **C8″ cross-archive agreement** — arm A's cell appears in
+THREE independently written archives and they agree on all 18 fields, 23,940 values to 1e-12. Plus
+the re-run's own anchor: 805 rows, 0 disagreements.
+[detail](2026-09-04-k1-wall.md)
+[detail](2026-09-04-k1-wall-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
