@@ -848,6 +848,55 @@ all-seeds columns SWAPPED in the rate-2.0 row (0.395 is seeds 1..40; 0.404 (44/1
 The registered interval was computed on all seeds and is unaffected.
 [detail](2026-09-03-selfing-cost.md)
 [detail](2026-09-03-selfing-cost-prereg.md)
+
+✅✅ **#60 DECOMPOSES THE GAP: SURVIVAL IS NOT A STATE, AND SELFING BUYS RECOVERY AT k=1 ONLY
+(2026-09-03).** A re-analysis of #58/#59's archives, no new simulation. C8′ PASS on all five
+archives to 1e-12; C-class PASS (345 exits, every one the MINORITY vanishing — had the MAJORITY
+been the one to go, that is the minority WINNING and the sign of the whole result would invert);
+C-seed PASS — **arm A's 23 lone-generations are 23 DISTINCT SEEDS**, one apiece, no
+pseudo-replication.
+
+🛑 **WITHOUT SELFING A LONE PLANT NEVER RECOVERS: P(recover to k>=3) = 0.000, 23/23 seeds, under
+BOTH tracer conventions.** With selfing it rises to 0.079-0.108 (pure) / 0.116-0.135 (inclusive).
+**Selfing converts roughly one lone-plant episode in eleven from loss into escape.**
+
+⚠️⚠️ **BOTH MY REGISTERED HYPOTHESES WERE WRONG, AND FOR THE SAME REASON: THEY ASSUMED SURVIVAL WAS
+A PERSISTENT STATE.** P(survive) = **0.000 at a 10-generation window in EVERY arm** — a k=1 episode
+always resolves, and the only question is which way. H_S (survival up, recovery flat) is falsified
+BACKWARDS; H_R is half-right. **The correct axis was never survive-vs-recover, it is recover-vs-lost,
+and the pre-registration named the wrong one.**
+
+⚠️⚠️ **THE REGISTERED CONVENTION CONTROL FIRED AND CHANGED THE HEADLINE.** Registered in advance: if
+PURE and INCLUSIVE disagree on a verdict, the verdict is the TRACER'S. They disagree exactly where
+the effect is largest — depression takes recovery 0.041→**0.000** under PURE but only 0.122→**0.075**
+under INCLUSIVE. So "depression closes recovery" is **convention-dependent, not a result**. Fourth
+consecutive task where the convention decided the answer (#57's 7x, #58's ancNull, #59's
+0.150-vs-0.050) and **the FIRST where a control registered in advance caught it before the claim was
+written.** ⚠️ The two conventions answer DIFFERENT QUESTIONS — PURE asks whether the LINEAGE persists
+as a distinguishable entity (which is what coexistence means, and under which absorption into
+hybrids is a FAILURE), INCLUSIVE asks whether her GENES persist, which FUSION also satisfies. That
+argues PURE is right for #58/#59's question — but ⚠️ **HELD is `fateOf` on ancestry variance, ALSO a
+pure-lineage measure, so PURE-recovery agreeing with HELD's closure is NOT independent evidence.**
+
+📊 **THE FLOOR IS ONE PLANT DEEP.** From k=2 every arm sits at 0.30-0.36 and every difference is NO
+VERDICT (half-widths 0.17-0.21 vs the registered 0.15). **Selfing does nothing measurable at k=2**;
+its entire effect is at k=1, exactly where #56 measured w=0.000 and #57 found a lone plant mothers
+nothing.
+
+⚠️ Strictly on the registered contrast (cost 0 − arm A, PURE) ΔP(recover) = +0.096 [0.000, 0.192]
+does NOT exclude zero ⇒ **the registered discriminator returns NO VERDICT**; the same contrast under
+INCLUSIVE (+0.127 [0.017,0.236]) and cost 0.25 under PURE (+0.090 [0.011,0.169]) do exclude it.
+⚠️ W=5 and W=10 give IDENTICAL k=1 results — the registered pair of windows turned out to be one
+statistic, since everything resolves within five generations.
+
+⚠️ **DISCLOSED, NOT HIDDEN: THE PRE-FLIGHT WAS OUTCOME-REVEALING.** The #60 brief required settling
+whether `k` is safe first — `k` is nMin over PURE labels, so a minority absorbed into hybrids reads
+as EXTINCTION — and the classification that answers that threat IS the outcome classification. Point
+estimates were therefore visible before the prereg existed; the prereg says so and governs the
+INFERENCE (intervals, windows, conventions), not the discovery. Measured: the absorbed route is
+0.0-7.9% of exits, rising with cost, so `k` is usable with the convention reported.
+[detail](2026-09-03-survival-recovery.md)
+[detail](2026-09-03-survival-recovery-prereg.md)
 [detail](2026-09-03-rare-currency.md)
 [detail](2026-09-03-rare-currency-prereg.md)
 
