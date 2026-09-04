@@ -938,10 +938,22 @@ its own expectation. **The absence of hybrids at k=1 carries NO mechanism** — 
 entirely on the measured received=0.
 
 ⚠️ **A NEAR-MISS I PUBLISHED AND THEN KILLED:** the draft claimed arm A's k=2 mothering rate (0.734)
-independently reproduced #56's quoted per-capita fitness at k=2 (0.734). It does not — the archived
-`w` for that arm is **0.8096**; `w` normalises by the majority's per-capita and minMothered/k does
-not. Different statistics, coincidence in one arm. **Tell: A NUMBER THAT MATCHES A NUMBER YOU
-REMEMBER IS A HYPOTHESIS, NOT A CROSS-CHECK.**
+independently reproduced #56's quoted per-capita fitness at k=2 (0.734). It does not — `w` normalises
+by the majority's per-capita and minMothered/k does not. Different statistics, coincidence.
+**Tell: A NUMBER THAT MATCHES A NUMBER YOU REMEMBER IS A HYPOTHESIS, NOT A CROSS-CHECK.**
+
+⚠️⚠️ **CORRECTED BY #62 — THE VERDICT WAS RIGHT AND THE EVIDENCE WAS WRONG.** The line above used to
+read "the archived `w` for that arm is **0.8096**", as though #56 never reported 0.734 for `w`. **It
+did.** This cell lives in TWO archives and they are the SAME SIMULATION — `rare-floor-30A` (38 seeds)
+and `selfing-rate-r000`'s `30:A` (109 seeds) agree on **11,094 numeric values over 1,330 shared rows,
+0 disagreements** (`experiments/archive-agree.js`, seen to FAIL on 30:A vs 30:B with 188 `w`
+disagreements). `w` at k=2 is **0.7344 on 13 observations** and **0.8096 on 47** — a SEED-SET
+difference. What actually separates the two statistics is the MATCHED-SEED comparison the original
+note never ran: on the same 13 rows `w` = 0.7344 and minMothered/k = **0.6923**. #56's archive has no
+`minMothered` field at all (it predates #57), so the comparison was never anything but cross-archive.
+⚠️ **TELL, SHARPENED: REFUTING A COINCIDENCE WITH A NUMBER FROM A DIFFERENT SEED SET IS THE SAME
+ERROR AS BELIEVING IT — both mistake a digit for a quantity.** Nothing else in #61 moves: the k=1
+result never used `w`.
 
 ✅ BONUS — **#59's FALSIFIED PREDICTION IS EXPLAINED.** Lone-generation counts rise then fall
 (23/69/91/74/49/40) because **the count is a DWELL TIME**: dwell = 1/(1-P(k=1->k=1)) to three
