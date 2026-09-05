@@ -2703,6 +2703,25 @@ function widthRng(seed) {
   return E.makeRng((seed * 27259 + 54321) >>> 0 || 1);
 }
 
+/*
+ * #64's COVERAGE stream, and it is what makes the q = 0 arm a real control
+ * rather than an approximate one.
+ *
+ * The coverage floor picks which plants are starved by drawing at random EVERY
+ * generation. Drawn from the main stream those draws would shift every
+ * subsequent site pick and shape mutation, so the q = 0 arm — which starves
+ * nobody and is arithmetically the flat floor — would still not reproduce the
+ * flat arm, and the C-null would be a distributional argument instead of a
+ * byte-for-byte one. On its own stream the main stream is untouched at every q,
+ * so `30:R200q0` is bit-identical to `30:R200` on every shipped row and the
+ * whole coverage family is anchored on a control that cannot be argued with.
+ *
+ * A fourth multiplier so it does not run in lockstep with the other three.
+ */
+function coverRng(seed) {
+  return E.makeRng((seed * 2246822519 + 1013904223) >>> 0 || 1);
+}
+
 /* Width is a magnitude on [0,1]; see WIDTH_GENE for why it is clamped rather
  * than wrapped, and why the floor is 0 rather than something comfortable. */
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -3564,7 +3583,16 @@ function gapOccupancy(places, pA, pB, opts = {}) {
  * One generation. The whole point is between the two marked lines: parentage
  * comes out of the transfer matrix.
  */
-function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
+function step(
+  pop,
+  opts,
+  rng,
+  gen,
+  srng = null,
+  brng = null,
+  wrng = null,
+  crng = null,
+) {
   const n = pop.length;
   const signals = pop.map(signalOf);
 
@@ -4394,6 +4422,79 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
       const s = totShaped > 0 ? target / totShaped : 0;
       selfW = shaped.map((x) => s * x);
       weight = weight.map((w, i) => w + selfW[i]);
+    } else if (opts.selfing.cover != null) {
+      /*
+       * ---- #64: COVERAGE AS A DOSE. The floor's SHAPE is left exactly as the
+       * flat branch below has it — one scalar, no reference to the diagonal, no
+       * reference to lineage. The only thing that changes is HOW MANY plants
+       * get it: a fraction q is starved, chosen AT RANDOM and redrawn every
+       * generation, and the rest are paid C-matched.
+       *
+       * ⚠️ WHY RANDOM, AND WHY THIS IS NOT #63 AGAIN. #63's clip starved 69.1%
+       * of plants and looked like a coverage cut. Measured on its own shipped
+       * archive it is not one: it starves the lone k=1 minority plant only
+       * 10.0% of the time. A partnerless plant has `received` ~ 0 (:1751 skips
+       * the diagonal), so the OLS residual of her diagonal on `received` is
+       * large and POSITIVE, so clipping at zero systematically KEEPS her. #63's
+       * treatment was accidentally targeted at everyone except the plant the
+       * floor exists for, which makes its −0.138 a lower bound. Starving at
+       * random removes the targeting and hits her at rate q.
+       *
+       * ⚠️ THIS IS THE ONLY CHANNEL COVERAGE CAN ACT THROUGH, and it is a wall
+       * rather than a slope. Measured on the flat arm, a plant with
+       * `received === 0` has maternal weight that is ENTIRELY floor, so
+       * withdrawing it leaves her at exactly zero and `pick()` never returns
+       * her — #61's finding verbatim. At k=1 that is not a tendency: the lone
+       * minority plant had `received === 0` in 15 of 15 generations observed.
+       * 8.81% of all plant-generations are in that class, and 18.01% of
+       * MINORITY plant-generations against 8.35% of majority ones.
+       *
+       * ⚠️ C-MATCH, unchanged from #62/#63 and still the whole experiment: the
+       * survivors split `rate * sum(received)` between them, so sum_i selfW[i]
+       * is identical to the flat floor's total at every q and the arms differ
+       * ONLY in coverage. That is also what makes this more than a kill switch
+       * — at rate 2.0 the floor is the MAJORITY of maternal weight for 93.5% of
+       * plants, so paying the survivors 1/(1-q) each turns the floor into a
+       * high-variance lottery for the whole population and not just for the
+       * partnerless. Whether the harm is the wall or the lottery is what the q
+       * grid is for; neither can be read off a single arm.
+       *
+       * ⚠️ NO FALLBACK STREAM. The starved set must be redrawn per generation,
+       * so a stream re-seeded from a constant inside step() would starve the
+       * same plants forever while looking correct. That failure is silent and
+       * would invalidate the whole sweep, so it throws instead.
+       */
+      if (!crng)
+        throw new Error(
+          "selfing.cover needs its own rng stream (crng): the starved set is " +
+            "redrawn every generation, and a stream re-seeded per call would " +
+            "silently starve the same plants in every generation",
+        );
+      const q = opts.selfing.cover;
+      if (!(q >= 0 && q <= 1))
+        throw new Error(`selfing.cover must be in [0,1], got ${q}`);
+      const target = opts.selfing.rate * received.reduce((a, b) => a + b, 0);
+      const nKeep = n - Math.round(q * n);
+      selfW = new Array(n).fill(0);
+      if (nKeep > 0) {
+        /* partial Fisher-Yates: the first nKeep slots of a uniformly shuffled
+         * index are a uniform sample without replacement, and stopping early
+         * costs nKeep draws rather than n */
+        const idx = new Array(n);
+        for (let i = 0; i < n; i++) idx[i] = i;
+        for (let i = 0; i < nKeep; i++) {
+          const j = i + Math.floor(crng() * (n - i));
+          const t = idx[i];
+          idx[i] = idx[j];
+          idx[j] = t;
+        }
+        /* at q = 0 this is nKeep === n and the value is (rate * sum) / n — the
+         * flat branch's own expression, evaluated identically, which is what
+         * makes the C-null bit-level rather than distributional */
+        const w = target / nKeep;
+        for (let i = 0; i < nKeep; i++) selfW[idx[i]] = w;
+      }
+      weight = weight.map((w, i) => w + selfW[i]);
     } else {
       const floor =
         (opts.selfing.rate * received.reduce((a, b) => a + b, 0)) / n;
@@ -4742,6 +4843,11 @@ function run({
    * does not exist and cannot be drawn from. See widthRng(). */
   const wrng =
     opts.phenology && opts.phenology.widthLocus ? widthRng(seed) : null;
+  /* created only when the coverage floor is on, so with it off the coverage
+   * stream does not exist and cannot be drawn from — which is what lets the
+   * q = 0 arm be bit-identical to the flat arm. See coverRng(). */
+  const crng =
+    opts.selfing && opts.selfing.cover != null ? coverRng(seed) : null;
   let pop = found || foundPopulation(n, rng, { srng });
   const history = [];
   let extinct = false;
@@ -4761,7 +4867,7 @@ function run({
     const parentAnc = trace
       ? pop.map((i) => (i.anc === undefined ? 0 : i.anc))
       : null;
-    const out = step(pop, opts, rng, g, srng, brng, wrng);
+    const out = step(pop, opts, rng, g, srng, brng, wrng, crng);
     pop = out.pop;
     history.push({
       gen: g,
@@ -4801,6 +4907,7 @@ module.exports = {
   BLOOM_LINK_GROUP,
   bloomRng,
   widthRng,
+  coverRng,
   WIDTH_GENE,
   DEFAULTS,
   meanAngle,

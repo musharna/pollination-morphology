@@ -116,6 +116,14 @@ function replicate(seed, N0, arm) {
   const rng = E.makeRng(seed);
   const srng = I.signalRng(seed);
   const brng = I.bloomRng(seed);
+  /*
+   * #64's coverage stream. Created ONLY for the coverage arms — so every arm
+   * that predates #64 draws exactly the numbers it drew before, and the q = 0
+   * arm, which starves nobody, is bit-identical to the flat arm rather than
+   * merely distributionally equal to it. See sim/ibm.js coverRng().
+   */
+  const crng =
+    selfingFor(arm) && selfingFor(arm).cover != null ? I.coverRng(seed) : null;
   const phen = { slices: SLICES, width: WIDTH };
   const opts = {
     ...I.DEFAULTS,
@@ -169,7 +177,10 @@ function replicate(seed, N0, arm) {
       else nh++;
     }
 
-    const res = I.step(pop, opts, rng, g, srng, brng);
+    /* `wrng` stays null — this sweep does not use the width locus — and `crng`
+     * is null for every arm but #64's coverage family, so the argument list is
+     * the only thing that changed for the arms that predate it */
+    const res = I.step(pop, opts, rng, g, srng, brng, null, crng);
 
     const informative = n0 > 0 && n1 > 0;
     let k = null,
@@ -378,6 +389,48 @@ function replicate(seed, N0, arm) {
         };
       })(),
       /*
+       * ⚠️ #64's C-KILL, AND IT IS WHAT SEPARATES THE TWO MECHANISMS ON THE
+       * SHIPPED DATA RATHER THAN BY ARGUMENT.
+       *
+       * A starved plant with `received > 0` keeps non-zero maternal weight and
+       * is merely demoted. A starved plant with `received === 0` has weight
+       * EXACTLY zero and `pick()` can never return her — #61's wall. Only the
+       * second class is a kill, and coverage's whole KILL hypothesis says the
+       * harm scales with it.
+       *
+       * `recvZero` is the size of the exposed class on this arm and generation
+       * — a property of the pollination, not of the treatment, so it should be
+       * flat ACROSS arms and is a control on that too. `killed` is how many of
+       * them the treatment actually zeroed. Under the flat floor `killed` is 0
+       * by construction at every generation; under coverage q it should be
+       * about q x recvZero, and under #63's clip it should be far BELOW that
+       * because a plant with `received === 0` has a large positive residual.
+       *
+       * Split by lineage because the minority is the one whose loss ends
+       * coexistence, and pre-flight B measured this class at 18.01% of minority
+       * plant-generations against 8.35% of majority ones — so a lineage-blind
+       * random cut is NOT a lineage-blind treatment.
+       */
+      recvZero: res.received
+        ? res.received.filter((x) => x === 0).length
+        : null,
+      ...(() => {
+        if (!res.received || !res.selfW) return {};
+        let killed = 0;
+        for (let i = 0; i < res.received.length; i++)
+          if (res.received[i] === 0 && res.selfW[i] === 0) killed++;
+        if (!informative) return { killed };
+        const minor = n0 < n1 ? 0 : 1;
+        let kMinL = 0,
+          kMajL = 0;
+        for (let i = 0; i < res.received.length && i < labels.length; i++) {
+          if (!(res.received[i] === 0 && res.selfW[i] === 0)) continue;
+          if (labels[i] === minor) kMinL++;
+          else if (labels[i] === 1 - minor) kMajL++;
+        }
+        return { killed, killedMin: kMinL, killedMaj: kMajL };
+      })(),
+      /*
        * ⚠️ #59: `matings` is pushed only when a seed ESTABLISHES, so under
        * inbreeding depression `selfedN/matingsN` is the share of SURVIVING
        * offspring that were selfed — which falls with cost even though the
@@ -453,6 +506,33 @@ ALL.push([30, "R200d"]);
  */
 ALL.push([30, "R200r"]);
 ALL.push([30, "R200s"]);
+
+/*
+ * #64 — COVERAGE AS A DOSE. The flat floor's shape exactly, withheld at random
+ * from a fraction q of plants, redrawn every generation, C-matched so the
+ * survivors split the same total.
+ *
+ * ⚠️ WHY THIS IS NOT #63 RESTATED. #63's clip starved 69.1% of plants and read
+ * as a coverage cut. Measured on its own shipped archive it is not one: it
+ * starves the lone k=1 minority plant only 10.0% of the time, because a
+ * partnerless plant has `received` ~ 0 and therefore a large POSITIVE residual,
+ * so clipping keeps her. #63's treatment was accidentally targeted away from
+ * the one plant the floor exists for, which makes its −0.138 a lower bound.
+ *
+ * ⚠️ q = 0 IS THE C-NULL AND MUST BE BIT-IDENTICAL TO "R200". It starves nobody
+ * and pays target/n, which is the flat branch's own expression; the shuffle it
+ * still performs draws from a DEDICATED stream (sim/ibm.js coverRng), so the
+ * main stream is untouched. A distributional match would not have been worth
+ * having — this one is checkable row by row.
+ *
+ * ⚠️ q = 1 IS DELIBERATELY NOT SWEPT: it spends zero assurance and so breaks
+ * C-match by construction. "30:A", already in this list, is the honest no-floor
+ * anchor for that end of the curve, and it runs on the same seeds.
+ *
+ * Registered in docs/2026-09-05-selfing-cover-prereg.md, with both pre-flights,
+ * before any of this existed.
+ */
+for (const q of [0, 25, 50, 69, 85]) ALL.push([30, `R200q${q}`]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
 /*

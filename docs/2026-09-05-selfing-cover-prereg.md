@@ -61,6 +61,43 @@ sharpens #63 in retrospect: the third of coexistence clip destroyed is a **lower
 bound** on the cost of losing coverage, because clip was quietly protecting the
 critical plant the entire time it did the damage.
 
+### ⚠️ Correction to this section, recorded BEFORE the sweep ran
+
+_Added later on 2026-09-05, after the implementation existed and its tests ran,
+and before any sweep was submitted. No #64 result exists at the time of writing._
+
+The paragraph above says clip "protects almost exactly the plant the floor
+exists for". **That is true at k = 1 and overstated everywhere else, and the
+overstatement was caught by a test that failed.**
+
+Measured on the new implementation over 8 seeds × 12 generations, on **every**
+plant with `received === 0` rather than only the lone minority plant at k = 1:
+
+| rule                     | starved overall | starved AMONG `received === 0` |
+| ------------------------ | --------------: | -----------------------------: |
+| random coverage q = 0.69 |           ~0.70 |                      **0.726** |
+| #63's clip               |          ~0.691 |                      **0.468** |
+
+Random sits on its blind null, as it must. Clip sits clearly below its own —
+so clip **is** targeted, which is what #64's prediction requires. But it kills
+roughly **half** the exposed class, not the ~10% pre-flight A found at k = 1.
+
+Both numbers are correct and the reconciliation is mechanical: at
+`received === 0` the OLS residual reduces to `self − a`, so whether clip spares
+a partnerless plant turns on **her own self-pollen against the intercept**.
+About half the exposed class carries too little display to clear it. The k = 1
+minority plant does clear it, because she is the extreme member of the class —
+partnerless _and_ heavily geitonogamous — not a typical one.
+
+⚠️ **So clip's protection is CONCENTRATED AT LOW k rather than uniform**, and
+#64's harshness advantage over clip should therefore be expected to be
+concentrated at low k too. The registered direction is unchanged — clip is not
+blind, and random is strictly harsher at the plant that ends coexistence — but
+the claim is now scoped to where it was measured. The tests assert clip against
+**its own blind null** rather than against a ratio chosen by hand, so the
+property they hold is "clip is not blind", which is what the prediction needs,
+and not "clip spares nearly everyone", which is false.
+
 ⚠️ **Scope limit on this pre-flight, stated because it is the exact hazard #63
 was built around.** `P(· | k = 1)` is collider-conditioned. It cannot be a
 result and is not used as one. It is admissible here as a **design** input only:
