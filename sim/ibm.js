@@ -2029,7 +2029,7 @@ function step(
         /* at q = 0 this is nKeep === n and the value is (rate * sum) / n — the
          * flat branch's own expression, evaluated identically, which is what
          * makes the C-null bit-level rather than distributional */
-        const w = target / n;
+        const w = target / nKeep;
         for (let i = 0; i < nKeep; i++) selfW[idx[i]] = w;
       }
       weight = weight.map((w, i) => w + selfW[i]);
