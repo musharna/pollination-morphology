@@ -296,6 +296,45 @@ function replicate(seed, N0, arm) {
        */
       selfWTot: res.selfW ? res.selfW.reduce((a, b) => a + b, 0) : null,
       /*
+       * ⚠️ #63's C-RESID AND C-ZERO, RECORDED FOR THE SAME REASON. The
+       * residualised arm's entire claim is that its assurance no longer tracks
+       * `received`, and that its clipped variant starves a large but
+       * lineage-unbiased share of plants. Both were measured PRE-FLIGHT, on a
+       * re-run of a DIFFERENT arm — which makes them premises. Measured here
+       * they are findings about the data that shipped.
+       *
+       * `selfWZeroMin`/`selfWZeroMaj` split the starved plants by lineage
+       * because #62 refuted the abandoned-plant mechanism partly on its being
+       * UNBIASED; at 66.7% starved that refutation has to be re-earned rather
+       * than inherited.
+       */
+      selfWRho:
+        res.selfW && res.received ? corr(res.selfW, res.received) : null,
+      selfWZero: res.selfW ? res.selfW.filter((x) => x === 0).length : null,
+      ...(() => {
+        if (!res.selfW || !informative) return {};
+        const minor = n0 < n1 ? 0 : 1;
+        let zMin = 0,
+          zMaj = 0,
+          nMin = 0,
+          nMaj = 0;
+        for (let i = 0; i < res.selfW.length && i < labels.length; i++) {
+          if (labels[i] === minor) {
+            nMin++;
+            if (res.selfW[i] === 0) zMin++;
+          } else if (labels[i] === 1 - minor) {
+            nMaj++;
+            if (res.selfW[i] === 0) zMaj++;
+          }
+        }
+        return {
+          selfWZeroMin: zMin,
+          selfWZeroMaj: zMaj,
+          selfWNMin: nMin,
+          selfWNMaj: nMaj,
+        };
+      })(),
+      /*
        * ⚠️ #59: `matings` is pushed only when a seed ESTABLISHES, so under
        * inbreeding depression `selfedN/matingsN` is the share of SURVIVING
        * offspring that were selfed — which falls with cost even though the
@@ -356,6 +395,21 @@ for (const c of [25, 50, 75, 95]) ALL.push([30, `R200c${c}`]);
  * pair isolates the SHAPE of the floor from its SIZE — which #58 already swept.
  */
 ALL.push([30, "R200d"]);
+/*
+ * #63's residualised arms, again at rate 2.0 so they compare against the SAME
+ * existing 30:R200 flat cell and 30:R200d dose cell. Assurance is proportional
+ * to the part of a plant's self-pollen that `received` does not predict, which
+ * is the intervention #62 named in its own limitations and did not run.
+ *
+ * ⚠️ TWO ARMS BECAUSE THE PRE-FLIGHT FORCED IT. "r" clips negative residuals to
+ * zero and thereby withdraws assurance from 66.7% of plants; "s" shifts instead,
+ * preserving the IDENTICAL residual ordering while zeroing 3.3%. #62 refuted the
+ * abandoned-plant mechanism at 4.3% and that refutation does not reach two
+ * thirds, so the pair separates the ablation from the starvation. Registered in
+ * docs/2026-09-04-selfing-resid-prereg.md before either existed.
+ */
+ALL.push([30, "R200r"]);
+ALL.push([30, "R200s"]);
 for (const [N0, arm] of ALL) out[keyOf(N0, arm)] = [];
 
 /*

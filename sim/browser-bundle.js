@@ -4311,6 +4311,89 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
       const s = totSelf > 0 ? target / totSelf : 0;
       selfW = self.map((x) => s * x);
       weight = weight.map((w, i) => w + selfW[i]);
+    } else if (opts.selfing.resid) {
+      /*
+       * ---- #63: RESIDUALISED ASSURANCE — the ablation #62 asked for and did
+       * not run.
+       *
+       * #62's surviving mechanism (M3) is that the diagonal TRACKS VISITATION
+       * (Spearman 0.438), so the dose-proportional floor above hands most of a
+       * MATCHED budget to well-visited plants that would have outcrossed
+       * anyway. That rested on a correlation plus a refuted alternative, NOT on
+       * an intervention. This is the intervention: assurance proportional to
+       * the part of the diagonal that `received` does NOT predict.
+       *
+       * The regression is a within-generation OLS of self on received, so the
+       * residualised quantity and the quantity it is residualised ON are the
+       * two halves of the SAME transfer matrix, split at the diagonal
+       * (:1749-1753). Measured pre-flight, received explains only ~15% of the
+       * diagonal's variance, and the residual is SHARPER than the raw diagonal
+       * (CV 2.45 vs 1.43) rather than blunter.
+       *
+       * ⚠️ TWO VARIANTS, AND THE SECOND IS A DISCRIMINATOR, NOT A SPARE.
+       * Assurance cannot be negative and OLS residuals sum to zero, so the
+       * negative half has to go somewhere, and the two defensible choices are
+       * not equivalent:
+       *   "clip"  -> max(e, 0). Concentrates hard, and withdraws assurance
+       *              from 66.7% of plants.
+       *   "shift" -> e - min(e). IDENTICAL ordering, zeroes 3.3%. Because the
+       *              residuals sum to zero this is a flat floor plus a zero-sum
+       *              perturbation BY CONSTRUCTION, so it is the blunter
+       *              instrument and is not the primary.
+       * If clip moves an outcome and shift does not, the STARVATION did the
+       * work and not the ablation. #62 refuted the abandoned-plant mechanism at
+       * 4.3% of plants; that refutation does not reach two thirds, which is
+       * exactly why both variants ship.
+       *
+       * ⚠️ C-MATCH, unchanged from #62 and still the whole experiment: `s` is
+       * solved per generation so sum_i selfW[i] == rate * sum(received) ==
+       * n * floor. Every arm spends the same assurance and differs ONLY in
+       * shape. Scale it any other way and this silently becomes a test of how
+       * MUCH selfing there is, which #58 already answered.
+       */
+      const self = new Array(n).fill(0);
+      for (let i = 0; i < n; i++) self[i] = r.T[i][i];
+
+      let mx = 0,
+        my = 0;
+      for (let i = 0; i < n; i++) {
+        mx += received[i];
+        my += self[i];
+      }
+      mx /= n;
+      my /= n;
+      let sxy = 0,
+        sxx = 0;
+      for (let i = 0; i < n; i++) {
+        sxy += (received[i] - mx) * (self[i] - my);
+        sxx += (received[i] - mx) * (received[i] - mx);
+      }
+      /* every plant received exactly the same amount: there is nothing to
+       * residualise ON, so the slope is zero and the residual degenerates to
+       * self-minus-its-own-mean, which is the honest answer rather than a
+       * divide-by-zero */
+      const b = sxx > 0 ? sxy / sxx : 0;
+      const a = my - b * mx;
+      const e = self.map((x, i) => x - (a + b * received[i]));
+
+      let shaped;
+      if (opts.selfing.resid === "shift") {
+        let mn = e[0];
+        for (const x of e) if (x < mn) mn = x;
+        shaped = e.map((x) => x - mn);
+      } else {
+        shaped = e.map((x) => (x > 0 ? x : 0));
+      }
+
+      const totShaped = shaped.reduce((p, q) => p + q, 0);
+      const target = opts.selfing.rate * received.reduce((p, q) => p + q, 0);
+      /* the residual carries no spread at all — self is exactly linear in
+       * received, so there is nothing for a residualised floor to be
+       * proportional TO, and inventing one would be the flat floor wearing a
+       * different name */
+      const s = totShaped > 0 ? target / totShaped : 0;
+      selfW = shaped.map((x) => s * x);
+      weight = weight.map((w, i) => w + selfW[i]);
     } else {
       const floor =
         (opts.selfing.rate * received.reduce((a, b) => a + b, 0)) / n;
@@ -4543,6 +4626,18 @@ function step(pop, opts, rng, gen, srng = null, brng = null, wrng = null) {
      * assurance spent".
      */
     selfW,
+    /*
+     * #63's C-resid and C-zero need the regressor beside the assurance. The
+     * whole claim of the residualised arm is that its assurance no longer tracks
+     * `received`, and that claim was measured PRE-FLIGHT on a re-run of a
+     * different arm — which makes it a premise, not a finding. Returning
+     * `received` lets the sweep archive the correlation and the starved-plant
+     * count for the data that ACTUALLY SHIPS.
+     *
+     * Nothing here draws from any rng, so the default path stays bit-identical;
+     * this is a read of a quantity the function already computed at :1749.
+     */
+    received,
     spread: spreadOf(places),
     cluster: twoClusterSeparation(places),
     signalCluster: ringSeparation(signals),
