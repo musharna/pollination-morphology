@@ -203,6 +203,87 @@ if (shared.length < 5) {
   console.log(
     `  REGISTERED READING: ${lo <= 0 && hi >= 0 ? "CI includes zero -> H2 (shape does not matter)" : pt > 0 ? "CI excludes zero, positive -> H1 (rare-favouring)" : "CI excludes zero, negative -> H3 (rich-get-richer)"}`,
   );
+  console.log(
+    `  ⚠️  AND IT IS CONDITIONED ON A TREATMENT-AFFECTED STATE — see the unconditional block below,\n` +
+      `      which is what the result document leads with.`,
+  );
+}
+
+/*
+ * ------------------------------------------------------------ UNCONDITIONAL
+ *
+ * ⚠️ ADDED AFTER SEEING THE DATA, and it carries the headline.
+ *
+ * The registered primary conditions on reaching k=1, and the treatment changes
+ * who reaches k=1 (45 seeds vs 40) — so it compares two differently-selected sets
+ * of generations. That is #61's dwell bug in a new costume: there, conditioning
+ * the successor row on `informative` conditioned on survival, the exit being
+ * counted.
+ *
+ * These quantities use NO k filter at all. They are a validity check on the
+ * registered hypothesis rather than a new one, which is why they live here and
+ * are labelled rather than quietly replacing the primary.
+ */
+console.log(
+  `\nUNCONDITIONAL — every run, no k filter (this is what the result leads with)`,
+);
+{
+  const perRun = (r) => {
+    let informativeGens = 0,
+      motheredTotal = 0,
+      k1gens = 0;
+    for (const row of r.rows) {
+      if (!row.informative) continue;
+      informativeGens++;
+      if (row.minMothered != null) motheredTotal += row.minMothered;
+      if (row.k === 1) k1gens++;
+    }
+    return {
+      seed: r.seed,
+      informativeGens,
+      motheredTotal,
+      k1gens,
+      everK1: k1gens > 0 ? 1 : 0,
+      held: r.fate === "HELD" ? 1 : 0,
+      rate: informativeGens ? motheredTotal / informativeGens : null,
+    };
+  };
+  const F = flat.map(perRun),
+    D = dose.map(perRun);
+  const bySeed = new Map(D.map((r) => [r.seed, r]));
+  const pairs = F.filter((r) => bySeed.has(r.seed)).map((r) => [
+    r,
+    bySeed.get(r.seed),
+  ]);
+
+  for (const [labelText, key] of [
+    ["generations with both lineages present", "informativeGens"],
+    ["TOTAL offspring mothered by the minority", "motheredTotal"],
+    ["generations spent at k=1", "k1gens"],
+    ["ever reached k=1 (share of runs)", "everK1"],
+    ["HELD (coexistence)", "held"],
+    ["the primary's estimand, uncollided", "rate"],
+  ]) {
+    const p = pairs
+      .map(([x, y]) => [x[key], y[key]])
+      .filter(([a, b]) => a != null && b != null);
+    if (!p.length) continue;
+    const d = bootDiff(p);
+    const lo = quant(d, 0.025),
+      hi = quant(d, 0.975);
+    console.log(
+      `  ${labelText.padEnd(42)} flat ${mean(p.map((x) => x[0]))
+        .toFixed(3)
+        .padStart(8)}   ` +
+        `dose ${mean(p.map((x) => x[1]))
+          .toFixed(3)
+          .padStart(8)}   ` +
+        `diff ${mean(p.map((x) => x[1] - x[0]))
+          .toFixed(3)
+          .padStart(7)} [${lo.toFixed(3)}, ${hi.toFixed(3)}]` +
+        `${lo > 0 || hi < 0 ? "  <-- excludes 0" : ""}`,
+    );
+  }
 }
 
 /* ------------------------------------------------------------------- HELD */

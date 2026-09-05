@@ -973,6 +973,54 @@ the re-run's own anchor: 805 rows, 0 disagreements.
 [detail](2026-09-04-k1-wall.md)
 [detail](2026-09-04-k1-wall-prereg.md)
 
+✅✅ **#62 THE SHAPE OF THE SELFING FLOOR RELOCATES RESCUE WITHOUT CREATING ANY.** The floor is
+`rate x mean(received)` — ONE SCALAR for every plant, with no reference to what is on her own stigma.
+Premise measured first and it could have killed the task: within-generation CV of the pollen-transfer
+diagonal **1.43**, most-selfed plant carries **29.5x** the least, a plant with EXACTLY ZERO
+self-pollen present in **677/1050** generations. So the floor really is the wrong shape. A
+dose-dependent arm (`selfW[i] = s x T[i][i]`) was built with `s` solved per generation so both arms
+spend an IDENTICAL total (C-match) — isolating SHAPE from SIZE, which #58 already swept.
+
+⚠️⚠️ **THE REGISTERED PRIMARY RETURNED H1 AND THE REGISTERED PRIMARY WAS THE WRONG ESTIMAND.** At k=1
+`minMothered` goes **0.580 -> 3.427** (~6x), share mothering nothing **0.594 -> 0.253**, paired diff
+**+2.435 [1.028, 3.944]** excluding zero. But that CONDITIONS ON REACHING k=1, which the treatment
+changes (45 seeds vs 40) — #61's dwell bug in a new costume. UNCONDITIONALLY, over every run with no
+k filter: total offspring mothered by the minority **-12.85 [-47.9, +22.5]**, generations coexisting
+**-0.95 [-4.1, +2.2]**, HELD **0.404 vs 0.385, -0.018 [-0.138, +0.101]**, and the primary's own
+estimand uncollided **-0.736 [-1.495, +0.016]**. **EVERY UNCONDITIONAL MEASURE INCLUDES ZERO AND
+EVERY POINT ESTIMATE LEANS NEGATIVE.** Reported as H1 conditionally, **H2 unconditionally**, with the
+unconditional reading carrying the weight.
+
+⚠️⚠️ **TELL, AND IT IS NEW: A PRE-REGISTERED DECISION RULE PROTECTS AGAINST READING THE DATA WRONG.
+IT DOES NOT PROTECT AGAINST REGISTERING THE WRONG ESTIMAND.** The rule was fixed in both directions,
+fired exactly as written, and returned an answer the unconditional data does not support. #61's
+lesson was that the rule saves you; #62 is its limit.
+
+🔬 WHY THE GAIN DOES NOT AGGREGATE — 3 mechanisms, one measured out. M1 zero-sum by construction:
+TRUE BUT INSUFFICIENT (a fixed total moved to where it is scarcer COULD buy more — that IS H1).
+M2 dose abandons the zero-self-pollen plants: **REFUTED BY MEASUREMENT** — only **4.3%** of plants get
+zero assurance (median 3.3%), falling evenly on minority 4.1% / majority 4.5%, so the abandoned class
+cannot pay for a 6x lift. M3 the assurance flows to plants that DO NOT NEED IT: self-pollen tracks
+visitation at **rho 0.438**, so under dose most of the budget goes to well-visited plants that would
+have outcrossed anyway. **The lone plant is the conspicuous EXCEPTION — heavily selfed because
+heavily visited (4.587x) with no partner — so the rule finds her AND hands most of the budget to
+plants never at risk.**
+
+✅ CONTROLS ALL PASS: **C-match** identical total at g=0 across 109 seeds, worst gap **1.0e-15** ·
+**C-null** the post-change re-run is **BYTE-IDENTICAL** to the pre-change one, 805 rows, so the
+default path is unchanged and #56-#61 stay comparable · **C-anchor** the fresh flat arm reproduces
+#58's archive on **51,952 values over 3,815 rows, 0 disagreements** · **C10 both arms self at exactly
+66.8% of matings** — same amount, different distribution, which is the experiment.
+
+⚠️ This is **#60 ARRIVING FROM A NEW DIRECTION**: #60 separated survival from recovery and found
+selfing buys the first not the second; #62 separates the floor's SHAPE from its SIZE and finds shape
+buys a much better rescue at k=1 and still not recovery. ⚠️ M3 rests on a correlation plus a refuted
+alternative, NOT an intervention — the clean test residualises self-pollen on `received` and was not
+run. ⚠️ P1 still untested, exactly as registered: dose produces SELFED seed, which keeps `anc`
+unaveraged, so this arm bypasses the averaging wall rather than probing it.
+[detail](2026-09-04-selfing-dose.md)
+[detail](2026-09-04-selfing-dose-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
