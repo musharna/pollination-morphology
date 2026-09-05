@@ -324,6 +324,47 @@ test("selfingFor recognises every arm the sweeps actually use", () => {
       !("dose" in selfingFor(arm)),
       `${arm} silently became dose-dependent — every archive before #62 is now incomparable`,
     );
+
+  /*
+   * ⚠️ #63's residual dimension — the FOURTH naming axis, asserted here for
+   * exactly the reason the dose axis was: tests/selfing-resid.test.js drives the
+   * CONFIG OBJECT against sim/ibm.js and never goes through selfingFor, so
+   * without these lines the sweep could run a cell called "R200r" that silently
+   * self-configured as the flat R200 — and #63 would report a scrupulously
+   * controlled null about an intervention that never happened.
+   */
+  assert.deepStrictEqual(selfingFor("R200r"), {
+    rate: 2,
+    cost: 0,
+    resid: "clip",
+  });
+  assert.deepStrictEqual(selfingFor("R200s"), {
+    rate: 2,
+    cost: 0,
+    resid: "shift",
+  });
+  /* the residual composes with cost and the tracer null, in the fixed order */
+  assert.deepStrictEqual(selfingFor("R200c50r"), {
+    rate: 2,
+    cost: 0.5,
+    resid: "clip",
+  });
+  assert.deepStrictEqual(selfingFor("R200c25sn"), {
+    rate: 2,
+    cost: 0.25,
+    resid: "shift",
+    ancNull: true,
+  });
+  /* no pre-#63 arm may acquire a residual, and the two #63 shapes are distinct */
+  for (const arm of ["R200", "R200c25", "R200n", "R200d", "R25d", "S", "Sn"])
+    assert.ok(
+      !("resid" in selfingFor(arm)),
+      `${arm} silently became residualised — every archive before #63 is now incomparable`,
+    );
+  assert.ok(
+    !("dose" in selfingFor("R200r")) && !("dose" in selfingFor("R200s")),
+    "a residual arm also claims to be dose-dependent — the shapes must be exclusive",
+  );
 });
 
 test("selfingFor returns null for the arms that must NOT self", () => {
@@ -349,6 +390,20 @@ test("selfingFor returns null for the arms that must NOT self", () => {
     "R200nd",
     "Rd",
     "R200dc25",
+    /* ⚠️ #63: a name carrying TWO shape letters must be REJECTED, not silently
+     * resolved to whichever the regex happens to reach first. "R200dr" asks for
+     * a dose floor and a residual floor at once, which is not a thing. */
+    "R200dr",
+    "R200rd",
+    "R200rs",
+    "R200sr",
+    "R200ds",
+    /* and the residual suffix obeys the same fixed order as every other axis */
+    "R200rc25",
+    "R200sc25",
+    "R200nr",
+    "Rr",
+    "Rs",
   ])
     assert.equal(
       selfingFor(arm),
