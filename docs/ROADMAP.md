@@ -1015,11 +1015,70 @@ default path is unchanged and #56-#61 stay comparable · **C-anchor** the fresh 
 ⚠️ This is **#60 ARRIVING FROM A NEW DIRECTION**: #60 separated survival from recovery and found
 selfing buys the first not the second; #62 separates the floor's SHAPE from its SIZE and finds shape
 buys a much better rescue at k=1 and still not recovery. ⚠️ M3 rests on a correlation plus a refuted
-alternative, NOT an intervention — the clean test residualises self-pollen on `received` and was not
-run. ⚠️ P1 still untested, exactly as registered: dose produces SELFED seed, which keeps `anc`
+alternative, NOT an intervention — the clean test residualises self-pollen on `received`. **RUN IN
+#63 (below): the ablation moved nothing, and the arm that ALSO starved two-thirds of plants destroyed
+a third of coexistence — so M3's premise survives but the floor's coverage, not its targeting, is
+what the outcome is sensitive to.** ⚠️ P1 still untested, exactly as registered: dose produces SELFED
+seed, which keeps `anc`
 unaveraged, so this arm bypasses the averaging wall rather than probing it.
 [detail](2026-09-04-selfing-dose.md)
 [detail](2026-09-04-selfing-dose-prereg.md)
+
+✅✅ **#63 THE ABLATION DID NO HARM; THE STARVATION DID — AND THE COLLIDER SAID THE OPPOSITE.** #62's
+surviving mechanism M3 rested on a correlation plus a refuted alternative, not an intervention, so
+#63 ran the intervention: assurance proportional to the part of self-pollen that `received` does NOT
+predict, C-matched as always. Four cells at N0=30 rate 2.0, 109 seeds — flat, #62's dose, and two new
+residual arms that residualise IDENTICALLY and differ only in what happens to the negative half
+(`R200r` clips it to zero, `R200s` shifts it).
+
+THE REGISTERED PRIMARY WAS UNCONDITIONAL THIS TIME — total minority offspring per run, no `k` filter,
+no denominator the treatment can move — and returned **H2**: −20.201 [−64.550, 25.523], includes
+zero. But two unconditional secondaries EXCLUDE zero and both are NEGATIVE: **HELD 0.404 → 0.266,
+−0.138 [−0.257, −0.018]** and five fewer generations with both lineages present, −5.044 [−8.413,
+−1.550]. The clipped arm is not another null — **it destroys a third of all coexistence**, and beats
+#62's dose arm downward head to head (HELD −0.119 [−0.229, −0.009]).
+
+⚠️⚠️ **AND THIS IS WHERE A COLLIDER-CONDITIONED ESTIMAND INVERTED, NOT MERELY OVERSTATED.** On the
+SAME 109 seeds, #62's registered primary says the clipped arm lifts k=1 mothering THIRTEEN-FOLD —
+0.580 → **7.543**, share mothering nothing 0.594 → 0.114, paired **+9.247 [7.069, 11.519]**, a tight
+interval nowhere near zero. The unconditional data says that arm destroys a third of coexistence.
+**Both intervals exclude zero and they have OPPOSITE SIGNS.** #62 established that a pre-registered
+rule does not protect against registering the wrong estimand; #63 measures what that is worth. The
+inversion's mechanism is visible: conditioning on k=1 selects generations where the minority STILL
+EXISTS, and the runs where the clip's lottery lost are already extinct and never counted.
+
+⚠️ **THE DISCRIMINATOR FIRED CLEANLY AND IT REVIVES A MECHANISM #62 REFUTED.** clip starves **69.1%**
+of plants and harms; shift has the same ablation, starves **4.7%**, and is the BEST of the four
+(HELD +0.054, offspring +14.926, both including zero). So the harm sits on the STARVATION axis, not
+the ablation axis. #62 measured the abandoned zero-assurance class at 4.3% and refuted it — and #63
+CONFIRMS that refutation at that size, since the dose arm's 4.4% does no measurable harm — but at
+69.1% the same mechanism is decisive. ⚠️⚠️ **A REFUTATION IS SCOPED TO THE MAGNITUDE IT WAS MEASURED
+AT: "too small to matter" at 4.3% says nothing about 69%.** Only the pre-flight measuring the clip's
+starved fraction BEFORE the design was fixed, and a second arm registered to bound it, made this
+visible.
+
+⚠️ SCOPE, RECORDED BEFORE THE SWEEP: the residualisation is LINEAR ONLY. It removes the Pearson
+association entirely (shift reads **−0.000**, as OLS orthogonality requires) and only ~29% of the
+rank association (Spearman 0.353 → 0.252). The pre-flight's "three quarters removed" was computed on
+the CLIPPED residual and is a ties artifact of collapsing 69% of plants onto zero; it was WITHDRAWN
+in the prereg before any data existed. **So #63 does not establish what removing the correlation
+does — it establishes that the floor's COVERAGE matters and its SHAPE does not.**
+
+✅ CONTROLS: **C-anchor/C-null — #62 REPRODUCES EXACTLY on an independent re-run through changed
+code, 3,815 rows per arm, 133,563 numeric values, 0 disagreements over 109 seeds** · **C-match**
+worst relative gap **1.7e-15** over 327 arm-seeds · **C10** all four arms self at 0.667-0.668 ·
+**C-resid/C-zero** measured on the SHIPPED rows, not inherited from the pre-flight · ⚠️ **the
+controls were themselves SEEN TO FAIL, 4/4 violated premises detected with a clean-input positive
+control** (`experiments/selfing-resid-negctl.js`) · 6 mutants across two files, each killing a
+disjoint set.
+
+⚠️ Reading of the whole selfing arc now: #58 swept the floor's SIZE and moved coexistence; #62 swept
+its SHAPE at matched size and moved nothing; #63 sweeps its COVERAGE and moves coexistence for the
+first time since #58 — downward. **The floor is a coverage device, not a targeting device**: its job
+(#61) is to give a partnerless plant non-zero draw weight, ANY rule that does so suffices, and a rule
+that stops doing so for two-thirds of plants stops doing the job.
+[detail](2026-09-05-selfing-resid.md)
+[detail](2026-09-04-selfing-resid-prereg.md)
 
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
