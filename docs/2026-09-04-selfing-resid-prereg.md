@@ -187,6 +187,46 @@ finding.
 
 ## Cost
 
-Two new cells at N0 = 30 (`R200r`, `R200s`), reusing the existing `R200` and
-`R200d` archives for the flat and dose comparisons. Same shape as #62, which was
-two cells.
+Four cells at N0 = 30 — the two new arms (`R200r`, `R200s`) plus fresh `R200`
+and `R200d`. Re-running the two existing arms rather than reusing #62's archives
+costs roughly double, and buys three things: C-resid and C-zero become
+measurable on the rows that shipped instead of inherited from a pre-flight on a
+different arm; the flat and dose arms get an independent reproduction check
+against #62's archive; and every row carries the same field set, so no
+comparison depends on which archive a number came from — the exact error #62(b)
+had to correct.
+
+## ⚠️ Correction, recorded BEFORE the sweep ran
+
+While smoke-testing the analysis end-to-end on a 6-seed dump — before submitting
+the real sweep, and with no primary result in existence — the C-resid control
+was found to be reporting a **Pearson** correlation while this document's
+premise numbers are **Spearman**. Both now ship, separately labelled, and the
+write-up may not mix them. Recomputing on the same rows changes what this design
+can claim:
+
+| quantity                                     | measured | reading                                        |
+| -------------------------------------------- | -------- | ---------------------------------------------- |
+| Spearman rho(assurance, received), dose arm  | 0.331    | the association to be ablated                  |
+| Spearman, **shift** arm (unclipped residual) | 0.282    | ⚠️ only ~15% of the rank association removed   |
+| Spearman, clip arm                           | 0.126    | deflated by ties — see below                   |
+| Pearson, shift arm                           | −0.000   | the linear association is removed **entirely** |
+
+**The "partial, ~¾ removed" line in the pre-flight table above is inflated, and
+is withdrawn.** It was computed on the CLIPPED residual, and clipping collapses
+about two-thirds of plants into a single zero-valued tie block, which
+mechanically deflates a rank statistic. The shifted arm is a strictly monotone
+transform of the residual, so its 0.282 is the honest unconfounded figure.
+
+Stated correctly, what the intervention does: **a linear residualisation removes
+the LINEAR dependence of assurance on visitation completely, and most of the
+MONOTONE dependence survives it.** That follows from regressing on the raw scale
+against a heavy-tailed diagonal. It is a limitation of this design, not a result
+of it.
+
+This changes no hypothesis and no decision rule — H1/H2/H3 and the rule stand
+exactly as registered above, and the primary is about outcomes rather than about
+the correlation. It changes only what may be said about MECHANISM if the primary
+moves: a mover cannot be attributed to "the correlation was removed" while three
+quarters of the rank association is still there. That makes the `R200s`
+discriminator more important, not less.

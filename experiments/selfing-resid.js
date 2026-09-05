@@ -228,28 +228,55 @@ console.log(`CONTROLS`);
  * ⚠️ C-RESID — THE ABLATION, MEASURED ON THE DATA THAT SHIPPED. The pre-flight
  * measured rho(self, received) = 0.402 falling to 0.096 after residualising, but
  * it measured that on a RE-RUN OF A DIFFERENT ARM, which makes it a premise.
- * This is the same quantity on the rows that actually produced the result.
+ * These are the same quantities on the rows that actually produced the result.
+ *
+ * ⚠️⚠️ BOTH STATISTICS, AND THEY MAY NOT BE MIXED. The pre-flight's numbers are
+ * SPEARMAN, because the diagonal is heavy-tailed and a rank statistic is the
+ * honest summary of "does assurance track visitation". The shifted arm's
+ * defining property is PEARSON — OLS residuals are exactly Pearson-orthogonal
+ * to the regressor, and nothing else proves the ablation happened. Quoting one
+ * against the other would be the #62(b) error in a new costume: a number
+ * computed a different way, presented as the same quantity.
  */
 {
-  const rho = (cells) => {
+  const rho = (cells, key) => {
     const v = [];
     for (const r of cells)
-      for (const row of r.rows) if (row.selfWRho != null) v.push(row.selfWRho);
+      for (const row of r.rows) if (row[key] != null) v.push(row[key]);
     return v.length ? { m: mean(v), n: v.length } : null;
   };
-  const rd = rho(dose),
-    rc = rho(clip),
-    rs = rho(shift);
+  const P = (c) => rho(c, "selfWRho"),
+    S = (c) => rho(c, "selfWRhoS");
+  const rd = P(dose),
+    rc = P(clip),
+    rs = P(shift);
+  const sd = S(dose),
+    sc = S(clip),
+    ss = S(shift);
+  const premise = rho(flat, "selfRecvRhoS");
+
   console.log(
-    `  C-resid   mean rho(assurance, received):  dose ${f(rd && rd.m)}   clip ${f(rc && rc.m)}   shift ${f(rs && rs.m)}`,
+    `  C-resid   SPEARMAN rho(assurance, received):  dose ${f(sd && sd.m)}   clip ${f(sc && sc.m)}   shift ${f(ss && ss.m)}`,
   );
-  if (rd && rc && !(Math.abs(rc.m) < Math.abs(rd.m)))
+  console.log(
+    `  C-resid   PEARSON  rho(assurance, received):  dose ${f(rd && rd.m)}   clip ${f(rc && rc.m)}   shift ${f(rs && rs.m)}`,
+  );
+  console.log(
+    `  C-resid   the PREMISE re-measured here — SPEARMAN rho(self-pollen, received) on the flat arm: ` +
+      `${f(premise && premise.m)}  (pre-flight quoted 0.402 / 0.438)`,
+  );
+
+  /* the ablation must show up on the rank statistic the premise was stated in */
+  if (sd && sc && !(Math.abs(sc.m) < Math.abs(sd.m)))
     fail(
-      `C-RESID FAILED — the clipped arm does not carry less received-correlation than the dose arm`,
+      `C-RESID FAILED — clipped arm does not carry less rank-correlation with received than dose ` +
+        `(clip ${sc.m} vs dose ${sd.m})`,
     );
+  /* and the shift arm must be Pearson-orthogonal, which is what makes it a
+   * residual at all rather than merely a differently-shaped floor */
   if (rs && !(Math.abs(rs.m) < 1e-6))
     fail(
-      `C-RESID FAILED — the shifted arm should be exactly orthogonal to received, got ${rs.m}`,
+      `C-RESID FAILED — the shifted arm should be exactly Pearson-orthogonal to received, got ${rs.m}`,
     );
 }
 

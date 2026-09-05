@@ -70,6 +70,38 @@ function corr(a, b) {
   return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : null;
 }
 
+/*
+ * ⚠️ #63 NEEDS BOTH CORRELATIONS AND THEY ARE NOT INTERCHANGEABLE. The
+ * pre-flight quoted SPEARMAN (self vs received, 0.402), because the diagonal is
+ * heavy-tailed and a rank statistic is the honest summary of "does assurance
+ * track visitation". But the residualised arm's defining property is a PEARSON
+ * one — OLS residuals are exactly Pearson-orthogonal to the regressor, so the
+ * shifted arm must read 0 to floating precision and nothing else would prove
+ * the ablation happened.
+ *
+ * Reporting one against the other would be quoting a number computed a
+ * different way and calling it the same quantity — the #62(b) error in a new
+ * costume. So both ship, separately labelled, and the write-up may not mix them.
+ */
+function spearman(a, b) {
+  const n = a.length;
+  if (n < 3) return null;
+  const rank = (v) => {
+    const idx = v.map((x, i) => [x, i]).sort((p, q) => p[0] - q[0]);
+    const r = new Array(n);
+    let i = 0;
+    while (i < n) {
+      let k = i;
+      while (k + 1 < n && idx[k + 1][0] === idx[i][0]) k++;
+      const avg = (i + k) / 2 + 1; // mid-rank for ties
+      for (let t = i; t <= k; t++) r[idx[t][1]] = avg;
+      i = k + 1;
+    }
+    return r;
+  };
+  return corr(rank(a), rank(b));
+}
+
 /* lineage label; anything strictly between 0 and 1 is a hybrid and is counted
  * separately rather than rounded into a side */
 function label(x) {
@@ -310,6 +342,17 @@ function replicate(seed, N0, arm) {
        */
       selfWRho:
         res.selfW && res.received ? corr(res.selfW, res.received) : null,
+      selfWRhoS:
+        res.selfW && res.received ? spearman(res.selfW, res.received) : null,
+      /* the pre-flight's premise quantity, recomputed on the shipped rows so the
+       * 0.402 it quoted can be checked rather than inherited */
+      selfRecvRhoS:
+        res.T && res.received
+          ? spearman(
+              res.T.map((row, i) => row[i]),
+              res.received,
+            )
+          : null,
       selfWZero: res.selfW ? res.selfW.filter((x) => x === 0).length : null,
       ...(() => {
         if (!res.selfW || !informative) return {};
