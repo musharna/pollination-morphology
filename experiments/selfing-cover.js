@@ -387,7 +387,7 @@ console.log(`CONTROLS`);
   );
   if (spread > 0.15)
     fail(
-      `C-KILL WARNING — the exposed class itself moves by ${f(spread)} across arms, ` +
+      `C-KILL FAILED — the exposed class itself moves by ${f(spread)} across arms, ` +
         `so the kill RATE has a treatment-movable denominator and must be read as such`,
     );
   /* the flat arm cannot kill anyone: it starves nobody, by construction */
@@ -429,6 +429,38 @@ console.log(`CONTROLS`);
       fail(
         `C10 FAILED — ${k} has no floor and yet ${f(v)} of its matings selfed`,
       );
+    /*
+     * ⚠️ AND THE SHARPENED FORM, WHICH IS NOT A TASTE JUDGEMENT BUT ARITHMETIC.
+     *
+     * Under C-match the selfed share of matings is INDEPENDENT OF HOW THE
+     * ASSURANCE IS DISTRIBUTED. Mothers are drawn in proportion to `weight`, the
+     * selfing coin is `rng() * weight[mother] < selfW[mother]` (sim/ibm.js:2192),
+     * and `weight = received + selfW`, so the expected selfed share is
+     *
+     *     sum_covered selfW / sum_all weight  =  target / (S + rate*S)
+     *                                        =  rate / (1 + rate)
+     *
+     * with S = sum(received) and target = rate*S. Every C-matched arm — flat,
+     * dose, clip, shift, and every coverage q — must land on the SAME number,
+     * 0.667 at rate 2.0, and #63's four arms did (0.667-0.668).
+     *
+     * ⚠️ THIS CONTROL EXISTS BECAUSE THE WEAK FORM ABOVE PASSED A MUTANT. A
+     * killed mutation run left `w = target / n` in place of `target / nKeep`,
+     * so the coverage arms spent only nKeep/n of the budget. "Did it self at
+     * all" was happily satisfied — the arms read 0.590 / 0.496 / 0.372 / 0.210,
+     * all comfortably above zero, and the falling series looked like a genuine
+     * confound of coverage with realised selfing rather than a bug. C-match
+     * caught it; C10 as originally written could not, because it asserted a
+     * property with no upper edge. It has one now.
+     */
+    if (cfg && v != null) {
+      const want = cfg.rate / (1 + cfg.rate);
+      if (Math.abs(v - want) > 0.03)
+        fail(
+          `C10 FAILED — ${k} selfed ${f(v)} of matings; C-match implies ` +
+            `rate/(1+rate) = ${f(want)} for EVERY distribution of a matched total`,
+        );
+    }
   }
   console.log(`  C10       selfed share of matings: ${parts.join("  ")}`);
 }

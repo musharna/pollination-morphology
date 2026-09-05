@@ -143,7 +143,25 @@ let ok = 0,
   if (run(d, "c10-the-no-floor-anchor-selfs")) ok++;
 }
 
-/* 9. POSITIVE CONTROL — untouched input must still pass, or the harness itself
+/* 9. an arm selfs at a rate that is NONZERO BUT WRONG — the exact shape the
+ * killed mutation run left in the tree, where `w = target / n` stood in place
+ * of `target / nKeep` and every coverage arm spent only nKeep/n of the budget.
+ * The weak C10 above ("does it self at all") passed that mutant happily: the
+ * arms read 0.590 / 0.496 / 0.372 / 0.210, all comfortably above zero. Cases 7
+ * and 8 would both have passed it too, so without this case the sharpened C10
+ * is the one assertion in this file with no negative control of its own. */
+{
+  const d = clone();
+  for (const r of d.cells["30:R200q69"])
+    for (const row of r.rows) {
+      const m = row.matingsN || 0;
+      if (m) row.selfedN = Math.round(m * 0.4);
+    }
+  n++;
+  if (run(d, "c10-an-arm-selfs-at-the-wrong-rate")) ok++;
+}
+
+/* 10. POSITIVE CONTROL — untouched input must still pass, or the harness itself
  * is broken and every "detected" above would be meaningless */
 {
   const d = clone();
