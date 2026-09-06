@@ -1080,6 +1080,60 @@ that stops doing so for two-thirds of plants stops doing the job.
 [detail](2026-09-05-selfing-resid.md)
 [detail](2026-09-04-selfing-resid-prereg.md)
 
+✅✅ **#64 A FLOOR GIVEN TO FEW IS WORSE THAN NO FLOOR AT ALL.** #63 established that coverage is what
+matters and left three mechanisms alive. #64 sweeps coverage directly: the flat floor's shape,
+withheld at random from `round(q·n)` plants, redrawn every generation from a dedicated `coverRng`
+stream, survivors paid `target/nKeep` so the total spend is C-matched at every dose. Eight cells at
+N0=30 rate 2.0, 109 seeds each, 872 replicates. **Registered primary q=0.69 vs flat: HELD 0.404 →
+0.183, −0.221 [−0.339, −0.101] ⇒ H1, and more negative than #63's −0.138 as the rule required.**
+The floor's own benefit is measured on the same seeds: no-floor → flat **+0.138 [0.028, 0.248]**.
+
+⚠️⚠️ **THE RESULT: q=0.85 FALLS BELOW THE NO-FLOOR ANCHOR — 0.055 vs 0.266, −0.211 [−0.303,
+−0.119].** Every arm spends the identical budget (C-match 1.3e-15 over 654 arm-seeds); the anchor
+spends NOTHING; and the arm spending the full budget on 13% of plants coexists a fifth less often
+than the arm spending none. **A conservation law over the treatment does not make the treatment
+conservative — unevenness is a cost the total cannot see.** The pre-registered bound settles the
+mechanism split: KILL can only take back what the floor gave (0.138), and coverage takes 0.349 —
+**two and a half times the floor's whole benefit**, so KILL cannot be the whole story. The dose curve
+is monotone and CONVEX (steps 0.055 then 0.128), LOTTERY's signature; ⚠️ registered as descriptive
+only, the interval-backed claim is the single below-anchor contrast.
+
+⚠️ **RANDOM vs RESIDUAL IS NOT RESOLVED**: clip vs q=0.69 at matched coverage is −0.083 [−0.183,
+0.018], includes zero. #63's harm is attributable to STARVATION AT 69% COVERAGE, not to the residual
+rule — the targeting adds nothing detectable on top of the dose. #63's clip lands EXACTLY on the
+no-floor anchor (0.266 vs 0.266): it destroys the floor's entire benefit and stops, the KILL-shaped
+outcome. Random coverage at the matched dose goes past it. ⚠️ **THE TWO MEASURES DISAGREE AGAIN AND
+IT IS REPORTED AS A DISAGREEMENT, NOT RESOLVED**: at the primary dose HELD excludes zero while #63's
+`motheredTotal` includes it by 1.358; at q=0.85 both agree decisively (−93.948 [−127.193, −60.229]).
+
+⚠️ **THE COLLIDER INVERTED AGAIN — BUT ONLY ON THE CLIP ARM.** #62's k=1-conditioned primary reads
+the clip at 7.543 vs flat 0.580 while that arm is unconditionally indistinguishable from no floor.
+The random-coverage arms do NOT invert (0.667, 0.797) though they are the most harmful arms in the
+study. **The inversion is a property of the residual rule's lottery over a single surviving plant,
+not of starvation.** C-kill separates the rules from shipped rows: random coverage is BLIND
+(killed/exposed equals overall starved share to three decimals at every dose), #63's clip is TARGETED
+(starves 69.1% overall but only 46.1% of the exposed class — it SPARES the plants at `received === 0`).
+
+✅ CONTROLS: **C-null q=0 vs flat BIT-IDENTICAL, 121,499 values over 109 seeds, 0 disagreements** ·
+**C-match 1.3e-15** · **C10 0.667-0.668 at EVERY q** against `rate/(1+rate)` · C-cover realised
+tracks nominal within `round(q·n)` · exposed class moves only 0.021 · **negative controls 10/10, seen
+to fail** · **mutation 7/7 killed**. ⚠️⚠️ **A CONTROL ASSERTING A PROPERTY WITH NO UPPER EDGE CANNOT
+CATCH A SCALE ERROR** — a killed mutation run left `target/n` for `target/nKeep` in the tree and it
+was COMMITTED; the weak C10 ("does it self at all") passed it happily, and the resulting monotone
+fall in selfed share (0.672 → 0.590/0.496/0.372/0.210) looked like a real confound and nearly bought
+four rate-matched arms. It is not one: mothers are drawn ∝ `weight`, the coin is
+`rng()*weight < selfW` (`sim/ibm.js:2192`), `weight = received + selfW`, so a matched total selfs at
+`rate/(1+rate)` INDEPENDENTLY of its distribution. Five minutes of algebra replaced four arms.
+
+⚠️ Reading of the selfing arc now: #58 swept SIZE and moved coexistence; #62 swept SHAPE at matched
+size and moved nothing; #63 found the movement was on the COVERAGE axis; #64 sweeps coverage as a
+dose and finds the harm is **not bounded by the benefit** — coverage is a distinct harmful mechanism,
+not the absence of a helpful one. **The floor's job (#61) is to give a partnerless plant non-zero draw
+weight; withholding it from most plants does not merely fail to do that job, it adds variance that
+costs more than the job was ever worth.**
+[detail](2026-09-06-selfing-cover.md)
+[detail](2026-09-05-selfing-cover-prereg.md)
+
 ⚠️ **THE TWO SMALL-POOL RESULTS POINT OPPOSITE WAYS, AND THAT IS THE FINDING UNDER BOTH.** Local
 foraging shrinks the mating neighbourhood and ancestry variance falls; a narrow season shrinks it and
 divergence is retained. The discriminator is whether the pool is **ALIGNED WITH LINEAGE**. Founders
