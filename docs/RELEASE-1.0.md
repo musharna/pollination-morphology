@@ -597,3 +597,104 @@ All four entry points: HTTP 200, zero console errors, zero uncaught exceptions, 
 resolving, `#run` drawing 2/2 and `#play` animating 2/2.
 
 **DONE: zero non-waivable remain.**
+---
+
+## Stage 7 — Handoff
+
+**Completed:** 2026-09-11 00:05 EDT · **Executor stops here.**
+
+### 7.1 The release candidate
+
+|                  |                                                                      |
+| ---------------- | -------------------------------------------------------------------- |
+| **RC SHA** | the tip of `release/1.0-rc` — resolve it with `rev-parse origin/release/1.0-rc` after fetching. It is the commit that adds this very section, so naming it inside itself would be circular; it is deliberately not hardcoded |
+| **Branch**       | `release/1.0-rc` — the **only** thing pushed                         |
+| **Base**         | `64e76ca`, the registered start SHA                                  |
+| **Position**     | **8 ahead / 0 behind `origin/master`** — a fast-forward is available |
+| **Working tree** | clean                                                                |
+
+Eight commits, oldest first:
+
+```
+836a19c  release(1.0): stage 1 — branch from 64e76ca, baseline suite 363/363
+1d92b24  fix(1.0): z-to-t corrections across four documents, clonal-control claim withdrawn
+23ad2e6  docs(1.0): annotate the ROADMAP z-interval debt row, record the four-site inventory
+545d16f  docs(1.0): FINDINGS for a stranger, README top rewritten, DOI inventory + ghostcite
+68ac8e9  feat(1.0): static site staging dir, deterministic build script and Pages workflow
+4b62830  test(1.0): headless smoke test asserting each page's own contract
+96aa6ea  feat(1.0): licences, citation metadata, changelog, third-party inventory, mailmap
+9d59eea  fix(1.0): close all 14 non-waivable critic findings
+<tip>    docs(1.0): stage 7 handoff            <- this section, the RC tip
+```
+
+### 7.2 Evidence summary
+
+| gate                     | result                                                                                                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Test suite**           | **363 / 363 pass**, 0 fail, 0 skipped, 0 todo, exit 0 — run on the RC SHA                                                                                |
+| **Disposition table**    | 8 rows, §2.4. No withdrawals needed: every claim-invalidating row was either already corrected upstream or exactly correctable from published statistics |
+| **Erratum**              | 3 rows appended to `docs/2026-08-01-v2-result.md`. **One verdict change**, and it is the one that document had already retracted. No headline moved      |
+| **ghostcite**            | 176/176 DOIs resolved, **0 retracted, 0 unresolvable**, exit 0. Seen to fail first against a known-retracted DOI (tier R, exit 1)                        |
+| **gitleaks 8.30.1**      | **no leaks** over full history (205 commits, all refs) and over the built `site/`, exit 0 both                                                           |
+| **Site smoke**           | 4/4 entry points HTTP 200, zero console errors, zero uncaught exceptions, links resolving, `#run` draws 2/2 and `#play` animates 2/2, exit 0             |
+| **Clean-checkout build** | builds from a fresh clone and is **byte-identical** to the working-tree build                                                                            |
+| **Critic gate**          | 14 non-waivable, **all 14 closed**; 12 waivable listed as known presentation defects                                                                     |
+
+### 7.3 Rebuilding the site
+
+```
+cd pollination-morphology
+tools/build-site.sh          # writes site/ — 7 files, deterministic, gitignored
+python3 tools/smoke-site.py  # serves site/ and drives headless Chromium; exit 0 = green
+```
+
+CI does the same thing: `.github/workflows/pages.yml` runs `tools/build-site.sh`, asserts
+the four files whose absence is silent in production, then uploads and deploys.
+
+### 7.4 ⚠️⚠️ FOUR THINGS THE COORDINATOR MUST DECIDE — read before merging
+
+**1. Merging on local `master` as it stands PUBLISHES THE INTERNAL BRIEF.** Local `master`
+carries one unpushed commit, `774cae0`, adding
+`docs/superpowers/specs/2026-09-10-ship-plan.md` — the executor brief, which contains
+`~/.claude/projects/-home-mjarnold/memory/...`, `~/pollination-prerewrite-2026-08-25.bundle`
+and a grep recipe naming two university email domains. **It is absent from
+`release/1.0-rc`, so this release's privacy sweep never covered it.** Because the RC is
+8 ahead / 0 behind `origin/master`, the clean route needs no merge at all:
+
+```
+git push origin release/1.0-rc:master     # fast-forward; local master untouched
+```
+
+If you prefer to merge locally, `git reset --hard origin/master` on `master` first.
+
+**2. The Pages workflow fires on push to `master`, and your stated order merges BEFORE the
+flip.** While the repo is private that run executes on a **billed** GitHub-hosted runner,
+and it **fails anyway** because Pages is not enabled yet. Either flip before merging, or
+leave the trigger as `workflow_dispatch`-only until Pages is on. A comment at the top of
+the workflow records this.
+
+**3. Both Pages actions are one major behind.** `upload-pages-artifact` is pinned `v3`
+(current `v5.0.0`); `deploy-pages` is pinned `v4` (current `v5.0.1`). Both pinned tags were
+resolved against the API and exist. They were kept deliberately — this workflow gets its
+first execution in production and an untested major bump is the wrong risk to take
+unattended — but bumping them is a reasonable call and yours to make.
+
+**4. Two accepted residuals, both recorded rather than hidden.** The homelab nicknames
+`gt76` and `desktop` appear as run provenance in 8 documents and, once, in the body of
+commit `0320110` — which is an ancestor of the RC and can only be removed by rewriting
+history, which this release forbids. Neither is an address or a credential. Kept for the
+sake of the cross-machine determinism record; see §6.1 and finding 14.
+
+Also noted, non-blocking: three `origin` branches — `flowering-time`, `selfing-sweep`,
+`spatial-ibm` — are strictly behind the release with **0** commits ahead, and will publish
+as dead clutter. Deleting them is a remote operation and therefore yours.
+
+### 7.5 What the coordinator owns from here
+
+Review this handoff → merge (or fast-forward, per 7.4 item 1) → audit non-branch surfaces
+(wiki, issues, releases, deploy keys, webhooks) → flip public → enable Pages (source:
+Actions) → smoke the live URL → tag `v1.0.0` on the deployed SHA → release → mint the
+Zenodo concept DOI → add it to `CITATION.cff` → set description and topics → verify the
+README's playable URL resolves.
+
+**The executor has pushed `release/1.0-rc` and nothing else, and stops here.**
