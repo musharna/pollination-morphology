@@ -40,6 +40,7 @@
 const P = require("../sim/placement.js");
 const C = require("../sim/carryover.js");
 const E = require("../sim/evolve.js");
+const PS = require("../sim/paired-stats.js");
 
 const bee = P.DEFAULT_BEE;
 const rule = (s) => console.log("\n" + s + "\n" + "-".repeat(s.length));
@@ -317,13 +318,9 @@ function partC() {
     netR.push(mixedRatio / cloneRatio); // the matching effect alone
   });
 
-  const ci = (xs) => {
-    const m = mean(xs);
-    const sd = Math.sqrt(
-      xs.reduce((a, x) => a + (x - m) * (x - m), 0) / (xs.length - 1),
-    );
-    return { m, half: (1.96 * sd) / Math.sqrt(xs.length) };
-  };
+  /* Single correct estimator; records n. See docs/2026-09-11-estimator-unification.md */
+  const ciHalf = PS.makeCi("hybrid-placement");
+  const ci = (xs) => ({ m: mean(xs), half: ciHalf(xs) });
 
   console.log(`  ${netR.length} hybrids measured in both settings\n`);
   console.log(

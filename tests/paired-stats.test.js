@@ -182,3 +182,83 @@ test("the experiments import the shared module rather than redefining it", () =>
     );
   }
 });
+
+/* ----- 4. makeCi RETURNS t, NOT z — and the superseded helper is shown failing
+ *
+ * The four experiments that carried their own `ci()` all used a bare 1.96. At
+ * the sample sizes they actually ran — n=4 in density-dependence, measured
+ * 2026-09-11 — that is not a rounding difference: it is 62% too narrow. This
+ * reconstructs the superseded helper and shows it giving a materially different
+ * answer on the same input, so the test can tell the two apart rather than
+ * merely agreeing with whatever is currently in the file. */
+
+test("makeCi returns the t half-width; the superseded 1.96 helper is measurably narrower", () => {
+  const xs = [
+    0.18, 0.21, 0.23, 0.215,
+  ]; /* the n=4 case that actually occurred */
+
+  const sd = (v) => {
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    return Math.sqrt(
+      v.reduce((a, x) => a + (x - m) * (x - m), 0) / (v.length - 1),
+    );
+  };
+  /* SUPERSEDED — the helper this module exists to delete */
+  const ciOld = (v) => (1.96 * sd(v)) / Math.sqrt(v.length);
+
+  const ci = S.makeCi("test");
+  const got = ci(xs);
+  const want = S.interval(xs);
+  const wantHalf = (want.t[1] - want.t[0]) / 2;
+
+  assert.ok(
+    Math.abs(got - wantHalf) < 1e-12,
+    `makeCi must return the t half-width: got ${got}, want ${wantHalf}`,
+  );
+  /* the discriminating assertion: the old helper is NARROWER, by t(3)/z − 1 */
+  const ratio = got / ciOld(xs);
+  assert.ok(
+    ratio > 1.6 && ratio < 1.65,
+    `at n=4 the t interval must be ~62% wider than the superseded z one; ratio was ${ratio}`,
+  );
+});
+
+test("makeCi records n for every interval — the defect that made a published interval unreconstructable", () => {
+  const ci = S.makeCi("test");
+  ci([1, 2, 3, 4]);
+  ci([1, 2, 3, 4, 5]);
+  assert.equal(ci.log.length, 2, "every call must be recorded");
+  assert.deepEqual(
+    ci.log.map((e) => e.n),
+    [4, 5],
+    "n must be recorded per interval, not assumed from the SEEDS array",
+  );
+});
+
+test("makeCi declines rather than inventing an interval it cannot compute", () => {
+  const ci = S.makeCi("test");
+  assert.equal(ci([]), 0);
+  assert.equal(ci([1]), 0);
+  assert.equal(
+    ci.log.length,
+    0,
+    "a declined call must not be logged as an interval",
+  );
+});
+
+test("no experiment re-introduces a bare 1.96 interval helper", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const dir = path.join(__dirname, "..", "experiments");
+  const offenders = [];
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith(".js"))) {
+    const src = fs.readFileSync(path.join(dir, f), "utf8");
+    /* the exact shape the four copies had: 1.96 scaling a standard deviation */
+    if (/1\.96\s*\*\s*sd\b/.test(src)) offenders.push(f);
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `these re-introduce the superseded z helper: ${offenders.join(", ")}`,
+  );
+});

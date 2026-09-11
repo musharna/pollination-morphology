@@ -92,20 +92,34 @@ Per-capita cross-pollen receipt, as a function of a lineage's own frequency, at 
 ```
    frequency of B     0.10     0.25     0.50     0.75     0.90
    B relative to A   0.214    0.580    0.981    1.789    4.654
-                    ±0.072   ±0.120   ±0.142   ±0.173   ±0.556
+   ✅ CORRECTED (t, n=4)
+                    ±0.116   ±0.194   ±0.231   ±0.281   ±0.903
+   superseded (z)   ±0.072   ±0.120   ±0.142   ±0.173   ±0.556
 ```
 
-> ⚠️ **INTERVALS ARE TOO NARROW — qualifier added 2026-09-10 (release 1.0).** The `±` values
-> above are normal-approximation (z) half-widths from a hand-rolled helper
-> (`experiments/density-dependence.js:58`), and the sample is small: the runner averages over
-> `SEEDS = [1,2,3,4,5]` with guards that can drop seeds, so **n ≤ 5**. At n = 5 the correct
-> t(df = 4) critical value makes every interval **42% wider**; if seeds dropped it is wider
-> still. **n was not recorded in this document, so the exact interval cannot be
-> reconstructed** and is deliberately not re-stated here. What can be shown is a bound: at the
-> worst admissible n = 3 the intervals become `0.214 ± 0.158`, `0.981 ± 0.312` and
-> `4.654 ± 1.221` — and the rare end stays below 1.0, the common end stays above it, and the
-> midpoint still spans it. **Every directional verdict below survives the correction at every
-> admissible n**; only the precision was overstated.
+> ✅ **CORRECTED 2026-09-11 — `n` IS 4, AND THE INTERVALS ABOVE ARE NOW EXACT.**
+> The superseded row is the normal-approximation (z) half-width from a hand-rolled helper; the
+> corrected row is Student's t at the **measured** sample size.
+>
+> The 1.0 release could only **bound** this. It reasoned that the runner averages over
+> `SEEDS = [1,2,3,4,5]` with guards that can drop seeds, so `n ≤ 5`, and that **n was not
+> recorded in this document** — so it stated the bound (+42% at n=5, +119% at n=3) and
+> deliberately declined to re-state an interval it could not reconstruct. That was the right
+> call, and the missing number has now been measured by re-running the pinned model:
+>
+> **every treatment row ran at `n = 4`**, so the correct widening is `t(3)/z` = **+62%** —
+> inside the bound 1.0 quoted, equal to neither end of it. The mechanism is visible in the run:
+> the `continue` guards drop exactly one seed from the treatment arms while the positive
+> controls below keep all five, so `n=4` and `n=5` appear side by side in the same run.
+>
+> **Every directional verdict below survives**: the rare end `[0.098, 0.330]` stays below 1.0,
+> the common end `[3.751, 5.558]` stays above it, and the midpoint `[0.750, 1.212]` still spans
+> it. Only the precision was overstated.
+>
+> The helper has been deleted; the experiment now routes through `sim/paired-stats.js`, which
+> **records `n` for every interval it computes** — the defect that made this correction cost a
+> re-run instead of a lookup. Evidence:
+> [2026-09-11-estimator-unification.md](2026-09-11-estimator-unification.md).
 
 **The sign is backwards.** A rare lineage does **worse**, not better — monotonically, across the whole
 range. Neither lineage can increase when rare, so the invasibility criterion fails in both directions

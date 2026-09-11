@@ -124,6 +124,24 @@ under one animal is a zero-sum game; under two animals it need not be.
 > the published `[0.708, 0.910]` only at the edge. Recorded for completeness rather than
 > because anything changed.
 
+> ⚠️⚠️ **AND TWO OF THOSE THREE ROWS CANNOT BE REPRODUCED BY RUNNING THIS EXPERIMENT — measured
+> 2026-09-11.** Re-running the committed runner against `sim/` pinned at this document's own
+> publishing commit (`4b1eebd`) produces the matched anchor **exactly** — `n = 60`,
+> `0.627977 ± 0.120728`, against the published `0.628 ± 0.121` — and produces **no `n = 12`
+> computation at all.**
+>
+> Rows 2 and 3 above (`1.145 ± 0.252`, `0.877 ± 0.305`) are **narrative diagnostics**: they
+> describe earlier mis-constructed attempts that were run by hand while debugging the anchor,
+> and the code that produced them was never committed in that configuration. They are honest
+> and they are not fabricated — but **a reader cannot re-derive them from this repository**, and
+> nothing should be built on them. This is why the release audit recomputed their t values from
+> the published statistics rather than from a run.
+>
+> The estimator has since been replaced: the experiment routes through `sim/paired-stats.js`,
+> which records `n` for every interval it computes, so a future row cannot become
+> un-reconstructable the same way. Evidence:
+> [2026-09-11-estimator-unification.md](2026-09-11-estimator-unification.md).
+
 The gate is now split: **2a** is the published construction and is the only thing gated on, because it
 proves the measurement can detect a cost known to be there; **2b** is the IBM's own F1 and is reported
 rather than gated, because whatever it reads is an input to the result rather than a check on the

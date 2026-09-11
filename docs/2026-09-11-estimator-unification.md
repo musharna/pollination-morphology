@@ -121,9 +121,41 @@ which is not used here.)
 `secondary-contact` — the probe sequence shows each value computed twice. Harmless, and tidied by
 the consolidation this document registers.
 
-## What still has to change in the code
+## The code change, landed
 
-The runs above were made with patched copies in throwaway worktrees. The permanent change — deleting
-the four duplicated helpers and routing through `sim/paired-stats.js` on `master` — is the remaining
-step, together with correcting `density-dependence`'s three intervals to the `n = 4` values above and
-recording in `secondary-contact` that two of its published rows are not runner output.
+The four hand-rolled helpers are deleted. All four experiments now call `PS.makeCi(label)` from
+`sim/paired-stats.js`, which returns the Student's t half-width **and records `n`, the mean and the
+half-width for every interval it computes**, emitting a provenance block to **stderr** at exit —
+stderr rather than stdout so each runner's published table keeps its exact shape.
+
+Verification: the swapped `hybrid-placement` on `master` reproduces the pinned-arm numbers to the
+digit (`n = 58`, halves `0.093322 / 0.041174 / 0.103384`). Suite **367/367**, 0 fail.
+
+`tests/paired-stats.test.js` gains four tests, one of which reconstructs the superseded `1.96`
+helper and asserts the t interval is ~62% wider at `n = 4`, so it can tell the two estimators apart
+rather than agreeing with whatever is in the file. A fifth scans **every** file in `experiments/`
+for a re-introduced `1.96 * sd` and was **watched failing** before the swap — it named exactly the
+four offenders — and passing after.
+
+## ⚠️ What this does NOT fix, stated plainly
+
+It is tempting to call the recording of `n` a root-cause fix. It is not. Three candidate mechanisms
+for "a published interval became unreconstructable":
+
+1. **The helpers did not record `n`.** Against: recording `n` in the _helper_ does not put `n` in the
+   _document_. The provenance block goes to stderr, and an author writing up results from stdout may
+   never see it.
+2. **The seed drop is silent.** The `continue` guards discard a seed without announcing it, so the
+   author did not know `n ≠ 5`. This is upstream of (1) but expresses through it.
+3. **The publication path is hand-copied** — numbers reach documents by a human transcribing run
+   output, with nothing checking the document against any run.
+
+**(3) is the mechanism, and the discriminator is in this very document:** two rows published in
+`2026-08-04-secondary-contact.md` correspond to **no computation the runner performs**. Neither (1)
+nor (2) can put a number into a document that the code never produced; only a hand-authored path can.
+
+So the honest scope of this work: **the estimator is corrected, and `n` is now always computed and
+reported.** The gap between what a runner emits and what a document claims is **still open**, and a
+future interval can still be published without its `n` by the same route. Closing it means making
+published tables derive from — or be checked against — run output, which is a larger change at a
+layer nothing here touches.

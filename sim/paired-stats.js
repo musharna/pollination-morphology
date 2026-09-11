@@ -236,12 +236,65 @@ function interval(d) {
   };
 }
 
+/*
+ * makeCi — the replacement for the hand-rolled `ci()` helpers that four
+ * experiments each carried their own copy of. Registered and measured in
+ * docs/2026-09-11-estimator-unification-prereg.md.
+ *
+ * Two defects are closed at once, and the second is the one that actually cost
+ * this project something:
+ *
+ *   1. the copies used a bare 1.96 — a normal approximation at n < 10, which is
+ *      the exact estimator the v2 correction was written to retire;
+ *
+ *   2. NONE of them recorded n. `docs/2026-08-04-density-dependence.md`
+ *      published three intervals without its sample size, and the release audit
+ *      could therefore only BOUND the correction (+42% at n=5, +119% at n=3)
+ *      rather than state it. It turned out to be n=4, +62%. An interval whose n
+ *      is not written down cannot be re-derived by anyone, including its author.
+ *
+ * So this returns the t half-width AND records `n` for every interval it
+ * computes, emitting a provenance block to stderr at exit. stderr, not stdout,
+ * so a runner's published table keeps its exact shape.
+ */
+function makeCi(label) {
+  const log = [];
+  let armed = false;
+  const fn = (xs) => {
+    if (!Array.isArray(xs) || !(xs.length > 1)) return 0;
+    const r = interval(xs);
+    const half = (r.t[1] - r.t[0]) / 2;
+    log.push({ n: r.n, mean: r.mean, half, degenerate: r.degenerate });
+    if (!armed) {
+      armed = true;
+      process.on("exit", () => {
+        if (!log.length) return;
+        process.stderr.write(
+          `\n[interval provenance: ${label}] Student's t, 95%, sim/paired-stats.js\n`,
+        );
+        for (let i = 0; i < log.length; i++) {
+          const e = log[i];
+          process.stderr.write(
+            `  #${String(i + 1).padStart(3)}  n=${String(e.n).padStart(3)}` +
+              `  mean=${e.mean.toFixed(6)}  half=${e.half.toFixed(6)}` +
+              `${e.degenerate ? "  DEGENERATE (sd=0)" : ""}\n`,
+          );
+        }
+      });
+    }
+    return half;
+  };
+  fn.log = log;
+  return fn;
+}
+
 module.exports = {
   pairedCI,
   degenerate,
   zeroUpper,
   allLower,
   interval,
+  makeCi,
   tCrit,
   betai,
   T_CRIT,

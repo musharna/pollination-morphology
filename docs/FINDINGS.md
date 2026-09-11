@@ -218,14 +218,20 @@ Also open, carried from the release disposition table:
   survives, but its provenance is incomplete.
 - **That document's Round-2 table mixes run lengths** — a 250-generation row printed beside
   a 120-generation one.
-- **Four experiments still compute intervals with a hand-rolled normal approximation**
-  instead of the project's own t estimator in `sim/paired-stats.js`. No published verdict
-  depends on it (see below), but the duplication should be removed and the affected
-  experiments re-run after 1.0.
+- ✅ **CLOSED 2026-09-11 — the four hand-rolled normal-approximation helpers are gone**, and
+  the affected experiments were re-run against their own pinned models to check what moved.
+  No published verdict changed. One published interval did: `2026-08-04-density-dependence.md`
+  never recorded its sample size, so the 1.0 audit could only _bound_ the correction; the
+  re-run measured **n = 4**, making those intervals **62% wider**, not the 42% a sample of 5
+  would have implied. Two rows in `2026-08-04-secondary-contact.md` turned out **not to be
+  reproducible from the committed runner at all** and are now labelled as narrative
+  diagnostics. The experiments route through `sim/paired-stats.js`, which now **records `n`
+  for every interval**, so an interval cannot become unreconstructable this way again.
+  [2026-09-11-estimator-unification.md](2026-09-11-estimator-unification.md)
 
 ## A correction shipped with release 1.0.0
 
-(Release **1.0.1** changed no measurement at all — its corrections are to what documents *say*,
+(Release **1.0.1** changed no measurement at all — its corrections are to what documents _say_,
 and are listed in [CHANGELOG.md](../CHANGELOG.md) and [RELEASE-1.0.1.md](RELEASE-1.0.1.md).)
 
 The 1.0.0 release inventory swept the whole tree for normal-approximation (z) intervals at small

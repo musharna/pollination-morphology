@@ -44,6 +44,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const C = require("../sim/carryover.js");
+const PS = require("../sim/paired-stats.js");
 const { claim } = require("../sim/verdict-gates.js");
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -252,7 +253,8 @@ function netEffect(gA, gB, hybShape, tag) {
   return rm.self / parentMixed / (hSolo / aSolo);
 }
 
-const ci = (xs) => (xs.length > 1 ? (1.96 * sd(xs)) / Math.sqrt(xs.length) : 0);
+/* Single correct estimator; records n. See docs/2026-09-11-estimator-unification.md */
+const ci = PS.makeCi("secondary-contact");
 
 function anchorHybridCost() {
   /* Matched to the published run exactly: makePairs(41, 60, 2.0) — 60 pairs at a

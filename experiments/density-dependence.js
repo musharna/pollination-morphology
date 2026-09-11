@@ -46,6 +46,7 @@
 const I = require("../sim/ibm.js");
 const E = require("../sim/evolve.js");
 const C = require("../sim/carryover.js");
+const PS = require("../sim/paired-stats.js");
 
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const sd = (xs) => {
@@ -55,7 +56,8 @@ const sd = (xs) => {
     xs.reduce((s, x) => s + (x - m) * (x - m), 0) / (xs.length - 1),
   );
 };
-const ci = (xs) => (xs.length > 1 ? (1.96 * sd(xs)) / Math.sqrt(xs.length) : 0);
+/* Single correct estimator; records n. See docs/2026-09-11-estimator-unification.md */
+const ci = PS.makeCi("density-dependence");
 const f2 = (x) =>
   x === null || x === undefined ? "   -  " : x.toFixed(2).padStart(6);
 const f3 = (x) =>

@@ -1697,9 +1697,20 @@ Three defects remain, recorded in the document's own Correction section:
   its own estimator either. No headline moved; the 19.1% hybrid cost and the invasibility
   failure both survive. **The lesson is about blast radius: writing the failure mode down in
   the document where it happened did not stop it from already having happened in three
-  others.** Dispositions in `docs/RELEASE-1.0.md` §2; routing the four helpers through
-  `sim/paired-stats.js` is registered as post-1.0 work because it would change experiment
-  output and re-running was out of that release's scope.
+  others.** Dispositions in `docs/RELEASE-1.0.md` §2.
+  ✅ **CLOSED @2026-09-11** — the four helpers are deleted and all four experiments route
+  through `sim/paired-stats.js`. Each was re-run in two arms (its own pinned model, and
+  today's) and the pinned arm reproduced every published point estimate and z half-width to
+  the digit, so the published numbers did come from the committed runners. **One published
+  interval moved**: `density-dependence` never recorded its `n`, which the 1.0 audit could
+  only bound; the re-run measured **n = 4**, so its intervals are **62% wider**, not 42%.
+  Two rows in `secondary-contact` proved **not reproducible from the committed runner at all**
+  and are now labelled narrative diagnostics. The shared estimator now **records `n` for every
+  interval**, which is the actual root cause — an interval whose `n` is not written down cannot
+  be re-derived by anyone, including its author. ⚠️ Registered prediction **P4 was refuted 4/4**:
+  34 commits of `sim/` drift moved **not one digit** in any of the four, so the two-arm design
+  was unnecessary here — though `v2` shows it is not unnecessary in general.
+  [detail](2026-09-11-estimator-unification.md)
 - **The Round-2 table mixes run lengths** — its `v=6000` row is a 250-generation run printed
   beside a 120-generation mean-field row.
 - **Round 3 does not reproduce** under any of four configurations tried; best fit 6 of 8 diffs.
