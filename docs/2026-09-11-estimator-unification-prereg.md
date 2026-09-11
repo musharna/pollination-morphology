@@ -180,7 +180,6 @@ committed runner. That is the `v2` situation and is worth more than the estimato
 
 `sim/paired-stats.js`'s own header names this: _"Task #43 in the tracker is exactly this."_ The
 duplication it was extracted to end is still live in the four sites above.
- # IRON_LAW_OK
 
 ---
 
