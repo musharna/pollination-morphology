@@ -180,3 +180,71 @@ committed runner. That is the `v2` situation and is worth more than the estimato
 
 `sim/paired-stats.js`'s own header names this: _"Task #43 in the tracker is exactly this."_ The
 duplication it was extracted to end is still live in the four sites above.
+ # IRON_LAW_OK
+
+---
+
+## 8. Addendum — 2026-09-11, before the full runs: §6's recommendation was WRONG
+
+**Option 2 is infeasible and is withdrawn.** This document recommended "pin `sim/` only, keep
+today's runner" for `secondary-contact`. It cannot execute:
+
+```
+secondary-contact @ 4b1eebd — sim/ present: carryover, deception, evolve, ibm, packing, placement, reward
+today's runner requires:      ibm.js  evolve.js  carryover.js  verdict-gates.js
+                                                               ^^^^^^^^^^^^^^^^ MISSING at the pin
+```
+
+`sim/verdict-gates.js` was **created** by `a084f5b` — the same commit that changed the runner and
+that made option 2 look attractive. So "keep today's runner, pin the old `sim/`" requires a module
+the old `sim/` does not contain. The recommendation was made without checking that the pinned tree
+could satisfy today's imports, which is the same class of error as citing a line number without
+re-deriving it.
+
+**Adopted instead: option 3's isolating leg.** For `secondary-contact` **only**, arm A runs the
+**published runner at `4b1eebd`** against **`sim/` at `4b1eebd`**. That configuration contains the
+gate defect `a084f5b` later fixed — **deliberately**, because it is the only configuration that can
+reproduce the published numbers, which is what P2 tests. Arm B has the fix. Consequences, stated so
+they cannot be quietly forgotten:
+
+- `secondary-contact` arm A numbers are a **reproduction check, not a publishable corrected
+  interval.** The corrected interval for that document comes from arm B and is labelled
+  **superseded**, not corrected.
+- For the other three, arm A's runner is unchanged since publication, so arm A *is* both the
+  reproduction check and the correction.
+
+## 9. Method note — what was copied into the pinned trees
+
+`sim/paired-stats.js` **does not exist at any of the four pins** (verified absent at `9d4df53`,
+`7f58d96`, `4b1eebd`, `16e40aa`), so today's copy is placed into each pinned worktree. This does not
+contaminate the model:
+
+- only `interval()` is called, and `interval()` is pure arithmetic — mean, sd, `tCrit`. It touches
+  no model state and no RNG (the only `E.makeRng` use in the file is inside `pairedCI`, the
+  bootstrap, which is not called here);
+- the module's top-level `require("./evolve.js")` resolves at every pin — `makeRng` is exported in
+  all four.
+
+Each patched `ci()` returns the **t** half-width and writes a `CIPROBE` line to stderr carrying
+`n`, `mean`, `z_half` and `t_half`. The `z_half` column is the P2 instrument: it must reproduce the
+published half-width exactly.
+
+## 10. First result — `hybrid-placement` arm A, P2 PASSES exactly
+
+Run before the remaining six, as a cheap validation of the whole design (48.6 s).
+
+| row | published (z) | arm A measured | published corrected (t) | arm A (t) |
+| --- | ------------- | -------------- | ----------------------- | --------- |
+| rare among both parent morphs | 0.751 ± 0.091 | **0.750980 ± 0.091342** | ± 0.093 | **± 0.093322** |
+| clonal control | 0.960 ± 0.040 | **0.959545 ± 0.040300** | ± 0.041 | **± 0.041174** |
+| NET matching effect (19.1%) | 0.809 ± 0.101 | **0.808513 ± 0.101189** | ± 0.103 | **± 0.103384** |
+
+`n = 58` as the document states. **P2 holds**: the pin reproduces the published point estimates and
+z half-widths to every printed digit, which also confirms the published numbers did come from the
+committed runner. **P1 holds here**: 1 − 0.808513 = **19.1%**, and the t interval excludes 1.0.
+
+⚠️ **One rounding detail, recorded rather than smoothed.** RELEASE-1.0 §2.3 prints the corrected NET
+interval as `[0.706, 0.912]`; the exact computation gives **`[0.705129, 0.911897]`**. The difference
+is that §2.3 rounded the mean to `0.809` *before* subtracting, while the run subtracts first. Not a
+correction — an artefact of rounding order — but the lower bound differs in the third decimal and
+`[0.705, 0.912]` is the more accurate rendering.
