@@ -100,28 +100,81 @@ Not a re-opening of any headline finding. None of the four is a pre-registered h
 they are foundation and diagnostic documents. The four FINDINGS headlines already route through
 `sim/paired-stats.js` and are untouched by this work.
 
-## 5. Cost — unmeasured, and how to measure it
+## 5. Cost — MEASURED 2026-09-11
 
-**No runtime is recorded for any of the four.** None of the documents carries a job line. Rather
-than invent an estimate:
+⚠️ **Correction to this document's first draft:** it said "all four ship a SMOKE mode". **Three do**
+— `DD_SMOKE`, `LF_SMOKE`, `SC_SMOKE`. `hybrid-placement.js` has none, so it was timed at full size
+instead, which turned out to be cheap enough not to need one.
 
-- all four ship a **SMOKE mode** (`SMOKE`/`LF_SMOKE`, `SEEDS = [1,2]`, `N = 12` vs 30) designed for
-  exactly this — a smoke run of each gives a per-seed cost to extrapolate from, in minutes not hours;
-- full runs are `SEEDS = [1..5]` at `N = 30`.
+Probe run under `heavy-run` on a loaded host (1-min load ≈ 16 on 16 cores), so these are
+conservative:
 
-**Step 0 of the work is therefore: smoke-run all four, record wall time, extrapolate, and write the
-number into this document** — and into the four result documents, which is a gap this release
-already flagged for findings 2 and 4.
+| run | mode | wall time | exit |
+| --- | ---- | --------- | ---- |
+| `hybrid-placement` | **FULL SIZE — measured, not extrapolated** | **48.6 s** | 0 |
+| `density-dependence` | smoke (`DD_SMOKE=1`) | 18.0 s | 0 |
+| `limiting-factors` | smoke (`LF_SMOKE=1`) | 17.1 s | 0 |
+| `secondary-contact` | smoke (`SC_SMOKE=1`) | 11.5 s | 0 |
 
-Doubling for the two-arm design (§2) applies to whatever that measurement returns.
+**Extrapolation, with its assumption stated.** Smoke→full scales three parameters together:
+`N0` 12→30 (2.5×), `GENS` 4→35 (8.75×), `SEEDS` 2→5 (2.5×) — a product of **≈54.7×** if cost is
+linear in each. (`SITE_N` 50→160 affects a separate phase and is not in the product.)
 
-## 6. Abandon conditions
+| experiment | full-size estimate | basis |
+| ---------- | ------------------ | ----- |
+| `hybrid-placement` | **48.6 s** | measured directly |
+| `density-dependence` | ≈ **16 min** | 18.0 s × 54.7 |
+| `limiting-factors` | ≈ **16 min** | 17.1 s × 54.7 |
+| `secondary-contact` | ≈ **10 min** | 11.5 s × 54.7 |
+| **one arm, all four** | **≈ 43 min** | |
+| **two arms (§2)** | **≈ 1.5 h** | plus checkout overhead per pin |
 
-- If arm A cannot be pinned — the publishing commit for a document cannot be identified — that
-  document drops to arm B only and is explicitly labelled **superseded, not corrected**.
-- If the smoke extrapolation puts the two-arm total beyond a session's patience, run
-  `density-dependence` alone: it is the only one with information to gain (P3), and the other three
-  are code hygiene whose published intervals are already corrected in RELEASE-1.0 §2.3.
+⚠️ **Treat the three extrapolated figures as a FLOOR, not a point estimate.** The IBM's per-generation
+cost is unlikely to be linear in `N0` — mating is pairwise over the living population — so the true
+multiplier is probably above 54.7×. The measured `hybrid-placement` number carries no such caveat.
+Linearity was not tested, because `N0`/`GENS`/`SEEDS` are derived from one boolean and cannot be
+varied independently without editing the runners, which is out of scope for a cost probe.
+
+**This is small enough to change the plan.** At ≈1.5 h for both arms the abandon condition in §6 is
+unlikely to fire, and there is no reason to run `density-dependence` alone.
+
+## 6. Pinning — RESOLVED 2026-09-11, and one conflict found
+
+The first draft's abandon condition was "if the publishing commit cannot be identified". **All four
+were identified, and all four are genuine study commits** (each adds its own runner):
+
+| experiment | publishing commit | runner changed since? | PIN |
+| ---------- | ----------------- | --------------------- | --- |
+| `hybrid-placement` | `9d4df53` (2026-08-02) | **no** | clean — pin `sim/`, swap estimator, run today's runner |
+| `density-dependence` | `7f58d96` (2026-08-04) | **no** | clean |
+| `limiting-factors` | `16e40aa` (2026-08-04) | **no** | clean |
+| `secondary-contact` | `4b1eebd` (2026-08-04) | **yes, 66+/51−** | ⚠️ **conflicted — see below** |
+
+⚠️ **`secondary-contact` cannot be pinned without un-fixing a known defect.** Two commits changed its
+runner after publication, and one of them is **`a084f5b` — "four controls were wired only to the
+branch that did not need them"**, itself one of the instrument-debt repairs this project already
+landed (ROADMAP instrument-debt table, `✅ FIXED @a084f5b`). Pinning the runner to `4b1eebd` to
+isolate the estimator would therefore **re-introduce the gate defect**, and the run would be
+measuring two corrections against each other.
+
+**Registered in advance, because it must not be decided after seeing output** — the three options,
+none of which is a default:
+
+1. **Supersede-only.** Drop `secondary-contact` to arm B and label its numbers *superseded, not
+   corrected*. Honest, loses the estimator isolation for this one document.
+2. **Pin `sim/` only, keep today's runner.** Arm A then measures "estimator + the two runner
+   commits" for this document, and must say so. Cheapest, and the runner commits are both
+   corrections, so the direction of any change is at least interpretable.
+3. **Three-way**: `4b1eebd` runner, today's runner, today's runner + t. Isolates both, costs ~10 min
+   extra given §5.
+
+**Option 2 is the recommendation** — the confound is named rather than hidden, and it does not
+require shipping a run whose runner is knowingly defective. The choice is the coordinator's and is
+recorded here before any run.
+
+Remaining abandon condition: if arm A's P2 fails — point estimates do not reproduce under the pin —
+stop and treat that as the finding, because it means the published numbers did not come from the
+committed runner. That is the `v2` situation and is worth more than the estimator work.
 
 ## 7. Related
 
