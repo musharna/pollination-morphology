@@ -191,3 +191,19 @@ The **ceiling** half is still open. Whether real orchid richness on a _shared_ e
 sympatric _Euglossa_, is **bee** richness, a different quantity.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Licence
+
+Two licences, split by file class.
+
+| files | licence |
+| ----- | ------- |
+| `sim/`, `tools/`, `tests/`, `experiments/**/*.js`, `*.html` | **MIT** — see [`LICENSE`](LICENSE) |
+| `docs/**`, `experiments/**/*.md`, figures, and the data tables under `docs/data/` | **CC-BY-4.0** — see [`LICENSE-docs`](LICENSE-docs) |
+
+In short: **code MIT, text and figures CC-BY-4.0.** © 2026 Jaret Arnold.
+
+Nothing in this repository is third-party — verified by file listing rather than asserted;
+the method and the one externally deposited dataset that is *cited but not copied* are in
+[`docs/THIRD-PARTY.md`](docs/THIRD-PARTY.md). Citation metadata is in
+[`CITATION.cff`](CITATION.cff).

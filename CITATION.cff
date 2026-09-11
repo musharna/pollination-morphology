@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software or its findings, please cite it as below."
+title: "pollination-morphology: mechanical isolation from computed pollen placement"
+abstract: >-
+  A simulation in which where a flower deposits pollen on a pollinator is
+  computed from flower and body geometry rather than set as a trait, so that
+  mechanical reproductive isolation can arise — or fail to — for inspectable
+  reasons. Includes an individual-based model with inheritance and
+  recombination, and pre-registered tests of temporal assortment, spatial
+  structure, evolving flowering width, and reproductive assurance.
+type: software
+authors:
+  - given-names: Jaret
+    family-names: Arnold
+    orcid: "https://orcid.org/0009-0003-4055-5238"
+version: 1.0.0
+date-released: "2026-09-10"
+license: MIT
+repository-code: "https://github.com/musharna/pollination-morphology"
+url: "https://musharna.github.io/pollination-morphology/"
+keywords:
+  - pollination
+  - mechanical isolation
+  - reproductive isolation
+  - individual-based model
+  - floral morphology
+  - speciation
+  - agent-based simulation

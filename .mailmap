@@ -1,0 +1,13 @@
+# Canonical author identity for this repository.
+#
+# The history carries three author identities, all of them the same person. Until
+# this file existed they resolved correctly only on a machine with the owner's
+# GLOBAL mailmap configured — which is not a property of the repository, so
+# GitHub and every fresh clone showed all three. This makes the resolution
+# travel with the code, and needs no history rewrite.
+#
+# "Michael Arnold" is the owner's full given name (Michael Jaret Arnold); the
+# ORCID record carries it as an other-name. There is no third-party copyright
+# in this history: every commit is the same author.
+Jaret Arnold <96366172+musharna@users.noreply.github.com> <mjarnold1998@gmail.com>
+Jaret Arnold <96366172+musharna@users.noreply.github.com> Michael Arnold <advertisingemailhaha@gmail.com>

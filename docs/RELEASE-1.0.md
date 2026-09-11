@@ -406,3 +406,104 @@ comment at the top of the workflow records this. Not a blocker for the RC — bu
 remote operation and therefore the coordinator's call, not the executor's.
 
 **DONE:** clean-checkout proof and smoke assertions pass and are recorded.
+---
+
+## Stage 5 — Licensing, citation, hygiene
+
+**Started:** 2026-09-10 23:10 EDT
+
+### 5.1 Files added
+
+| file                  | contents                                                                                                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LICENSE`             | MIT, © 2026 Jaret Arnold                                                                                                                                                               |
+| `LICENSE-docs`        | CC-BY-4.0, with a pointer to the canonical legal text                                                                                                                                  |
+| `CITATION.cff`        | cff-version 1.2.0, Jaret Arnold, ORCID `0009-0003-4055-5238`, version 1.0.0, date-released 2026-09-10. **No `doi:` field** — the coordinator adds the Zenodo concept DOI after release |
+| `CHANGELOG.md`        | `## [1.0.0] — 2026-09-10`: what ships, the erratum, known limitations                                                                                                                  |
+| `docs/THIRD-PARTY.md` | the inventory, with the method that produced it                                                                                                                                        |
+| `.mailmap`            | canonical author identity (see 5.3)                                                                                                                                                    |
+
+`README.md` states the file-class split: `sim/ tools/ tests/ experiments/**/*.js *.html` →
+MIT; `docs/** experiments/**/*.md` and the `docs/data/` tables → CC-BY-4.0.
+
+### 5.2 Third-party inventory — nothing, and it was checked
+
+"None" is asserted from a file listing, not from memory. No images, fonts or binaries are
+tracked; there is no package manifest, lockfile, `node_modules` or `vendor/`; the shipped
+HTML references no webfont and no CDN, and all three `<script src=…>` are local. The
+project has no build step and no runtime dependencies.
+
+The one externally published dataset — the euglossine bee–orchid deposit
+`10.5281/zenodo.7263689`, CC-BY-4.0 — is **cited but not vendored**, confirmed by listing:
+no copy exists in the tree. `docs/THIRD-PARTY.md` records that anyone reusing the derived
+figures should credit the deposit.
+
+### 5.3 ⚠️ The brief's author-identity claim was true only on this machine
+
+The brief records _"all commits are the owner (`.mailmap`-resolved to Jaret Arnold)"_. That
+is what `git log` prints **here** — but there was **no `.mailmap` in the repository**. The
+resolution was coming from the owner's _global_ git config, which is not a property of the
+repo and does not travel. GitHub, and every fresh clone, would have shown the raw objects:
+
+| raw author                                                  | commits |
+| ----------------------------------------------------------- | ------- |
+| `Jaret Arnold <96366172+musharna@users.noreply.github.com>` | 161     |
+| `Jaret Arnold <mjarnold1998@gmail.com>`                     | 40      |
+| **`Michael Arnold <advertisingemailhaha@gmail.com>`**       | **3**   |
+
+This is the second time in this release that a claim turned out to rest on machine-local
+state rather than on the artifact — the same shape as a working tree not being the
+authoritative ref.
+
+**Fixed causally and without rewriting history:** a repo-level `.mailmap` now maps both
+older identities onto the canonical one, so the resolution ships with the code.
+
+Verified with both directions of the control:
+
+```
+# repo .mailmap, GLOBAL config disabled — what a stranger sees
+204  Jaret Arnold <96366172+musharna@users.noreply.github.com>
+
+# control, mailmap fully OFF — must still show three, or the test proves nothing
+161 / 40 / 3
+```
+
+The positive case collapses to one identity and the negative case still shows three, so
+the collapse is caused by the committed file and not by a leftover global setting.
+
+⚠️ **For the coordinator, because it is explicitly flagged in the ship-plan memo as
+"confirm with user before relicensing":** "Michael Arnold" is the owner's own full given
+name (the ORCID record carries it as an other-name), so there is no third-party copyright
+in this history and the MIT grant is unambiguous. Nothing here required a rewrite. Noting
+it rather than deciding it.
+
+### 5.4 Secret and privacy sweep
+
+| sweep                                                             | result                     |
+| ----------------------------------------------------------------- | -------------------------- |
+| `gitleaks git --redact -v .` (full history, 200 commits, 4.12 MB) | **no leaks found**, exit 0 |
+| `gitleaks dir --redact -v site/` (built artifact, 333 KB)         | **no leaks found**, exit 0 |
+
+gitleaks 8.30.1.
+
+**Absolute home paths — 2 hits, both justified rather than removed.**
+`tools/run-bloom-fixed.sh:15` and `tools/run-rarity-premium.sh:17` default `NODE` to an
+absolute nvm path. Each file already carries the reason in a comment: a non-interactive
+jobd shell has no nvm shims, and `node: command not found` at dispatch is a failure this
+project has hit twice. Both are overridable (`NODE_BIN`) and fail loudly (`exit 127` with
+a message) rather than silently.
+
+They were **deliberately left alone.** Adding a `command -v node` fallback would let a
+run proceed on an unknown interpreter, which directly undermines the sibling guard in the
+same file — _"`git rev-parse HEAD` does not identify the binary that actually ran"_. Trading
+a reproducibility guarantee for a cosmetic path is the wrong trade. These are research
+launchers; nothing in the published site or the suite touches them. The residual exposure
+is a home-directory layout and an nvm version — no credential.
+
+**Email addresses in tracked files — 3, all the owner's, all introduced by `.mailmap`.**
+Counts (2 / 1 / 1) match that file exactly and no other tracked file contains an address.
+The two older addresses were **already public in the commit objects**, so the mailmap adds
+correct attribution without adding exposure; removing them would break the mapping. No
+foreign emails, no `.ts.net` hostnames, no `/mnt/c/Users` paths anywhere in the tree.
+
+**DONE:** files exist; sweep output recorded clean.
