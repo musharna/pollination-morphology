@@ -115,6 +115,15 @@ under one animal is a zero-sum game; under two animals it need not be.
    **0.628 ± 0.121, upper 0.749** — a reproduction in kind (the published interval was [0.708, 0.910];
    mine overlaps only at the edge, likely from 160-site flowers against their 140).
 
+> ⚠️ **INTERVALS ARE z — qualifier added 2026-09-10 (release 1.0).** The three `±` values in
+> this block come from a hand-rolled normal-approximation helper
+> (`experiments/secondary-contact.js:255`). Under the correct Student's t they widen to
+> `1.145 ± 0.283` and `0.877 ± 0.343` (n = 12, +12.3%) and `0.628 ± 0.124`, upper `0.752`
+> (n = 60, +2.1%). **No verdict in this block moves:** the underpowered anchor is still far
+> too wide to exclude 1, and the matched anchor still reproduces in kind and still overlaps
+> the published `[0.708, 0.910]` only at the edge. Recorded for completeness rather than
+> because anything changed.
+
 The gate is now split: **2a** is the published construction and is the only thing gated on, because it
 proves the measurement can detect a cost known to be there; **2b** is the IBM's own F1 and is reported
 rather than gated, because whatever it reads is an input to the result rather than a check on the

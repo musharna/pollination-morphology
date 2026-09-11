@@ -95,6 +95,18 @@ Per-capita cross-pollen receipt, as a function of a lineage's own frequency, at 
                     ±0.072   ±0.120   ±0.142   ±0.173   ±0.556
 ```
 
+> ⚠️ **INTERVALS ARE TOO NARROW — qualifier added 2026-09-10 (release 1.0).** The `±` values
+> above are normal-approximation (z) half-widths from a hand-rolled helper
+> (`experiments/density-dependence.js:58`), and the sample is small: the runner averages over
+> `SEEDS = [1,2,3,4,5]` with guards that can drop seeds, so **n ≤ 5**. At n = 5 the correct
+> t(df = 4) critical value makes every interval **42% wider**; if seeds dropped it is wider
+> still. **n was not recorded in this document, so the exact interval cannot be
+> reconstructed** and is deliberately not re-stated here. What can be shown is a bound: at the
+> worst admissible n = 3 the intervals become `0.214 ± 0.158`, `0.981 ± 0.312` and
+> `4.654 ± 1.221` — and the rare end stays below 1.0, the common end stays above it, and the
+> midpoint still spans it. **Every directional verdict below survives the correction at every
+> admissible n**; only the precision was overstated.
+
 **The sign is backwards.** A rare lineage does **worse**, not better — monotonically, across the whole
 range. Neither lineage can increase when rare, so the invasibility criterion fails in both directions
 and exclusion is forced.

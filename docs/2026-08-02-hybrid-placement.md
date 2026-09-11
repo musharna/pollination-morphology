@@ -67,6 +67,14 @@ Hybrids **are** slightly worse flowers — the clonal arm sits at 0.960, so abou
 percentage points were intrinsic quality rather than placement. Removing it, the net cost is
 **19.1%, interval [0.708, 0.910], excluding 1.0**.
 
+> ⚠️ **CORRECTION 2026-09-10 (release 1.0).** The three intervals above are
+> normal-approximation (z) intervals, the same estimator the v2 correction was written to
+> retire; at n = 58 the correct critical value is t(df = 57) = 2.002, which is 2.2% wider.
+> The corrected intervals are `0.751 ± 0.093`, `0.960 ± 0.041` and **`0.809 ± 0.103`, i.e.
+> [0.706, 0.912]**. The headline is unaffected — the net effect still excludes 1.0 — but the
+> clonal control is not, see [Limits](#limits). Corrected by exact rescale
+> (`h_t = h_z · t/z`) from the published half-widths, which needs no re-run.
+
 **Geometry alone imposes a hybrid mating cost, with no genetic incompatibility of any kind.** The
 isolation comes from where the pollen lands: an intermediate placement matches neither parental
 morph well, which is underdominance arising from frequency dependence rather than from transgression.
@@ -94,8 +102,20 @@ model with dominance.
 
 Parent pairs are required to be ≥ 2.0 body units apart, which is a substantial separation; hybrids
 between nearer parents will pay less, and the 19% figure should not be read as a constant. n = 58
-pairs in part C, and the clonal control's own interval (0.960 ± 0.040) only just excludes 1.0, so the
-split between intrinsic quality and matching is the weakest number here.
+pairs in part C, and the clonal control is the weakest number here — the split between intrinsic
+quality and matching rests on it.
+
+> ⚠️ **CORRECTED 2026-09-10 (release 1.0).** This paragraph previously read "the clonal
+> control's own interval (0.960 ± 0.040) only just excludes 1.0". **It does not exclude 1.0,
+> and did not under the published estimator either** — as printed, `0.960 + 0.040 = 1.000`
+> lands exactly on the null, so the claim was never supported by its own numbers. Under the
+> correct t(df = 57) the interval is `0.960 ± 0.041 = [0.919, 1.001]`, which contains 1.0
+> outright. The right reading is that **the clonal control cannot distinguish hybrids from
+> their own clones at this sample size**, so the 6-point intrinsic-quality deduction is an
+> estimate without a resolvable interval, not a measured non-unity. The NET matching effect
+> is unaffected: it excludes 1.0 under both estimators. This is the same defect class the v2
+> document was written to record — a boundary verdict resting on the narrower estimator —
+> found here by the release-1.0 inventory rather than by reading.
 
 Populations are 21 plants and one bout per measurement. Mating success is summed over both sex roles
 with selfing excluded.
