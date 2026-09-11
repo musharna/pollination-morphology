@@ -1,5 +1,12 @@
 # Release 1.0 — executor handoff
 
+> **Release evidence log, not a findings document.** Nothing here is a scientific result. It records
+> what was checked, what was found and what was decided while shipping 1.0. For the results, read
+> [FINDINGS.md](FINDINGS.md); for what comes next, [ROADMAP.md](ROADMAP.md).
+>
+> ⚠️ Annotated in release **1.0.1** (2026-09-11) where this log was wrong about itself — see §6.3
+> and §7.1. Those annotations correct statements about the release process, never a measurement.
+
 **Repo:** `pollination-morphology` · **Branch:** `release/1.0-rc` · **Start SHA:** `64e76ca`
 **Plan:** an internal executor brief (panel-audited 2026-09-10), deliberately not shipped — see §7.4.
 
@@ -511,8 +518,7 @@ The two older addresses were **already public in the commit objects**, so the ma
 correct attribution without adding exposure; removing them would break the mapping. No
 foreign emails, no `.ts.net` hostnames, no `/mnt/c/Users` paths anywhere in the tree.
 
-**DONE:** files exist; sweep output recorded clean.
----
+## **DONE:** files exist; sweep output recorded clean.
 
 ## Stage 6 — Critic gate
 
@@ -587,6 +593,16 @@ branches (`flowering-time`, `selfing-sweep`, `spatial-ibm` — each strictly beh
 release with **0** commits ahead) are a remote operation and therefore the coordinator's;
 they are noted in §7.
 
+> ⚠️ **CORRECTED (release 1.0.1): "a non-verbatim quote" was waived without naming it, which made
+> the waiver unauditable.** It was **`README.md:20-21`**, the Ballantyne quotation. As published it
+> read `networks record "visits… rather than clearly defined effective pollination events."` The
+> source (abstract, `10.1098/rspb.2015.1130`, verified against CrossRef) reads "most networks to
+> date are based on recording **visits to flowers, rather than recording** clearly defined effective
+> pollination events" — the ellipsis concealed the elision of a second "recording", so the span was
+> not verbatim. **Fixed in 1.0.1** by quoting the source span in full rather than by dropping the
+> quotation marks. The other front-page quote, Mailly _et al._ `10.3389/fevo.2025.1504480`, was
+> re-checked against its abstract in the same pass and **was** verbatim.
+
 ### 6.4 Re-verification after the fixes
 
 ```
@@ -596,8 +612,7 @@ tools/build-site.sh && python3 tools/smoke-site.py      exit 0
 All four entry points: HTTP 200, zero console errors, zero uncaught exceptions, links
 resolving, `#run` drawing 2/2 and `#play` animating 2/2.
 
-**DONE: zero non-waivable remain.**
----
+## **DONE: zero non-waivable remain.**
 
 ## Stage 7 — Handoff
 
@@ -605,15 +620,23 @@ resolving, `#run` drawing 2/2 and `#play` animating 2/2.
 
 ### 7.1 The release candidate
 
-|                  |                                                                      |
-| ---------------- | -------------------------------------------------------------------- |
-| **RC SHA** | the tip of `release/1.0-rc` — resolve it with `rev-parse origin/release/1.0-rc` after fetching. It is the commit that adds this very section, so naming it inside itself would be circular; it is deliberately not hardcoded |
-| **Branch**       | `release/1.0-rc` — the **only** thing pushed                         |
-| **Base**         | `64e76ca`, the registered start SHA                                  |
-| **Position**     | **8 ahead / 0 behind `origin/master`** — a fast-forward is available |
-| **Working tree** | clean                                                                |
+|                  |                                                                                                                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **RC SHA**       | the tip of `release/1.0-rc` — resolve it with `rev-parse origin/release/1.0-rc` after fetching. It is the commit that adds this very section, so naming it inside itself would be circular; it is deliberately not hardcoded |
+| **Branch**       | `release/1.0-rc` — the **only** thing pushed                                                                                                                                                                                 |
+| **Base**         | `64e76ca`, the registered start SHA                                                                                                                                                                                          |
+| **Position**     | **9 ahead / 0 behind `origin/master`** — a fast-forward is available. ⚠️ CORRECTED in 1.0.1; see the note below                                                                                                              |
+| **Working tree** | clean                                                                                                                                                                                                                        |
 
-Eight commits, oldest first:
+> ⚠️ **CORRECTED (release 1.0.1): this document gave three different commit counts for one branch.**
+> §6.2 row 1 says "**7** ahead", this table said "**8** ahead", and the listing below is headed
+> "**Eight** commits" while containing **nine** entries. All three were written at different moments
+> of a growing branch and none was updated. The settled number is **9**, measured after the fact:
+> `git rev-list --count 64e76ca..origin/release/1.0-rc` → `9`. The earlier figures are left in place
+> above and at §6.2 as the record of what was believed when each was written; this note is the
+> correction. Nothing downstream depended on the count — the fast-forward it describes is unaffected.
+
+Nine commits, oldest first (the eight below plus the tip that adds this section):
 
 ```
 836a19c  release(1.0): stage 1 — branch from 64e76ca, baseline suite 363/363
@@ -658,7 +681,8 @@ carries one unpushed commit, `774cae0`, adding
 `docs/superpowers/specs/2026-09-10-ship-plan.md` — the executor brief, which contains
 local machine paths and a grep recipe naming personal email domains. **It is absent from
 `release/1.0-rc`, so this release's privacy sweep never covered it.** Because the RC is
-8 ahead / 0 behind `origin/master`, the clean route needs no merge at all:
+9 ahead / 0 behind `origin/master` (⚠️ this read "8 ahead" as published; corrected in 1.0.1, see
+§7.1 — the route below is unaffected), the clean route needs no merge at all:
 
 ```
 git push origin release/1.0-rc:master     # fast-forward; local master untouched

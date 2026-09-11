@@ -16,15 +16,31 @@ _Code: MIT. Text and figures: CC-BY-4.0._
 
 Most pollination models cannot represent mechanical isolation at all: they score a visit as a match
 between traits, so two species with equal match scores must exchange pollen. The field says so in
-its own words — Mailly & Lihoreau 2025 note that models "assume random pollen movements", and
-Ballantyne 2015 that networks record "visits… rather than clearly defined effective pollination
-events."
+its own words — Mailly, Riotte-Lambert & Lihoreau 2025
+([`10.3389/fevo.2025.1504480`](https://doi.org/10.3389/fevo.2025.1504480)) note that "most current
+models of pollination ecology assume random pollen movements", and Ballantyne, Baldock & Willmer
+2015 ([`10.1098/rspb.2015.1130`](https://doi.org/10.1098/rspb.2015.1130)) that "most networks to
+date are based on recording visits to flowers, rather than recording clearly defined effective
+pollination events."
 
 Here, placement falls out of geometry. A genome is a set of **shape** parameters — tube length,
 mouth and throat radius, curvature, a CYCLOIDEA-like polarity term, anther depth and angle. Where
 the pollen lands is then computed from tube shape, body shape and how far the animal can push in.
 **Placement is never a gene**, because the moment it becomes one the whole structure collapses into
 a model that does not need geometry at all.
+
+## What was measured
+
+Four pre-registered results — each endpoint registered in a committed document _before_ its
+experiment ran. Three are negative. Full text, controls and correction history in
+[`docs/FINDINGS.md`](docs/FINDINGS.md).
+
+| result                                                                                                                                                                                             | number                                                                                                                       | the caveat that comes with it                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A reproductive floor given to only some plants harms coexistence** — spreading a fixed selfing budget thinner across the population, study **#64** · [detail](docs/2026-09-06-selfing-cover.md)  | registered primary **−0.221**, 95% CI **[−0.339, −0.101]** at q = 0.69 against the flat floor                                | the primary endpoint was changed to `HELD` **after seeing #63's data** — a garden-of-forking-paths hazard, disclosed in the pre-registration itself ([prereg](docs/2026-09-05-selfing-cover-prereg.md)) |
+| **Flowering time reaches placement** — the one positive that survives its controls, study **#37** · [detail](docs/2026-08-25-phenology.md)                                                         | registered `H-free` contrast **+0.289**, 95% CI **[0.158, 0.447]** — the registered prediction was NULL, and was **refuted** | conditional on the visit-allocation rule, and that condition is load-bearing: apportion the **same total** in proportion to display and it falls to **0.026**                                           |
+| **A narrow flowering season cannot be derived — it is selected against.** Make width a heritable locus and it evolves wider, study **#50** · [detail](docs/2026-08-31-evolving-width-conserved.md) | **+0.291 / +0.084 / +0.233** at `S` = 8 / 16 / 32 (wider drift, treatment − shuffled)                                        | the run's **own** registered prediction P3 (equal-width invariance) **failed**; nothing published moves, but finding 2 is protected by its parameters rather than by the principle registered           |
+| **Spatial structure does not rescue divergence**, study **#36** · [detail](docs/2026-08-25-spatial-ibm.md)                                                                                         | `HELD` occurred **0 of 38** times in every cell                                                                              | not merely a null — the half of the intervention that acts at all acts **against** the hypothesis: local foraging significantly _reduces_ retained ancestry variance                                    |
 
 ## What is here
 
@@ -40,11 +56,33 @@ a model that does not need geometry at all.
 | `docs/`            | groundwork, and a write-up per experiment including what went wrong            |
 | `docs/FINDINGS.md` | start here — the headline results and what is still open                       |
 
-Open any of the three `.html` files in a browser — no build step, no dependencies. Run
-`node --test tests/` for the suite (**363 tests**). Every experiment is
-`node experiments/<name>.js`.
+### Setup
 
-## What has been measured
+No build step and no runtime dependencies. Open any of the three `.html` files directly in a
+browser.
+
+| to do this                                                                | you need                                                                                                                                                                                      |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node --test tests/` — the suite (**363 tests**, ~4 min)                  | Node 18 or newer, for the built-in test runner. Verified on **v18.19.1**; that is the only version this release was tested against                                                            |
+| `node experiments/<name>.js` — any single experiment                      | the same                                                                                                                                                                                      |
+| `tools/run-bloom-fixed.sh`, `tools/run-rarity-premium.sh`                 | **`NODE_BIN` set to an absolute path to a node binary.** Both refuse to start without it — a batch host's `PATH` is not the shell's                                                           |
+| `tools/build-site.sh` then `python3 tools/smoke-site.py` — the site check | Python 3 with **Playwright and a Chromium install** (`pip install playwright && playwright install chromium`). Optional: it checks the built site only, and nothing else in the repo needs it |
+
+## Foundation
+
+Everything below pre-dates pre-registration. It is the lab notebook the four results above were
+built on — the contact model, the packing metric and the measurement defects found along the way —
+and it is kept because the corrections are part of the evidence.
+
+Terms used throughout, defined once:
+
+| term    | meaning                                                                                                                                                                                        |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **L0**  | the no-placement control: undifferentiated encounters, i.e. the standard ABM (`docs/2026-08-01-ablation-result.md:28`)                                                                         |
+| **L1**  | a free **1-D** placement gene over the whole body length — the steelman control, built so it _can_ win (`docs/2026-08-01-ablation-result.md:30`)                                               |
+| **L2**  | **2-D** placement derived from real morphology — the project itself (`docs/2026-08-01-ablation-result.md:31`)                                                                                  |
+| **τ**   | the overlap threshold at or below which two species still count as mutually compatible; the **packing ceiling** is the largest mutually compatible set at a given τ (`sim/packing.js:6-7,319`) |
+| **IBM** | the individual-based model (`sim/ibm.js`) — the one with inheritance, recombination and hybridisation, as against the v1 evolution loop, which has none                                        |
 
 **The 3-D contact model earns its place — and the advantage depends on how many species are in
 play.** A free 1-D placement gene, the cheap version of this project, supports 19 coexisting species
@@ -55,8 +93,11 @@ The 1-D arm is a steelman: it gets the whole body surface, the same number of ca
 precision drawn from the real pool's own distribution.
 [detail](docs/2026-08-02-pool-scaling.md) [metric](docs/2026-08-02-continuous-metric-rebaseline.md)
 
-**Blind selection captures about 40% of that, and the advantage is a fact about precision.** An
-evolving community reaches 40% of the achievable ceiling. When **both** arms are allowed to select
+**Blind selection captures about half of that, and the advantage is a fact about precision.** An
+evolving community reaches **52%** of the achievable packing ceiling — evolved L2 8.3 against a
+ceiling of 16, after the head-cap correction
+([`docs/2026-08-01-v1-result.md:51`](docs/2026-08-01-v1-result.md), restated at `:136`). When
+**both** arms are allowed to select
 their precision, 2-D and 1-D placement are **indistinguishable — 0.92×**, with replicate counts of
 6/10/9 against 10/7/6. A second placement axis multiplies the available slots only while placement is
 imprecise, which is where real morphologies actually sit; at the best precision any real flower
@@ -137,7 +178,7 @@ and the variation across pollinator body plans is ~1.2×, not the ~1.5× publish
 never measured** — the stigma contacts 81% of visits there; the real bound acts on the anther.
 [scaling](docs/2026-08-02-pool-scaling.md) · [checks](docs/2026-08-03-checks-rebaseline.md)
 
-## What is not claimed
+### What is not claimed
 
 Overlap in the packing results is _placement overlap_, not a measured transfer rate. Carryover,
 packaging efficiency and last-male advantage are now built and counted, and the **contrast between
@@ -186,9 +227,17 @@ inside one gene pool moves the pollen onto a different part of the moth's head, 
 ⚠️ It also showed placement can diverge that far **without producing any isolation**, so placement
 divergence is necessary but not sufficient. [detail](docs/2026-08-03-platanthera.md)
 
-The **ceiling** half is still open. Whether real orchid richness on a _shared_ euglossine exceeds the
-1-D ceiling needs a number that is not yet in hand — and the figure sitting in our own notes, fifteen
-sympatric _Euglossa_, is **bee** richness, a different quantity.
+The **ceiling** half has since been measured, and it does not clear the bar. Against Ackerman
+_et al._'s global orchid reproductive-biology database, the maximum number of orchid species sharing
+one euglossine bee **within a single named region** is **14** (_Euglossa viridissima_ @ Mex), against
+the 1-D arm's **19** — so 14 < 19 and the bar is **not cleared**
+([`docs/2026-08-28-euglossine-ceiling.md:50,65`](docs/2026-08-28-euglossine-ceiling.md)). ⚠️ The
+number is a **bound, not a refutation**, and it is loose in both directions: a region is not a site,
+so "Mex" over-counts sympatry across thousands of kilometres, while the database records only
+published pollinator observations, so the true count for any one bee can only be higher. Settling it
+needs a single-site census — a data requirement, not a paywall. This project can therefore say
+"2-D out-packs 1-D _in this model_" and **cannot** say real richness exceeds what 1-D placement
+supports.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -196,14 +245,14 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 Two licences, split by file class.
 
-| files | licence |
-| ----- | ------- |
-| `sim/`, `tools/`, `tests/`, `experiments/**/*.js`, `*.html` | **MIT** — see [`LICENSE`](LICENSE) |
+| files                                                                             | licence                                            |
+| --------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `sim/`, `tools/`, `tests/`, `experiments/**/*.js`, `*.html`                       | **MIT** — see [`LICENSE`](LICENSE)                 |
 | `docs/**`, `experiments/**/*.md`, figures, and the data tables under `docs/data/` | **CC-BY-4.0** — see [`LICENSE-docs`](LICENSE-docs) |
 
 In short: **code MIT, text and figures CC-BY-4.0.** © 2026 Jaret Arnold.
 
 Nothing in this repository is third-party — verified by file listing rather than asserted;
-the method and the one externally deposited dataset that is *cited but not copied* are in
+the method and the one externally deposited dataset that is _cited but not copied_ are in
 [`docs/THIRD-PARTY.md`](docs/THIRD-PARTY.md). Citation metadata is in
 [`CITATION.cff`](CITATION.cff).

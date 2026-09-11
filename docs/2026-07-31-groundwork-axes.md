@@ -222,8 +222,9 @@ Every on-screen element resolves to **measured / inferred / assumed**, per speci
 - **Assumed** — contact-geometry parameters chosen for legibility, adhesion constants, anything
   tuned by eye.
 
-⚠️ Tier is a property of an **attribute**, not of an element — the disambiguation that sim-zoo's
-spec says an implementer will otherwise get wrong. The machinery already exists in `~/sim-zoo`.
+⚠️ Tier is a property of an **attribute**, not of an element — the disambiguation that a sibling
+project's (not published) spec says an implementer will otherwise get wrong. The machinery already
+exists there.
 
 ### 3.5 Abandon conditions — agreed in advance
 
@@ -420,7 +421,7 @@ is cheap, so there is no excuse for asserting the answer instead of measuring it
 
 ### 5.1 Two tiers, because the one that shipped here had two
 
-Verified live in `~/sim-zoo/.claude/worktrees/auditable-cell` on 2026-07-31: a Python build tier
+Verified live in a sibling project (not published) on 2026-07-31: a Python build tier
 (`build_auditable.py`, 23 KB; `provenance.py`, 5.6 KB; tests) emitting **one self-contained
 `auditable.html`** (4.8 MB). Same split here:
 

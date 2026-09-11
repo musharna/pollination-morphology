@@ -4,7 +4,13 @@
 **Source:** Ackerman _et al._ 2023 global orchid reproductive-biology database —
 Zenodo [`10.5281/zenodo.7263689`](https://doi.org/10.5281/zenodo.7263689), **CC-BY-4.0**,
 `Pollination_List_RLT_Data_For_Submission.xlsx`, 2872 orchid species
-**Re-run with** `node _scratch/euglossine-ceiling.js`
+⚠️ **Analysis script not shipped.** The parser that produced the counts below ran from the
+gitignored `_scratch/` directory and was never committed; it is not recoverable, so there is no
+re-run command for this document. What is reproducible is the input and the procedure: download the
+Zenodo release above, take `Pollination_List_RLT_Data_For_Submission.xlsx`, and count distinct
+orchid species per euglossine bee species — range-wide, and again restricted to a single `region`
+value. The tables below state every intermediate count, so the arithmetic can be checked against a
+fresh parse. Noted as an open gap in [FINDINGS.md](FINDINGS.md).
 
 ## The blocker was real and it was the wrong blocker
 

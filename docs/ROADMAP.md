@@ -1,7 +1,8 @@
 # Roadmap
 
 **Canonical.** If another document disagrees about what comes next, this one wins.
-Last updated 2026-08-07.
+Last updated 2026-09-11 (release 1.0.1 — documentation corrections only; no measurement changed).
+Previously 2026-08-07.
 
 ## Where this stands
 
@@ -41,7 +42,13 @@ Seven things are built and measured, in this order, each gating the next:
    IBM exists. [detail](2026-08-25-spatial-ibm.md)
 8. **A positive that survives its controls, 2026-08-25** — temporal assortment reaches placement,
    +0.289 [0.158, 0.447] under free recombination, with the supergene shown inert and the pool-size
-   confound excluded by measurement. ⚠️ It does NOT answer the northstar at `:219`: a narrow season
+   confound ~~excluded by measurement~~ → ⚠️ **CORRECTED (2026-09-11): the exclusion holds only
+   under the registered visit rule.** Apportion the same total in proportion to display and
+   `H-pool` **spans zero** at `+0.026 [0.000, 0.079]`, so the contrast that licensed "heritable
+   temporal assortment" over "small mating pools" no longer excludes the confound. `H-pool` is also
+   a **post-hoc** control — the pre-registration registers only `H-free` and `H-link`. See
+   [FINDINGS.md](FINDINGS.md) finding 2 and [2026-09-01-rarity-premium.md](2026-09-01-rarity-premium.md).
+   ⚠️ It does NOT answer the northstar at `:219`: a narrow season
    is imposed, not derived. [detail](2026-08-25-phenology.md)
    ⚠️ Scope condition measured 2026-08-25: it holds where the windows are effectively DISJOINT.
    Same cell at `S=32`, where width 0.12 spans ~4 slices, gives HELD 0.083 against 0.417 at `S=8`.
@@ -1302,7 +1309,11 @@ placement is computed from shape rather than inherited, I expected hybrids to la
 isolation a placement gene could not. Measured: additive inheritance of shape produces **almost
 perfectly blending placement** (detour 1.01, nearest 0.45 — indistinguishable from the L1 control),
 and transgressive hybrids are **rare at 2%**. Geometry does not rescue divergence from blending.
-**But hybrids still pay 19.1% [0.708, 0.910]** in mating success, purely from placement mismatch —
+**But hybrids still pay 19.1% ~~[0.708, 0.910]~~ → ✅ CORRECTED @1d92b24 `[0.706, 0.912]`** in
+mating success, purely from placement mismatch — the struck interval is the retired
+normal-approximation (z) estimator; at n = 58 the correct critical value is t(df = 57) = 2.002, and
+the 19.1% headline survives the correction unchanged (erratum:
+[2026-08-02-hybrid-placement.md:75-80](2026-08-02-hybrid-placement.md)) —
 and the clonal-population control matters, because hybrids are also slightly worse flowers (0.960)
 and that accounted for 6 of the 25 raw points. So selection against hybrids is real without any
 genetic incompatibility. [detail](2026-08-02-hybrid-placement.md)

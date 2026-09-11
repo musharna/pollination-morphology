@@ -29,12 +29,19 @@ pre-registration document _before_ its experiment ran. Where a number below is a
 registered **secondary** rather than the primary, it is labelled as such and the primary is
 given beside it. Nothing here is a post-hoc favourite.
 
-### 1. A reproductive floor given to only some plants is worse than no floor at all
+### 1. Spreading a reproductive floor thinner across the population reduces coexistence
 
 **Registered primary: −0.221, 95% CI [−0.339, −0.101]** (q = 0.69 against the flat floor) ·
 study **#64** · [2026-09-06-selfing-cover.md](2026-09-06-selfing-cover.md) ·
 registered in [2026-09-05-selfing-cover-prereg.md](2026-09-05-selfing-cover-prereg.md) ·
 commit `64e76ca`
+
+⚠️ **The primary endpoint was chosen after seeing #63's data**, and the pre-registration says
+so itself: #63 registered `motheredTotal` as its primary, that returned an interval including
+zero while the secondary `HELD` excluded zero, and #64 then registered `HELD` as the primary.
+The prereg records this as "a garden-of-forking-paths hazard which pre-registering it here does
+not erase" ([2026-09-05-selfing-cover-prereg.md](2026-09-05-selfing-cover-prereg.md) §"Disclosure",
+lines 211–217). It is repeated here rather than left in the source document.
 
 ```
 node experiments/selfing-cover.js docs/data/2026-09-06-selfing-cover.json.gz
@@ -57,10 +64,17 @@ total cannot see.
 
 ### 2. Flowering time reaches placement — the one positive that survives its controls
 
-**+0.289, 95% CI [0.158, 0.447]** · study **#37** ·
+**Registered `H-free` (narrow+free vs wide+free): +0.289, 95% CI [0.158, 0.447]** · study **#37** ·
 [2026-08-25-phenology.md](2026-08-25-phenology.md) ·
 registered in [2026-08-16-phenology-prereg.md](2026-08-16-phenology-prereg.md) ·
 commit `94d61c0`
+
+⚠️ **`H-free` was registered as the expected NULL, and the registered null was REFUTED.** The
+pre-registration predicted that with free recombination a narrow season "sorts flowering times
+without sorting shapes" and that HELD would be **unchanged**
+([2026-08-16-phenology-prereg.md:38-39](2026-08-16-phenology-prereg.md)); HELD rose instead. The
+prereg registers only `H-free` and `H-link` — **`H-pool` is a post-hoc control**, introduced in the
+result document, not registered.
 
 ```
 node experiments/phenology.js
@@ -68,8 +82,11 @@ node experiments/phenology.js
 
 Plants that flower at different times mate assortatively, and that assortment reaches
 placement under **free recombination** — so it is not an artefact of linkage. The supergene
-arm is inert, and under the registered visit rule the pool-size control (`H-pool`) reads
-`+0.289 [0.158, 0.447]`, pointing the wrong way to rescue a small-mating-pool explanation.
+arm is inert, and under the registered visit rule the **post-hoc** pool-size control `H-pool`
+(narrow+free vs narrow+SHUFFLED) reads `+0.289 [0.158, 0.447]` — numerically identical to `H-free`
+here ([2026-08-25-phenology.md:55,59](2026-08-25-phenology.md)) — pointing the wrong way to rescue a
+small-mating-pool explanation. It was not registered, so it carries the weight of a control the
+author chose after seeing the data, not of a registered endpoint.
 
 ⚠️⚠️ **This is the most heavily qualified result here, and the qualifications belong beside
 it rather than in a footnote.**
@@ -212,18 +229,44 @@ document where it happened did not stop it from already having happened in three
 
 ## How to reproduce
 
-No build step and no dependencies — Node 18 or newer.
+No build step and no runtime dependencies.
 
 ```
 git clone https://github.com/musharna/pollination-morphology
 cd pollination-morphology
-node --test tests/          # 363 tests
+node --test tests/          # 363 tests, ~4 min
 ```
 
+**What each part actually needs:**
+
+| to run                                                    | requirement                                                                                                                                                |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| the suite and any `experiments/*.js`                      | Node 18 or newer, for the built-in `node --test` runner. Verified on **v18.19.1** — the only version this release was tested against                       |
+| `tools/run-bloom-fixed.sh`, `tools/run-rarity-premium.sh` | **`NODE_BIN` set to an absolute path to a node binary**; both refuse to start without it (`tools/run-bloom-fixed.sh:19`, `tools/run-rarity-premium.sh:21`) |
+| `tools/build-site.sh` + `tools/smoke-site.py`             | Python 3 with **Playwright and Chromium**. Optional — it checks the built site only                                                                        |
+
 Every result document names the experiment that produced it. The runners live in
-`experiments/`; those that ship their data read it back from `docs/data/*.json.gz`, so a
-headline can be re-derived without re-running the sweep — which is how finding 1 above was
-checked for this release.
+`experiments/`.
+
+**⚠️ Only finding 1 re-derives from an archive. Findings 2–4 re-run the whole sweep.**
+
+| finding | command                                                                        | cost                                                                                                                                                                          |
+| ------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1**   | `node experiments/selfing-cover.js docs/data/2026-09-06-selfing-cover.json.gz` | reads the shipped archive — **seconds**, no sweep. This is how finding 1 was checked for this release                                                                         |
+| **2**   | `node experiments/phenology.js`                                                | **full sweep, no archive.** No runtime is recorded in the result document, so none is quoted here rather than one invented                                                    |
+| **3**   | `EW_CONSERVE=1 node experiments/evolving-width.js`                             | **full sweep, no archive.** The published run took **29.8 min** on the desktop (job 3572, [2026-08-31-evolving-width-conserved.md:3](2026-08-31-evolving-width-conserved.md)) |
+| **4**   | `node experiments/spatial-ibm.js`                                              | **full sweep, no archive.** No runtime is recorded in the result document                                                                                                     |
+
+For scale, comparable sweeps in this project are recorded at 26–47 min
+([2026-09-01-empty-time.md:113](2026-09-01-empty-time.md) 26.2 min;
+[2026-09-01-rarity-premium.md:3](2026-09-01-rarity-premium.md) 46.7 min), so budget tens of
+minutes for findings 2 and 4 — but that is an analogy, not a measurement of those two runs.
+
+⚠️ **One analysis script is not shipped.** The euglossine ceiling count
+([2026-08-28-euglossine-ceiling.md](2026-08-28-euglossine-ceiling.md)) was produced by a parser that
+was never committed — it lived in the gitignored `_scratch/` and is not recoverable. The result
+document states the source database, the release and the filename it was read from, so the count can
+be re-derived, but not by re-running the original script.
 
 The three playables are plain HTML — open `visit.html`, `population.html` or
 `greybox.html` in a browser, or visit the [live site](https://musharna.github.io/pollination-morphology/).

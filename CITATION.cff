@@ -13,14 +13,23 @@ authors:
   - given-names: Jaret
     family-names: Arnold
     orcid: "https://orcid.org/0009-0003-4055-5238"
-version: 1.0.0
+version: 1.0.1
 date-released: "2026-09-11"
-# NOTE: this repository is dual-licensed and CFF 1.2.0 provides only ONE `license`
-# field, so the line below necessarily under-describes the position. `MIT` applies
-# to the CODE (sim/, tools/, tests/, experiments/**/*.js, *.html). The prose,
-# figures and data tables under docs/ are CC-BY-4.0 — see LICENSE-docs and the
-# file-class table in README.md. If you reuse the text, a figure or a data table
-# rather than the software, CC-BY-4.0 is the licence that governs.
+# NOTE: this repository is dual-licensed BY FILE CLASS, and CFF 1.2.0 cannot express that.
+# `license` does accept a list, but the CFF schema states that multiple licences are read as
+# OR, not AND ("When there are multiple licenses, it is assumed their relationship is OR") —
+# which would wrongly tell a reader they may take the WHOLE work under either one. The real
+# position is AND, split by file class, so a single identifier plus this note is the closest
+# honest encoding:
+#   MIT        -> the CODE: sim/, tools/, tests/, experiments/**/*.js, *.html  (see LICENSE)
+#   CC-BY-4.0  -> the PROSE, figures and data tables under docs/ and
+#                 experiments/**/*.md                                    (see LICENSE-docs)
+# The authoritative file-class table is in README.md. If you reuse the text, a figure or a
+# data table rather than the software, CC-BY-4.0 is the licence that governs.
+#
+# `license-url` is deliberately NOT set: the schema documents it as "only for non-standard
+# licenses not included in the SPDX License List", and both MIT and CC-BY-4.0 are SPDX
+# identifiers. It is also a single value, so it could not carry both in any case.
 license: MIT
 repository-code: "https://github.com/musharna/pollination-morphology"
 url: "https://musharna.github.io/pollination-morphology/"
