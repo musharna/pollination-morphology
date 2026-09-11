@@ -14,7 +14,7 @@ authors:
     family-names: Arnold
     orcid: "https://orcid.org/0009-0003-4055-5238"
 version: 1.0.0
-date-released: "2026-09-10"
+date-released: "2026-09-11"
 # NOTE: this repository is dual-licensed and CFF 1.2.0 provides only ONE `license`
 # field, so the line below necessarily under-describes the position. `MIT` applies
 # to the CODE (sim/, tools/, tests/, experiments/**/*.js, *.html). The prose,

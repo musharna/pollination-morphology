@@ -1,7 +1,7 @@
 # Release 1.0 — executor handoff
 
 **Repo:** `pollination-morphology` · **Branch:** `release/1.0-rc` · **Start SHA:** `64e76ca`
-**Plan:** `docs/superpowers/specs/2026-09-10-ship-plan.md` (panel-audited 2026-09-10)
+**Plan:** an internal executor brief (panel-audited 2026-09-10), deliberately not shipped — see §7.4.
 
 This document is the handoff record. Every stage appends its evidence here. The
 coordinator owns all remaining remote operations (merge, visibility flip, Pages
@@ -656,8 +656,7 @@ the four files whose absence is silent in production, then uploads and deploys.
 **1. Merging on local `master` as it stands PUBLISHES THE INTERNAL BRIEF.** Local `master`
 carries one unpushed commit, `774cae0`, adding
 `docs/superpowers/specs/2026-09-10-ship-plan.md` — the executor brief, which contains
-`~/.claude/projects/-home-mjarnold/memory/...`, `~/pollination-prerewrite-2026-08-25.bundle`
-and a grep recipe naming two university email domains. **It is absent from
+local machine paths and a grep recipe naming personal email domains. **It is absent from
 `release/1.0-rc`, so this release's privacy sweep never covered it.** Because the RC is
 8 ahead / 0 behind `origin/master`, the clean route needs no merge at all:
 
