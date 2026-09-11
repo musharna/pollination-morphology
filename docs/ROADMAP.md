@@ -1649,6 +1649,21 @@ Three defects remain, recorded in the document's own Correction section:
   6,000 interval is `[-2.18, +0.18]` and does **not** exclude zero — so the document's entire
   "excluded zero by 0.02, then did not replicate" narrative describes an event that never
   happened. A fourth measurement artefact, inside the document written to warn about three.
+  ✅ CORRECTED @1d92b24 — see the erratum table at the end of `docs/2026-08-01-v2-result.md`.
+  The correction itself landed 2026-08-25 in the document; `@1d92b24` re-verified it from
+  scratch (t solver positive-controlled before use) and added the erratum table.
+  ⚠️⚠️ **AND THE INVENTORY IT REQUIRED FOUND THE SAME ESTIMATOR IN FOUR MORE PLACES.** Sweeping
+  the whole tree for z at small n turned up hand-rolled normal-approximation helpers in
+  `hybrid-placement.js:325`, `density-dependence.js:58`, `secondary-contact.js:255` and
+  `limiting-factors.js:56`. One of them carried a boundary verdict of exactly the retracted
+  shape: hybrid-placement's clonal control was said to "only just exclude 1.0" and **does
+  not** — as printed, `0.960 + 0.040 = 1.000` sits on the null, so the claim never held under
+  its own estimator either. No headline moved; the 19.1% hybrid cost and the invasibility
+  failure both survive. **The lesson is about blast radius: writing the failure mode down in
+  the document where it happened did not stop it from already having happened in three
+  others.** Dispositions in `docs/RELEASE-1.0.md` §2; routing the four helpers through
+  `sim/paired-stats.js` is registered as post-1.0 work because it would change experiment
+  output and re-running was out of that release's scope.
 - **The Round-2 table mixes run lengths** — its `v=6000` row is a 250-generation run printed
   beside a 120-generation mean-field row.
 - **Round 3 does not reproduce** under any of four configurations tried; best fit 6 of 8 diffs.
