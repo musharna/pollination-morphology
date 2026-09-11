@@ -21,18 +21,24 @@ operation from here (merge, tag, release).
 | **RC SHA** | resolve with `git rev-parse origin/release/1.0.1-rc` after fetching. It is the commit that adds this very section, so naming it here would be circular; deliberately not hardcoded, as in 1.0 |
 | **Branch** | `release/1.0.1-rc` — the **only** thing pushed |
 | **Base** | `1a18147`, `origin/master` at branch time |
-| **Position** | **2 ahead / 0 behind `origin/master`** — a fast-forward is available |
+| **Position** | ahead of `origin/master`, **0 behind** — a fast-forward is available. Resolve the exact count with `git rev-list --count origin/master..origin/release/1.0.1-rc` |
 | **Working tree** | clean |
 
-Two commits, oldest first:
+Commits on this branch, oldest first — the content is settled; the tip is whichever commit last
+touched this document:
 
 ```
 9342a58  fix(1.0.1): close the post-ship panel punch list — documentation only
-<tip>    fix(1.0.1): close the critic pass, and add the release handoff
+79e04eb  fix(1.0.1): close the critic pass, and add the release handoff
+<tip>    docs(1.0.1): release-candidate identity
 ```
 
-⚠️ The count above is stated once and measured, not carried forward from an earlier draft — that
-is the defect item 12 corrects in `RELEASE-1.0.md`, and it is cheap to repeat.
+⚠️ **No commit count is written here, on purpose.** `RELEASE-1.0.md` gave three different counts for
+one branch — §6.2 "7 ahead", §7.1 "8 ahead" and "Eight commits" over nine entries — because each was
+written at a different moment of a growing branch and none was updated. That is the defect item 12
+corrects. A count hardcoded in a document that is itself part of the branch it counts cannot stay
+true: the first draft of this very section said "Two commits" and was already wrong by the time the
+commit containing it existed. So the count is given as a command to run, not as a number.
 
 ## 1. Scope compliance
 
