@@ -109,6 +109,31 @@ itself is pool-dependent, so 19 is one point on a curve. What would settle it is
 census; the deposit carries `region`, not site-level co-occurrence. That is a data requirement rather
 than a paywall. [detail](2026-08-28-euglossine-ceiling.md)
 
+⚠️⚠️ **CANDIDATE SOURCE FOUND 2026-09-11, AND "A DATA REQUIREMENT RATHER THAN A PAYWALL" MAY BE
+WRONG AGAIN.** A live registry search — prompted by noticing that this section's null had only ever
+been confirmed from this repo's own prior triage — turned up a study this roadmap has **never
+named**:
+
+**Roubik & Ackerman 1987**, _"Long-term ecology of euglossine orchid-bees (Apidae: Euglossini) in
+Panama"_, _Oecologia_ **73**(3): 321–333, [`10.1007/BF00385247`](https://doi.org/10.1007/BF00385247)
+— 177 citations. Verified via OpenAlex `W2053105490`; **same last author as the 2023 database this
+section already tracks.**
+
+Why it is the right shape, from the abstract text returned by search (⚠️ **the paper itself has NOT
+been read — it is `is_oa: false`, `oa_status: closed`, no repository full text, and no free copy was
+found**): it reports abundance and **orchid visitation for 51 of the 57 _local_ euglossine bee
+species**, over 6–7 years, with per-site statements ("less than 68% of species **at each site**
+visited orchid flowers") and the relation "the most abundant bees visited **more orchid species**".
+That is orchid species **per bee species at a locality** — the quantity `:88` needs — rather than the
+range-wide compilation that produced the 35/14 category error above.
+
+**This does not settle anything yet and must not be quoted as a number.** What it does is move the
+blocker: the sentence above says the obstacle is data availability rather than access, and this
+source suggests the obstacle may be **access after all** — which is the _second_ time this leg's
+stated blocker has been wrong (see the ⚠️⚠️ at the top of this section, where it was blocked on the
+article when it needed the dataset). Next action is to obtain the paper and check whether Table-level
+per-bee orchid counts are present, before any claim moves.
+
 The packing prediction has two halves and only the geometric one is closed. Needed: **orchid species
 per _shared_ euglossine pollinator**, to compare against the 1-D ceiling. The figure in the
 enumeration doc — fifteen sympatric _Euglossa_ — is **bee** richness and must not be reused.
