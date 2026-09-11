@@ -48,7 +48,13 @@ experiment ran. Result at n=30, d=8, 40 seeds/cell (38 built), 35 generations,
 | wide · linked (the missing cell)   | 0.000 | 0.000 | 1.000    | 0.981  | 0.725 | 0.469 | CONCENTRATED |
 | narrow · bloom SHUFFLED (confound) | 0.000 | 0.000 | 1.000    | 0.230  | 0.708 | 0.435 | CONCENTRATED |
 
-## The registered contrasts
+## The contrasts
+
+> ⚠️ **CORRECTED heading (release 1.0.1).** This read "The registered contrasts", and one row in
+> the table below is **not** registered: `H-pool` (narrow+free vs narrow+SHUFFLED) appears nowhere
+> in [the pre-registration](2026-08-16-phenology-prereg.md), which registers `H-free` and `H-link`
+> only. `H-pool` is a **post-hoc control** introduced in this document. No number moves; the label
+> was wrong. See [FINDINGS.md](FINDINGS.md) finding 2.
 
 | contrast                                         | HELD                          |
 | ------------------------------------------------ | ----------------------------- |

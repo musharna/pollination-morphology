@@ -37,10 +37,10 @@ experiment ran. Three are negative. Full text, controls and correction history i
 
 | result                                                                                                                                                                                             | number                                                                                                                       | the caveat that comes with it                                                                                                                                                                           |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A reproductive floor given to only some plants harms coexistence** — spreading a fixed selfing budget thinner across the population, study **#64** · [detail](docs/2026-09-06-selfing-cover.md)  | registered primary **−0.221**, 95% CI **[−0.339, −0.101]** at q = 0.69 against the flat floor                                | the primary endpoint was changed to `HELD` **after seeing #63's data** — a garden-of-forking-paths hazard, disclosed in the pre-registration itself ([prereg](docs/2026-09-05-selfing-cover-prereg.md)) |
-| **Flowering time reaches placement** — the one positive that survives its controls, study **#37** · [detail](docs/2026-08-25-phenology.md)                                                         | registered `H-free` contrast **+0.289**, 95% CI **[0.158, 0.447]** — the registered prediction was NULL, and was **refuted** | conditional on the visit-allocation rule, and that condition is load-bearing: apportion the **same total** in proportion to display and it falls to **0.026**                                           |
-| **A narrow flowering season cannot be derived — it is selected against.** Make width a heritable locus and it evolves wider, study **#50** · [detail](docs/2026-08-31-evolving-width-conserved.md) | **+0.291 / +0.084 / +0.233** at `S` = 8 / 16 / 32 (wider drift, treatment − shuffled)                                        | the run's **own** registered prediction P3 (equal-width invariance) **failed**; nothing published moves, but finding 2 is protected by its parameters rather than by the principle registered           |
-| **Spatial structure does not rescue divergence**, study **#36** · [detail](docs/2026-08-25-spatial-ibm.md)                                                                                         | `HELD` occurred **0 of 38** times in every cell                                                                              | not merely a null — the half of the intervention that acts at all acts **against** the hypothesis: local foraging significantly _reduces_ retained ancestry variance                                    |
+| **A reproductive floor given to only some plants harms coexistence** — spreading a fixed selfing budget thinner across the population, study **#64** · [detail](docs/2026-09-06-selfing-cover.md)  | registered primary **−0.221**, 95% CI **[−0.339, −0.101]** at q = 0.69 against the flat floor (`2026-09-06-selfing-cover.md:26,44`)                                | the primary endpoint was changed to `HELD` **after seeing #63's data** — a garden-of-forking-paths hazard, disclosed in the pre-registration itself ([prereg](docs/2026-09-05-selfing-cover-prereg.md)) |
+| **Flowering time reaches placement** — the one positive that survives its controls, study **#37** · [detail](docs/2026-08-25-phenology.md)                                                         | registered `H-free` contrast **+0.289**, 95% CI **[0.158, 0.447]** (`2026-08-25-phenology.md:55`) — the registered prediction was NULL, and was **refuted** | conditional on the visit-allocation rule, and that condition is load-bearing: apportion the **same total** in proportion to display and it falls to **0.026**                                           |
+| **A narrow flowering season cannot be derived — it is selected against.** Make width a heritable locus and it evolves wider, study **#50** · [detail](docs/2026-08-31-evolving-width-conserved.md) | **+0.291 / +0.084 / +0.233** at `S` = 8 / 16 / 32 (wider drift, treatment − shuffled), 95% CI **[0.140, 0.442]** / **[−0.061, 0.228]** / **[0.115, 0.352]** — the middle one **spans zero** (`2026-08-31-evolving-width-conserved.md:21-26`)                                        | the run's **own** registered prediction P3 (equal-width invariance) **failed**; nothing published moves, but finding 2 is protected by its parameters rather than by the principle registered           |
+| **Spatial structure does not rescue divergence**, study **#36** · [detail](docs/2026-08-25-spatial-ibm.md)                                                                                         | `HELD` occurred **0 of 38** times in every cell (`2026-08-25-spatial-ibm.md:28`)                                                                              | not merely a null — the half of the intervention that acts at all acts **against** the hypothesis: local foraging significantly _reduces_ retained ancestry variance                                    |
 
 ## What is here
 
@@ -89,7 +89,7 @@ play.** A free 1-D placement gene, the cheap version of this project, supports 1
 on one pollinator where morphology-derived 2-D placement supports 40, at matched precision **and
 matched candidate count**. That is **2.1× at a 309-species pool**; give both arms a larger pool and
 it settles near **3.1×**, because a 1-D axis runs out of line while a 2-D surface keeps finding room.
-The 1-D arm is a steelman: it gets the whole body surface, the same number of candidates, and its
+The 1-D arm is a steelman: it gets the whole body length, the same number of candidates, and its
 precision drawn from the real pool's own distribution.
 [detail](docs/2026-08-02-pool-scaling.md) [metric](docs/2026-08-02-continuous-metric-rebaseline.md)
 
@@ -175,7 +175,8 @@ arms were compared at different candidate counts, and the packing ceiling depend
 count. At matched pool sizes the 2-D advantage runs **2.11× at 309 candidates, levelling near 3.1×**,
 and the variation across pollinator body plans is ~1.2×, not the ~1.5× published. Separately, "past
 ~0.15 herkogamy the stigma stops touching the animal" was **inferred from a displayed `0.000` and
-never measured** — the stigma contacts 81% of visits there; the real bound acts on the anther.
+never measured** — at separation 0.270 the stigma contacts 81% of visits, and even at 0.150 it
+contacts 67% (`docs/2026-08-03-checks-rebaseline.md:45,51`); the real bound acts on the anther.
 [scaling](docs/2026-08-02-pool-scaling.md) · [checks](docs/2026-08-03-checks-rebaseline.md)
 
 ### What is not claimed
@@ -205,8 +206,10 @@ cheap screen: a candidate mechanism has to move that exponent, measurable in sin
 **⚠️ And the reason no mechanism has completed a split: on a continuous axis, preferring the rare is
 self-defeating.** Rare-biased visitation — an animal that favours the rarer morph — is the first
 mechanism here to invert the invasion criterion, at visits proportional to the square root of
-abundance. Real animals reach that: converting Gigord et al. 2001 gives an exponent of −0.24 against
-the −0.30 needed. It still fails, and the measured reason is not a leaky barrier — at the exclusion
+abundance. Real animals reach that: converting Gigord et al. 2001 gives exponents of
+**−0.259 / −0.248 / −0.228** for pollinia removal, deposition and fruit set — `a ≈ 0.43`, which
+**clears** the `a ≤ 0.5` crossing (`docs/2026-08-04-rare-biased-visits.md:30-31,44-47`). It still
+fails, and the measured reason is not a leaky barrier — at the exclusion
 separation the barrier passes **exactly zero** pollen. It is that the rarest placement in a splitting
 population is the **intermediate**, so a preference for rare morphs pours visits onto precisely the
 plants that bridge the two lineages; at that separation an intermediate draws **136×** the visits of
@@ -231,7 +234,7 @@ The **ceiling** half has since been measured, and it does not clear the bar. Aga
 _et al._'s global orchid reproductive-biology database, the maximum number of orchid species sharing
 one euglossine bee **within a single named region** is **14** (_Euglossa viridissima_ @ Mex), against
 the 1-D arm's **19** — so 14 < 19 and the bar is **not cleared**
-([`docs/2026-08-28-euglossine-ceiling.md:50,65`](docs/2026-08-28-euglossine-ceiling.md)). ⚠️ The
+([`docs/2026-08-28-euglossine-ceiling.md:56,67,71`](docs/2026-08-28-euglossine-ceiling.md)). ⚠️ The
 number is a **bound, not a refutation**, and it is loose in both directions: a region is not a site,
 so "Mex" over-counts sympatry across thousands of kilometres, while the database records only
 published pollinator observations, so the true count for any one bee can only be higher. Settling it

@@ -60,8 +60,8 @@ was re-run, no analysis re-registered, nothing under `sim/` touched. The test su
     verbatim and the waiver names it. The log's three conflicting commit counts (7 / 8 / "Eight"
     over nine entries) are reconciled to the measured **9**. A banner marks the file as a **release
     evidence log, not a findings document**.
-13. `docs/2026-07-31-groundwork-axes.md` referenced a local `~/sim-zoo` path in three places;
-    replaced with "a sibling project (not published)".
+13. `docs/2026-07-31-groundwork-axes.md` referenced a local home-directory path belonging to an
+    unpublished sibling project, in three places; replaced with "a sibling project (not published)".
 14. `greybox.html`'s title dropped its stale "v0".
 15. `CITATION.cff` licence note corrected. CFF 1.2.0 _does_ accept a list of licences, but its
     schema reads multiple licences as **OR**, while this repo's split is **AND**, by file class — so
@@ -72,6 +72,49 @@ was re-run, no analysis re-registered, nothing under `sim/` touched. The test su
 17. `docs/2026-08-01-v2-result.md`'s Round-2 table now carries a warning box at the table itself:
     it mixes a 250-generation row with a 120-generation reference while presenting itself as a
     visit-budget sweep.
+
+### Also corrected — found by this release's own critic pass, not by the panel
+
+An independent pass over the landing page, `README.md` and `FINDINGS.md` found one defect of the
+class the release calls **non-waivable** (a number disagreeing with its source), plus several
+smaller ones. All are fixed:
+
+18. **A front-page number had no source and the verdict attached to it was inverted.**
+    `README.md` read "converting Gigord et al. 2001 gives an exponent of −0.24 against the −0.30
+    needed" — asserting a **shortfall** in the same breath as "Real animals reach that". Neither
+    −0.24 nor −0.30 appears anywhere in the repository. The source gives exponents of
+    **−0.259 / −0.248 / −0.228**, i.e. `a ≈ 0.43` against a crossing at `a ≤ 0.5`, and says plainly
+    "**it clears the crossing**" — as does `ROADMAP.md`, "the bar IS met in nature". Corrected to
+    the measured exponents and the real threshold; the mechanism still fails, for the reason the
+    rest of the paragraph already gave.
+19. **Finding 3 quoted three values and no intervals, and one of the three spans zero.** Both
+    `README.md` and `FINDINGS.md` now carry `[0.140, 0.442]` / `[−0.061, 0.228]` / `[0.115, 0.352]`,
+    and FINDINGS says in terms that `S=16` is a null and that the direction claim rests on `S=8`
+    and `S=32`. The landing page promises numbers "and their intervals"; for this finding it had
+    not been keeping that promise.
+20. **`2026-08-25-phenology.md` headed its contrast table "The registered contrasts" while listing
+    `H-pool`, which was never registered.** Heading corrected and annotated. This is the same defect
+    as item 3, in the source document rather than in the summary — fixing only the summary would
+    have left FINDINGS and its own cited source disagreeing about what was registered.
+21. **`README.md` described the 1-D steelman as getting "the whole body surface".** It gets the
+    whole body **length**; the whole body _surface_ is the 2-D ceiling control, a different arm —
+    and the README's own new terms table said so two paragraphs earlier.
+22. **"the stigma contacts 81% of visits there"** pointed at ~0.15 herkogamy, where the measured
+    value is 67%. The 81% is at separation 0.270. Both are now named.
+23. **A blockquote labelled "verbatim" was not.** The northstar quote in FINDINGS silently dropped
+    a date from inside a bolded span. Restored.
+24. **"A correction shipped with this release"** described the **1.0.0** erratum. Retitled, with a
+    note that 1.0.1 changed no measurement at all.
+25. **Finding 4's heading co-headlined an unregistered readout.** "the half that acts, acts against
+    it" rests on a continuous ancestry-variance readout (−0.082 [−0.143, −0.030]), which the source
+    itself files apart from the registered fate-based endpoints. Now labelled as such, as `H-pool`
+    is in finding 2.
+26. Four line-level citations added in this release pointed at pre-edit line numbers in a file this
+    release had itself shifted. Corrected and re-verified.
+
+One critic finding was **rejected on re-checking**: "three independent re-measurements" in
+`README.md` is correct — `docs/2026-08-03-checks-rebaseline.md:114` says "it survives its **third**
+independent re-measurement".
 
 Full per-item dispositions, including what was **not** fixed and why, are in
 `docs/RELEASE-1.0.1.md`.

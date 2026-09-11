@@ -112,7 +112,9 @@ reaches placement, settled".
 
 ### 3. A narrow flowering season cannot be derived — it is selected against
 
-**+0.291 / +0.084 / +0.233** at `S` = 8 / 16 / 32 (wider drift, treatment − shuffled) ·
+**+0.291 / +0.084 / +0.233** at `S` = 8 / 16 / 32 (wider drift, treatment − shuffled),
+95% CI **[0.140, 0.442]** / **[−0.061, 0.228]** / **[0.115, 0.352]** (n = 12, t;
+[2026-08-31-evolving-width-conserved.md:25-26](2026-08-31-evolving-width-conserved.md)) ·
 study **#50** · [2026-08-31-evolving-width-conserved.md](2026-08-31-evolving-width-conserved.md) ·
 commit `5602460`
 
@@ -126,6 +128,13 @@ registers the **conservation** predictions — not this contrast.
 ```
 EW_CONSERVE=1 node experiments/evolving-width.js
 ```
+
+⚠️ **One of the three values is a null and is quoted here as one.** At `S=16` the interval
+**[−0.061, 0.228] spans zero**; the source says so in terms — "it stays clear of zero at S=8 and
+S=32 and no longer does at S=16" — and also warns that the three intervals overlap heavily, so
+**S=16 being the lowest is not itself a finding**
+([2026-08-31-evolving-width-conserved.md:28-30](2026-08-31-evolving-width-conserved.md)). The
+direction claim rests on S=8 and S=32.
 
 Finding 2 needed a narrow season, but imposed one. Make flowering width a heritable
 per-plant locus and ask whether narrowness evolves on its own, and it does not — width
@@ -164,8 +173,13 @@ node experiments/spatial-ibm.js
 ```
 
 The roadmap named spatial structure the most favoured remaining route — give a rare morph
-neighbours of its own kind. Refuted. Local foraging significantly **reduces** retained
-ancestry variance, and limited dispersal does nothing at all, by construction. This also
+neighbours of its own kind. Refuted. ⚠️ The heading's second clause rests on a **continuous
+readout, not a registered endpoint**: the pre-registration registers fate-based contrasts and a
+clustering positive control only, and the source files the ancestry-variance result under "the
+continuous readouts, because the label cannot move and they can"
+([2026-08-25-spatial-ibm.md:49](2026-08-25-spatial-ibm.md)). On that readout, local foraging
+significantly **reduces** retained ancestry variance (−0.082 [−0.143, −0.030],
+[2026-08-25-spatial-ibm.md:71](2026-08-25-spatial-ibm.md)), and limited dispersal does nothing at all, by construction. This also
 retired an earlier partial positive (0.247 → 0.950) that had been measured in a harness
 with no inheritance, no recombination and no hybrids: the proxy did not predict the
 individual-based model, which is why that model exists.
@@ -187,7 +201,7 @@ rest stands on:
 
 **The northstar**, verbatim from the roadmap's "Where this stands":
 
-> 🛑 **AND THE NARROW SEASON CANNOT BE DERIVED — it is selected AGAINST.** With width a
+> 🛑 **AND THE NARROW SEASON CANNOT BE DERIVED — it is selected AGAINST, 2026-08-25.** With width a
 > heritable per-plant locus it evolves WIDE […] 🛑 **So the northstar's answer does not
 > move — narrow flowering still does not arise on its own — and its cause has now been
 > corrected three times without ever reversing.**
@@ -209,9 +223,12 @@ Also open, carried from the release disposition table:
   depends on it (see below), but the duplication should be removed and the affected
   experiments re-run after 1.0.
 
-## A correction shipped with this release
+## A correction shipped with release 1.0.0
 
-The release inventory swept the whole tree for normal-approximation (z) intervals at small
+(Release **1.0.1** changed no measurement at all — its corrections are to what documents *say*,
+and are listed in [CHANGELOG.md](../CHANGELOG.md) and [RELEASE-1.0.1.md](RELEASE-1.0.1.md).)
+
+The 1.0.0 release inventory swept the whole tree for normal-approximation (z) intervals at small
 n — the defect the v2 document was written to record — and **found the same estimator
 still live in four experiments**. One carried a boundary verdict of exactly the retracted
 shape: the hybrid-placement clonal control was described as an interval that "only just
