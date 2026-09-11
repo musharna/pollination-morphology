@@ -279,3 +279,130 @@ CrossRef:
 
 **DONE:** FINDINGS written and its headline re-derived by execution; README rewritten and a
 stale count corrected; ghostcite clean with a seen-to-fail control and its blind spot named.
+---
+
+## Stage 4 — Static site and Pages workflow
+
+**Started:** 2026-09-10 23:00 EDT
+
+### 4.1 What ships
+
+`site/` is an allowlisted staging directory — **never the repo root**. Seven files:
+
+```
+site/.nojekyll              site/sim/placement.js
+site/index.html             site/sim/browser-bundle.js
+site/visit.html             site/greybox.html
+site/population.html
+```
+
+The two `sim/` modules are the only ones the playables load, read off their own
+`<script src=…>`: `visit.html` and `greybox.html` take `placement.js`,
+`population.html` takes `browser-bundle.js`. Nothing else in `sim/` is published.
+
+`.nojekyll` is present because Pages runs Jekyll by default and Jekyll **silently**
+drops `_`-prefixed paths — a missing-asset class that only appears in production.
+
+New tracked files: `tools/build-site.sh` (the assembler), `tools/site-index.html` (the
+landing page, tracked as source so the committed thing is an input rather than an
+output), `tools/smoke-site.py` (the smoke test), `.github/workflows/pages.yml`.
+**`site/` itself is gitignored** — the script is the artifact, not its result.
+
+### 4.2 The build script refuses to publish an incomplete site
+
+`tools/build-site.sh` re-reads each playable's `<script src=…>` after copying and fails
+if any referenced file is absent from `site/`. **Seen to fail before being trusted:** run
+with `placement.js` removed from the manifest it printed
+
+```
+build-site: visit.html references 'sim/placement.js' which is not in site/
+build-site: greybox.html references 'sim/placement.js' which is not in site/
+build-site: refusing to publish an incomplete site
+```
+
+and exited 1. This is the check that catches a page whose script 404s in production.
+
+### 4.3 Clean-checkout proof
+
+```
+git clone --depth=1 --branch release/1.0-rc file://$PWD <tmp>
+cd <tmp> && tools/build-site.sh
+```
+
+Cloned at `68ac8e9`; `site/` confirmed **absent from the clone before the build** (so
+nothing is being smuggled in as committed output); all seven required files produced; and
+`diff -r` against the working-tree build reports **no differences — the build is
+deterministic**.
+
+### 4.4 Smoke test — and the assertion that was wrong
+
+`tools/smoke-site.py` serves `site/` on an ephemeral port and drives headless Chromium
+(Playwright) over every entry point.
+
+⚠️ **The first version of this test failed two pages, and the test was what was wrong.**
+It asserted "every canvas must animate on load" — which is a belief about the pages, not
+their specification. Reading them settled it: `greybox.html` has **zero**
+`requestAnimationFrame`, **zero** `setInterval` and no controls, so it is a **static
+diagram by design**; `population.html` has a `<button id="run">` and waits for the user.
+Only `visit.html` autoplays. Weakening the check to "the page loaded" would have made a
+test that cannot fail, so the assertions were made **per-page** instead:
+
+| page              | contract asserted                                                      |
+| ----------------- | ---------------------------------------------------------------------- |
+| `index.html`      | no canvas; every same-origin link resolves 200                         |
+| `visit.html`      | autoplays — canvas non-blank **and changing** on load                  |
+| `greybox.html`    | static by design — canvas non-blank, **not** required to animate       |
+| `population.html` | non-blank and **idle** on load; `#run` must draw; `#play` must animate |
+
+`population.html`'s branch was corrected a second time for the same reason. It first
+asserted "animates after `#run`", which also failed — because the page's real contract,
+read at `population.html:1060–1088`, is that `#run` **computes and draws once**, then
+enables `#scrub` and `#play`; playback is what animates. The check now waits on the page's
+own completion signal (`#play:not([disabled])`, 60s budget) rather than a fixed sleep,
+requires the canvas to differ from its pre-run snapshot, then clicks `#play` and requires
+animation. **That is a genuine end-to-end check that the evolution loop runs in a
+browser**, which the original assertion never was.
+
+Final result, run from the repo root as a stranger would (`python3 tools/smoke-site.py`),
+**exit 0**:
+
+```
+  index.html       HTTP 200  console-err 0  uncaught 0  [links] 3 same-origin links checked
+  visit.html       HTTP 200  console-err 0  uncaught 0  [autoplay] animating on load 1/1
+  greybox.html     HTTP 200  console-err 0  uncaught 0  [static] 1 canvas rendered non-blank
+  population.html  HTTP 200  console-err 0  uncaught 0  [click] idle 0/2, #run drew 2/2, #play animating 2/2
+```
+
+### 4.5 Workflow, and a hazard the coordinator owns
+
+`.github/workflows/pages.yml` — `on: push: branches: [master]` + `workflow_dispatch`;
+`permissions: contents: read, pages: write, id-token: write`; `concurrency: pages` without
+cancel-in-progress; build job runs `tools/build-site.sh`, asserts the four
+silent-in-production files exist, then `upload-pages-artifact` with `path: site`; deploy
+job `needs: build`, `environment: github-pages`.
+
+**Every pinned tag was resolved against the API before pinning**, not recalled:
+
+| action                          | pinned | resolves                   |
+| ------------------------------- | ------ | -------------------------- |
+| `actions/checkout`              | `v4`   | `refs/tags/v4` → commit ✅ |
+| `actions/upload-pages-artifact` | `v3`   | `refs/tags/v3` → commit ✅ |
+| `actions/deploy-pages`          | `v4`   | `refs/tags/v4` → commit ✅ |
+
+⚠️ **Both Pages actions are behind current: `upload-pages-artifact` is at v5.0.0 and
+`deploy-pages` at v5.0.1.** The brief specified v3/v4 and those tags exist, so they are
+what shipped — deliberately, because **this workflow cannot be executed before the flip**
+(Pages is not enabled and the repo is private), and pinning an untested newer major into a
+workflow that gets its first run in production is the "merge ≠ deploy" trap. Flagged for
+the coordinator to bump if preferred.
+
+⚠️⚠️ **ORDERING HAZARD — the coordinator's stated sequence merges to `master` BEFORE the
+visibility flip.** This workflow triggers on push to `master`, so that merge produces a
+run that (a) executes on a **GitHub-hosted runner while the repo is private, which is
+billed**, and (b) **fails anyway**, because Pages is not enabled until the following step.
+Two clean fixes, either acceptable: flip before merging, or leave the trigger as
+`workflow_dispatch`-only until Pages is enabled and add the push trigger afterwards. A
+comment at the top of the workflow records this. Not a blocker for the RC — but it is a
+remote operation and therefore the coordinator's call, not the executor's.
+
+**DONE:** clean-checkout proof and smoke assertions pass and are recorded.
