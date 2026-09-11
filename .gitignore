@@ -8,3 +8,7 @@ _scratch/
 sim/.baseline-*.js
 sim/.pinned-*.js
 sim/.seenfail*.js
+
+# GitHub Pages staging dir. tools/build-site.sh is the committed artifact;
+# its output is rebuilt in CI from tracked source and never committed.
+site/

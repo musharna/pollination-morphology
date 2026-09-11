@@ -1,0 +1,58 @@
+name: Deploy site to GitHub Pages
+
+# ⚠️ ORDERING HAZARD, see docs/RELEASE-1.0.md §4.
+# This fires on every push to master. While the repository is PRIVATE, a
+# GitHub-hosted runner is BILLED, and the deploy job additionally FAILS because
+# Pages is not enabled until after the visibility flip. If master is merged
+# before the flip, expect one billed, failing run. Either flip first, or run
+# this by workflow_dispatch only until Pages is enabled.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; let an in-flight one finish rather than cancelling
+# a deployment half-applied.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site/
+        run: |
+          chmod +x tools/build-site.sh
+          tools/build-site.sh
+
+      # The build script already refuses to publish a page whose script is
+      # missing; these assert the two files whose absence is silent in
+      # production rather than loud.
+      - name: Assert the artifact is complete
+        run: |
+          test -f site/index.html
+          test -f site/.nojekyll
+          test -f site/sim/placement.js
+          test -f site/sim/browser-bundle.js
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

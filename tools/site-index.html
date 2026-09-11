@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pollination-morphology — placement computed, never set</title>
+    <meta
+      name="description"
+      content="A simulation in which where a flower puts its pollen on an animal is computed from shape, never set. Three browser toys and a findings write-up."
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfaf7;
+        --panel: #ffffff;
+        --ink: #1b1a17;
+        --muted: #5f5b52;
+        --rule: #e2ded4;
+        --accent: #7a5c2e;
+        --accent-soft: #f0e7d6;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #14140f;
+          --panel: #1d1d17;
+          --ink: #ece8df;
+          --muted: #a49d8e;
+          --rule: #33322a;
+          --accent: #d8b878;
+          --accent-soft: #2a2519;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #14140f;
+        --panel: #1d1d17;
+        --ink: #ece8df;
+        --muted: #a49d8e;
+        --rule: #33322a;
+        --accent: #d8b878;
+        --accent-soft: #2a2519;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.6 ui-serif, Georgia, "Times New Roman", serif;
+        padding-inline: 20px;
+        padding-block: 0;
+      }
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding-block: 56px 72px;
+      }
+      h1 {
+        font-size: clamp(1.7rem, 5vw, 2.5rem);
+        line-height: 1.15;
+        margin: 0 0 4px;
+        letter-spacing: -0.015em;
+      }
+      .sub {
+        color: var(--muted);
+        font-style: italic;
+        margin: 0 0 32px;
+        font-size: 1.02rem;
+      }
+      p {
+        margin: 0 0 18px;
+      }
+      .lede {
+        font-size: 1.1rem;
+      }
+      .rule {
+        border: 0;
+        border-top: 1px solid var(--rule);
+        margin: 36px 0;
+      }
+      h2 {
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        font-weight: 600;
+        margin: 0 0 16px;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      .toys {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 680px) {
+        .toys {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      a.toy {
+        display: block;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        padding: 18px;
+        text-decoration: none;
+        color: inherit;
+        transition:
+          border-color 0.15s,
+          transform 0.15s;
+      }
+      a.toy:hover,
+      a.toy:focus-visible {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+      a.toy .name {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.88rem;
+        color: var(--accent);
+        display: block;
+        margin-bottom: 7px;
+      }
+      a.toy .what {
+        font-size: 0.94rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 22px;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 0.95rem;
+      }
+      .links a {
+        color: var(--accent);
+      }
+      .note {
+        background: var(--accent-soft);
+        border-left: 3px solid var(--accent);
+        padding: 14px 16px;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.94rem;
+        color: var(--ink);
+      }
+      footer {
+        margin-top: 44px;
+        padding-top: 18px;
+        border-top: 1px solid var(--rule);
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9em;
+        background: var(--accent-soft);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Pollination by shape</h1>
+      <p class="sub">Where the pollen lands is computed, never set.</p>
+
+      <p class="lede">
+        Two orchids can share a pollinator completely and still be unable to pollinate each
+        other, because one paints its pollen on the bee's back and the other on its belly.
+        Here, flowers and a bee are built from a handful of shape genes — tube length,
+        curvature, throat radius, anther depth — and where they touch falls out of that
+        geometry. <strong>Placement is never a gene.</strong> The moment it becomes one, the
+        whole structure collapses into a model that does not need geometry at all.
+      </p>
+
+      <p>
+        So: does mechanical isolation alone build species? Mostly, in this model, it does
+        not — and the interesting part is <em>why</em> each route fails.
+      </p>
+
+      <hr class="rule" />
+
+      <h2>Play with it</h2>
+      <div class="toys">
+        <a class="toy" href="visit.html">
+          <span class="name">visit.html</span>
+          <span class="what"
+            >Watch one bee load pollen in one flower and fail to deliver it to the
+            next.</span
+          >
+        </a>
+        <a class="toy" href="greybox.html">
+          <span class="name">greybox.html</span>
+          <span class="what"
+            >The same reveal stripped to its mechanism — two flowers, one bee, nothing
+            else.</span
+          >
+        </a>
+        <a class="toy" href="population.html">
+          <span class="name">population.html</span>
+          <span class="what"
+            >A whole community evolving on one shared pollinator, over generations.</span
+          >
+        </a>
+      </div>
+
+      <hr class="rule" />
+
+      <h2>What was found</h2>
+      <p>
+        Almost every result is a <strong>negative</strong>, which is the point: the claim is
+        not that an effect was found, but that the instruments are good enough for the
+        absences to mean something. The write-up leads with the numbers, their intervals,
+        and the commit that produced each one — and with the corrections they went through
+        on the way, including one shipped with this release.
+      </p>
+      <div class="note">
+        A reproductive floor given to <em>only some</em> plants turns out to be worse than no
+        floor at all — coexistence falls below the arm that never had one, on an exactly
+        matched budget. Unevenness is its own harm, not the absence of a help.
+      </div>
+
+      <hr class="rule" />
+
+      <div class="links">
+        <a href="https://github.com/musharna/pollination-morphology/blob/master/docs/FINDINGS.md"
+          >Read the findings →</a
+        >
+        <a href="https://github.com/musharna/pollination-morphology">Source on GitHub →</a>
+        <a
+          href="https://github.com/musharna/pollination-morphology/blob/master/docs/ROADMAP.md"
+          >Roadmap &amp; open questions →</a
+        >
+      </div>
+
+      <footer>
+        No build step, no dependencies — every toy above is plain HTML and one script.
+        Run the suite with <code>node --test tests/</code>.<br />
+        Code: MIT. Text and figures: CC-BY-4.0. © 2026 Jaret Arnold.
+      </footer>
+    </div>
+  </body>
+</html>
