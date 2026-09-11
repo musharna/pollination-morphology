@@ -14,6 +14,26 @@ operation from here (merge, tag, release).
 
 ---
 
+## 0. The release candidate
+
+| | |
+| ---------------- | ------------------------------------------------------------------------------- |
+| **RC SHA** | resolve with `git rev-parse origin/release/1.0.1-rc` after fetching. It is the commit that adds this very section, so naming it here would be circular; deliberately not hardcoded, as in 1.0 |
+| **Branch** | `release/1.0.1-rc` — the **only** thing pushed |
+| **Base** | `1a18147`, `origin/master` at branch time |
+| **Position** | **2 ahead / 0 behind `origin/master`** — a fast-forward is available |
+| **Working tree** | clean |
+
+Two commits, oldest first:
+
+```
+9342a58  fix(1.0.1): close the post-ship panel punch list — documentation only
+<tip>    fix(1.0.1): close the critic pass, and add the release handoff
+```
+
+⚠️ The count above is stated once and measured, not carried forward from an earlier draft — that
+is the defect item 12 corrects in `RELEASE-1.0.md`, and it is cheap to repeat.
+
 ## 1. Scope compliance
 
 The plan's allowlist permits corrections to statements, titles, misquoted numbers, links, metadata
