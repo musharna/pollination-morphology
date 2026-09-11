@@ -66,8 +66,7 @@ node --test tests/
 
 Counts transcribed verbatim from the TAP summary block.
 
-**DONE:** branch exists, suite result recorded.
----
+## **DONE:** branch exists, suite result recorded.
 
 ## Stage 2 — Scientific disposition
 
@@ -180,6 +179,7 @@ upstream (1) or correctable in place from published statistics (2).
 The Instrument-debt row describing the z defect in the present tense was annotated to
 record that the correction landed, per the repo's own `✅ CORRECTED @<sha>` convention.
 The ROADMAP was not otherwise restructured.
+
 ---
 
 ## Stage 3 — Write-up
@@ -279,6 +279,7 @@ CrossRef:
 
 **DONE:** FINDINGS written and its headline re-derived by execution; README rewritten and a
 stale count corrected; ghostcite clean with a seen-to-fail control and its blind spot named.
+
 ---
 
 ## Stage 4 — Static site and Pages workflow
@@ -405,8 +406,7 @@ Two clean fixes, either acceptable: flip before merging, or leave the trigger as
 comment at the top of the workflow records this. Not a blocker for the RC — but it is a
 remote operation and therefore the coordinator's call, not the executor's.
 
-**DONE:** clean-checkout proof and smoke assertions pass and are recorded.
----
+## **DONE:** clean-checkout proof and smoke assertions pass and are recorded.
 
 ## Stage 5 — Licensing, citation, hygiene
 
@@ -448,8 +448,13 @@ repo and does not travel. GitHub, and every fresh clone, would have shown the ra
 | raw author                                                  | commits |
 | ----------------------------------------------------------- | ------- |
 | `Jaret Arnold <96366172+musharna@users.noreply.github.com>` | 161     |
-| `Jaret Arnold <mjarnold1998@gmail.com>`                     | 40      |
-| **`Michael Arnold <advertisingemailhaha@gmail.com>`**       | **3**   |
+| `Jaret Arnold` (personal address)                           | 40      |
+| **`Michael Arnold`** (a second, older personal address)     | **3**   |
+
+The two personal addresses are deliberately **not spelled out in this document**. They are
+already present in the commit objects and therefore public once the repository is, but
+there is no reason to additionally render them as prose on a page people read — the
+mapping that matters lives in `.mailmap`, where the literal strings are load-bearing.
 
 This is the second time in this release that a claim turned out to rest on machine-local
 state rather than on the artifact — the same shape as a working tree not being the
@@ -507,3 +512,88 @@ correct attribution without adding exposure; removing them would break the mappi
 foreign emails, no `.ts.net` hostnames, no `/mnt/c/Users` paths anywhere in the tree.
 
 **DONE:** files exist; sweep output recorded clean.
+---
+
+## Stage 6 — Critic gate
+
+**Started:** 2026-09-10 23:25 EDT
+
+One fresh subagent, no shared context, given the locally served `site/` and
+`docs/FINDINGS.md` and asked to find and rank defects. It returned **14 non-waivable and
+12 waivable**. Every non-waivable claim was re-verified here before being acted on — the
+critic itself retracted one of its own sub-agent's claims mid-review, so it is fallible
+too, and two of its findings needed checking against the source before I would accept
+them. **All 14 are now closed.** It was worth running: findings 3, 5, 6 and 12 are defects
+this executor introduced, and three of them are of exactly the class this project keeps a
+standing constraint about.
+
+### 6.1 ⚠️⚠️ Two claims published EARLIER IN THIS DOCUMENT were wrong
+
+**§4.4 said the smoke test asserted every canvas "non-blank" on load. It could not.**
+Blankness was defined as PNG data-URL length `< 400`, which a **uniform fill passes**. That
+is a check that cannot discriminate what it is trusted for. Replaced with a distinct-colour
+count from `getImageData`, and controlled in both directions:
+
+```
+NEGATIVE CONTROL  synthetic uniform fill -> 1 distinct colour   OK
+visit.html         on load: [65]
+greybox.html       on load: [65]
+population.html    on load: [1, 1]     <- TWO UNIFORM CANVASES
+                   after #run: [65, 31]
+```
+
+So `population.html` was **uniform on load all along** and the old check reported it as
+non-blank. The corrected position: population legitimately shows an empty plot area before
+`#run`, so uniformity there is right and is **no longer asserted against**; what is asserted
+is that `#run` draws and `#play` animates. `visit.html` and `greybox.html` genuinely render.
+§4.4's row and the test's own summary line are corrected.
+
+**§5.4 said "no `.ts.net` hostnames". True, and too narrow to mean what it implied.** The
+sweep ran the brief's three patterns, none of which matches a **bare** hostname. The private
+homelab nicknames `gt76` (3 documents) and `desktop` (5) are on the public surface.
+
+Disposition: **kept, deliberately.** They appear as run provenance — "jobd 3514 on `gt76`",
+"Job 3636 (gt76, 45.9 min)" — and this project uses which-host-ran-it as a real
+cross-machine determinism check. Scrubbing them would damage the scientific record to hide
+a machine nickname that is not an address, not resolvable and not a credential. What was
+wrong was the **claim**, not the decision, and the claim is corrected here.
+
+### 6.2 Non-waivable findings and their dispositions
+
+| #   | finding                                                                                                                              | disposition                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | the internal executor brief sits on the merge target (`master`, `774cae0`) with two private paths, so the release sweep never saw it | **coordinator action, flagged in §7** — verified: absent from `release/1.0-rc`, present on `master`; `release/1.0-rc` is **7 ahead / 0 behind `origin/master`**, so a fast-forward publishes without touching `master`                                                                                                                                                                                                                            |
+| 2   | the landing page's "Read the findings" link targets `blob/master/...`, which 404s until the merge lands                              | **sequence-dependent, not a defect** — Pages deploys _from_ `master`, so the site cannot exist before the merge that makes the link valid; recorded in §7 so the order is not broken                                                                                                                                                                                                                                                              |
+| 3   | headline 3 cited a prereg registering none of its endpoints, and omitted that prereg's refuted prediction                            | **FIXED** — both pre-registrations now cited with what each registers, and the refutation of **P3 (equal-width invariance)** is stated in FINDINGS with its consequence                                                                                                                                                                                                                                                                           |
+| 4   | headline 2 called the pool-size confound "excluded" while the source records it spanning zero under an equally defensible visit rule | **FIXED** — `HELD 0.289 → 0.026` and `H-pool +0.026 [0.000, 0.079]` now sit beside the headline at equal weight                                                                                                                                                                                                                                                                                                                                   |
+| 5   | the bolded `−0.211` is registered **secondary 2**, under a rule saying "primary endpoints only"                                      | **FIXED** — the registered primary `−0.221 [−0.339, −0.101]` now leads; the secondary is labelled as one and the selection rule restated to match                                                                                                                                                                                                                                                                                                 |
+| 6   | `hybrid-placement.md` printed two different intervals for one quantity after this release's correction                               | **FIXED** — the superseded z column is marked superseded beside the corrected t column, and the unqualified inference at `:66` now carries the qualifier                                                                                                                                                                                                                                                                                          |
+| 7   | the `S=32` scope figure is pre-conservation, and that cell moved under the conservation fix                                          | **FIXED** — labelled pre-conservation, with the note that the scope condition has not been re-measured on the conserved build                                                                                                                                                                                                                                                                                                                     |
+| 8   | private hostnames on the public surface; the §5.4 claim was narrower than it implied                                                 | **kept + claim corrected**, see 6.1                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 9   | a literal `/home/mjarnold/...` was the default value of `NODE` in two launchers                                                      | **FIXED** — `NODE=${NODE_BIN:?…}`, required rather than defaulted. The critic's fix is better than the justification I had written: it fails just as loudly, earlier, and **without** adding a PATH fallback, which would have let a run proceed on an unknown interpreter and undermined the sibling build-identity guard. ⚠️ **Behaviour change: these two scripts now require `NODE_BIN`.** The tree now contains **zero** absolute home paths |
+| 10  | the three playables carry no link home, no repo, no author and no licence                                                            | **FIXED** — an inert footer added to each (home · findings · source · `MIT / CC-BY-4.0 © 2026 Jaret Arnold`), system fonts only, no outbound request                                                                                                                                                                                                                                                                                              |
+| 11  | `CITATION.cff`'s single `license: MIT` contradicts the documented CC-BY-4.0 scope                                                    | **FIXED** — field scoped to code with an adjacent comment; CFF 1.2.0 cannot express a split licence, so the limitation is stated rather than hidden                                                                                                                                                                                                                                                                                               |
+| 12  | the blankness check could not discriminate a uniform canvas                                                                          | **FIXED**, see 6.1                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 13  | an old personal address was spelled out in rendered public prose                                                                     | **FIXED** — replaced with a description; the literal strings remain only in `.mailmap`, where they are load-bearing                                                                                                                                                                                                                                                                                                                               |
+| 14  | `gt76` appears in commit `0320110`'s message, reachable from the release branch                                                      | **accepted, recorded** — verified an ancestor of `release/1.0-rc`, one occurrence across all 205 commits. Same residual class as 6.1; removing it needs a history rewrite, which this release forbids. Coordinator may decide otherwise                                                                                                                                                                                                           |
+
+### 6.3 Waivable
+
+12 reported. None fixed, none required: they are presentation (mobile overflow on one
+control, a clipped select, project vocabulary in FINDINGS, a non-verbatim quote, footer
+code wrapping, stale authorship counts, three stale remote branches). Listed here as
+**known presentation defects** rather than silently dropped. The three stale `origin`
+branches (`flowering-time`, `selfing-sweep`, `spatial-ibm` — each strictly behind the
+release with **0** commits ahead) are a remote operation and therefore the coordinator's;
+they are noted in §7.
+
+### 6.4 Re-verification after the fixes
+
+```
+tools/build-site.sh && python3 tools/smoke-site.py      exit 0
+```
+
+All four entry points: HTTP 200, zero console errors, zero uncaught exceptions, links
+resolving, `#run` drawing 2/2 and `#play` animating 2/2.
+
+**DONE: zero non-waivable remain.**

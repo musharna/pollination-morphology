@@ -57,8 +57,24 @@ failures, report = [], []
 from playwright.sync_api import sync_playwright  # noqa: E402
 
 SHOT = """() => Array.from(document.querySelectorAll('canvas')).map(c => {
-  try { const u = c.toDataURL(); return u.length + ':' + u.slice(-64); }
-  catch (e) { return 'ERR:' + e.message; }
+  try {
+    const u = c.toDataURL();
+    // Distinct-colour count, grid-sampled. A data-URL LENGTH cannot tell a
+    // rendered canvas from a uniform fill: a flat colour compresses tiny but is
+    // not "non-blank" in any sense a reader would accept. Counting colours can.
+    let ncol = -1;
+    try {
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const seen = new Set();
+      const step = Math.max(1, Math.floor((c.width * c.height) / 4000)) * 4;
+      for (let i = 0; i + 3 < d.length; i += step) {
+        seen.add((d[i] << 24) | (d[i + 1] << 16) | (d[i + 2] << 8) | d[i + 3]);
+        if (seen.size > 64) break;
+      }
+      ncol = seen.size;
+    } catch (e) { ncol = -1; }
+    return u.length + ':' + u.slice(-64) + ':' + ncol;
+  } catch (e) { return 'ERR:-1:-1'; }
 })"""
 
 
@@ -69,8 +85,9 @@ def sample(page, settle, gap):
     b = page.evaluate(SHOT)
     n = len(a)
     changed = sum(1 for x, y in zip(a, b) if x != y)
-    blank = sum(1 for x in a if x.startswith("ERR") or int(x.split(":")[0]) < 400)
-    return n, changed, blank
+    # <=1 distinct colour means nothing a viewer could see was drawn
+    uniform = sum(1 for x in a if x.startswith("ERR") or int(x.rsplit(":", 1)[1]) <= 1)
+    return n, changed, uniform
 
 
 with sync_playwright() as p:
@@ -91,7 +108,7 @@ with sync_playwright() as p:
         if status != 200:
             failures.append(f"{name}: HTTP {status}")
 
-        n, changed, blank = sample(page, 1200, 1800)
+        n, changed, uniform = sample(page, 1200, 1800)
         note = ""
 
         if mode == "links":
@@ -113,8 +130,8 @@ with sync_playwright() as p:
             note = f"{len(hrefs)} same-origin links checked"
 
         elif mode == "autoplay":
-            if blank:
-                failures.append(f"{name}: {blank} blank canvas")
+            if uniform:
+                failures.append(f"{name}: {uniform} canvas with <=1 distinct colour")
             if n == 0 or changed == 0:
                 failures.append(
                     f"{name}: expected autoplay, {n} canvas, {changed} animating"
@@ -122,9 +139,9 @@ with sync_playwright() as p:
             note = f"animating on load {changed}/{n}"
 
         elif mode == "static":
-            if blank:
+            if uniform:
                 failures.append(
-                    f"{name}: {blank} blank canvas - static page drew nothing"
+                    f"{name}: {uniform} canvas with <=1 distinct colour - static page drew nothing"
                 )
             if n == 0:
                 failures.append(f"{name}: expected a rendered canvas, found none")
@@ -136,8 +153,10 @@ with sync_playwright() as p:
             # enables #scrub and #play. So Run DRAWS ONCE; Play animates the
             # playback. Asserting "animates after Run" was wrong; the right
             # assertions are that the computation ran, drew, and armed playback.
-            if blank:
-                failures.append(f"{name}: {blank} blank canvas on load")
+            # population.html legitimately shows an EMPTY plot area before #run, so a
+            # uniform canvas on load is CORRECT here and is deliberately not
+            # asserted against. What must hold is that #run then draws.
+            pass
             if changed:
                 failures.append(f"{name}: animated BEFORE #run was clicked ({changed})")
             pre = page.evaluate(SHOT)
@@ -184,6 +203,7 @@ if failures:
     for f in failures:
         print("  -", f)
     sys.exit(1)
-print("all entry points: HTTP 200, zero console errors, zero uncaught exceptions,")
-print("every canvas non-blank, each page behaving as its own design specifies,")
-print("population.html's evolution loop confirmed running in-browser after #run.")
+print("all entry points: HTTP 200, zero console errors, zero uncaught exceptions.")
+print("visit/greybox canvases carry >1 distinct colour; population.html is")
+print("legitimately uniform before #run and is NOT asserted non-blank there --")
+print("what is asserted is that #run draws and #play then animates.")

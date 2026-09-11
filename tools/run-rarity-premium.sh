@@ -14,7 +14,11 @@
 # project has already hit twice (once with `job` itself).
 set -uo pipefail
 
-NODE=${NODE_BIN:-/home/mjarnold/.nvm/versions/node/v18.20.8/bin/node}
+# ⚠️ NO DEFAULT ON PURPOSE. The caller must name the interpreter: a
+# non-interactive shell has no nvm shims, and falling back to PATH would let a
+# run proceed on an unknown build — which is exactly what the md5 check below
+# exists to prevent. Set NODE_BIN to an absolute path.
+NODE=${NODE_BIN:?set NODE_BIN to an absolute path to a node binary}
 if [ ! -x "$NODE" ]; then
 	echo "FATAL: no node at $NODE — set NODE_BIN" >&2
 	exit 127

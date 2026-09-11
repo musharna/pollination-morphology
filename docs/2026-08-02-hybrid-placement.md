@@ -57,15 +57,23 @@ among clones of itself, where mismatch is impossible by construction. Only the r
 effect.
 
 ```
-  hybrid / parent mating success        median    mean +/- 95% CI
-  rare among both parent morphs          0.812    0.751 +/- 0.091
-  among clones of itself (control)       0.949    0.960 +/- 0.040
-  NET matching effect (ratio)            0.879    0.809 +/- 0.101      n=58
+  hybrid / parent mating success     median   mean +/- 95% CI    SUPERSEDED (z)
+  rare among both parent morphs       0.812   0.751 +/- 0.091  ->  0.751 +/- 0.093
+  among clones of itself (control)    0.949   0.960 +/- 0.040  ->  0.960 +/- 0.041
+  NET matching effect (ratio)         0.879   0.809 +/- 0.101  ->  0.809 +/- 0.103   n=58
+                                              ^^^^^^^^^^^^^^^      ^^^^^^^^^^^^^^^
+                                              as published (z)     corrected t(df=57)
 ```
 
+⚠️ **The middle column is the superseded z estimator; the right-hand column is current.**
+Both are shown rather than the old one deleted, because this document's subject is
+measurement, and see the correction note below.
+
 Hybrids **are** slightly worse flowers — the clonal arm sits at 0.960, so about 6 of the 25 raw
-percentage points were intrinsic quality rather than placement. Removing it, the net cost is
-**19.1%, interval [0.708, 0.910], excluding 1.0**.
+percentage points were intrinsic quality rather than placement. ⚠️ That deduction is the weakest
+number here and its interval contains 1.0 — see [Limits](#limits). Removing it, the net cost is
+**19.1%, interval ~~[0.708, 0.910]~~ → corrected `[0.706, 0.912]`, excluding 1.0 under either
+estimator**.
 
 > ⚠️ **CORRECTION 2026-09-10 (release 1.0).** The three intervals above are
 > normal-approximation (z) intervals, the same estimator the v2 correction was written to
