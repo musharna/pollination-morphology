@@ -1,14 +1,24 @@
 # pollination-morphology
 
 A simulation in which **where a flower puts its pollen on an animal is never set — only computed.**
-
 Two orchids can share a pollinator completely and still be unable to pollinate each other, because
-one paints its pollen on the bee's back and the other on its belly. That is mechanical isolation,
-and it is a real barrier to gene flow that most pollination models cannot represent at all: they
-score a visit as a match between traits, so two species with equal match scores must exchange
-pollen. The field says so in its own words — Mailly & Lihoreau 2025 note that models "assume random
-pollen movements", and Ballantyne 2015 that networks record "visits… rather than clearly defined
-effective pollination events."
+one paints its pollen on the bee's back and the other on its belly. Build the flower and the bee out
+of shape genes, work out where they touch, and you get mechanical isolation for free — or you find
+out it isn't enough, which is mostly what happened here.
+
+**▶ [Play with it](https://musharna.github.io/pollination-morphology/)** — three browser toys, no
+install. · **📄 [Read the findings](docs/FINDINGS.md)** — four pre-registered results, most of them
+negative, and the corrections they went through.
+
+_Code: MIT. Text and figures: CC-BY-4.0._
+
+---
+
+Most pollination models cannot represent mechanical isolation at all: they score a visit as a match
+between traits, so two species with equal match scores must exchange pollen. The field says so in
+its own words — Mailly & Lihoreau 2025 note that models "assume random pollen movements", and
+Ballantyne 2015 that networks record "visits… rather than clearly defined effective pollination
+events."
 
 Here, placement falls out of geometry. A genome is a set of **shape** parameters — tube length,
 mouth and throat radius, curvature, a CYCLOIDEA-like polarity term, anther depth and angle. Where
@@ -24,11 +34,15 @@ a model that does not need geometry at all.
 | `sim/packing.js`   | overlap metric and species-packing ceiling                                     |
 | `sim/evolve.js`    | the evolution loop: shared pollinator, stigma interference, lottery demography |
 | `visit.html`       | watch one bee load pollen in one flower and fail to deliver it to the next     |
+| `population.html`  | a whole community evolving on one shared pollinator                            |
+| `greybox.html`     | the two-flowers-one-bee reveal, stripped to its mechanism                      |
 | `experiments/`     | the ablation, the pre-v1 checks, v1, the tolerance sweep                       |
 | `docs/`            | groundwork, and a write-up per experiment including what went wrong            |
+| `docs/FINDINGS.md` | start here — the headline results and what is still open                       |
 
-Open `visit.html` in a browser — no build step, no dependencies. Run `node --test tests/` for the
-suite (71 tests). Every experiment is `node experiments/<name>.js`.
+Open any of the three `.html` files in a browser — no build step, no dependencies. Run
+`node --test tests/` for the suite (**363 tests**). Every experiment is
+`node experiments/<name>.js`.
 
 ## What has been measured
 
@@ -155,13 +169,12 @@ the −0.30 needed. It still fails, and the measured reason is not a leaky barri
 separation the barrier passes **exactly zero** pollen. It is that the rarest placement in a splitting
 population is the **intermediate**, so a preference for rare morphs pours visits onto precisely the
 plants that bridge the two lineages; at that separation an intermediate draws **136×** the visits of
-an ordinary plant, and it sits where the barrier *is* leaky. The mechanism builds the conduit that
+an ordinary plant, and it sits where the barrier _is_ leaky. The mechanism builds the conduit that
 erases the split it was recruited to protect. This is why deception splits the _advertisement_ and
 not the plant: a colour dimorphism is **discrete** and has no intermediate to subsidise, while
 placement is continuous. **Discrete versus continuous is what decides whether negative
 frequency-dependence completes a split or only maintains a polymorphism.**
 [detail](docs/2026-08-04-rare-biased-visits.md)
-
 
 The empirical leg is half closed. The **mechanism** half now has real-world support: in two
 sympatric _Platanthera_ populations, the floral traits that determine where pollen is placed

@@ -180,3 +180,102 @@ upstream (1) or correctable in place from published statistics (2).
 The Instrument-debt row describing the z defect in the present tense was annotated to
 record that the correction landed, per the repo's own `✅ CORRECTED @<sha>` convention.
 The ROADMAP was not otherwise restructured.
+---
+
+## Stage 3 — Write-up
+
+**Started:** 2026-09-10 23:05 EDT
+
+### 3.1 `docs/FINDINGS.md` (new)
+
+Written for a stranger. Four headline findings, selected under the brief's rule —
+**pre-registered primary endpoints only**, each registered in a committed pre-registration
+before its experiment ran:
+
+| #   | finding                                      | number                   | study | doc                                      | commit    |
+| --- | -------------------------------------------- | ------------------------ | ----- | ---------------------------------------- | --------- |
+| 1   | a floor given to few is worse than none      | −0.211 [−0.303, −0.119]  | #64   | `2026-09-06-selfing-cover.md`            | `64e76ca` |
+| 2   | flowering time reaches placement             | +0.289 [0.158, 0.447]    | #37   | `2026-08-25-phenology.md`                | `94d61c0` |
+| 3   | a narrow season cannot be derived            | +0.291 / +0.084 / +0.233 | #50   | `2026-08-31-evolving-width-conserved.md` | `5602460` |
+| 4   | spatial structure does not rescue divergence | HELD 0 of 38, every cell | #36   | `2026-08-25-spatial-ibm.md`              | `239c6cc` |
+
+The 2.1× ablation and the 19.1% hybrid cost are reported in a separate **foundation**
+section, explicitly marked as pre-dating pre-registration, so the selection rule stays
+honest rather than being quietly widened to admit the project's best-known numbers.
+
+### 3.2 The agreement check that was actually run
+
+Finding 1 was **re-derived from the shipped archive**, not transcribed:
+
+```
+node experiments/selfing-cover.js docs/data/2026-09-06-selfing-cover.json.gz
+```
+
+exit 0, and the analyser printed
+`HELD: no floor -> q=0.85   0.266 -> 0.055   diff -0.211 [-0.303, -0.119]   (109 seeds)`,
+matching the FINDINGS sentence exactly, along with the registered primary
+`-0.221 [-0.339, -0.101]`. Findings 2–4 were checked by reading the number off the cited
+table in its own document (`phenology.md:55`, `evolving-width-conserved.md:21`,
+`spatial-ibm.md:28`) rather than from memory or from the ROADMAP summary.
+
+### 3.3 `README.md`
+
+Top rewritten for a stranger: one paragraph, a play link
+(`https://musharna.github.io/pollination-morphology/` — the coordinator verifies it live
+after the flip), a FINDINGS link, and the licence line. The existing "What is here" table
+is kept, extended with the two playables it omitted (`population.html`, `greybox.html`) and
+a FINDINGS row.
+
+⚠️ **A stale published number was corrected here.** The README advertised the suite as
+**71 tests**; it is **363**. Not a computation error — a count that stopped being true 292
+tests ago and was never re-read. Exactly the failure mode the roadmap's own standing
+constraint calls "a live count in a ledger line is a staleness generator".
+
+### 3.4 Citations
+
+`docs/dois.txt` (new): **176 unique DOIs**, extracted from `docs/` and `README.md` and
+normalised to lowercase with trailing markdown punctuation stripped.
+
+⚠️ The first extraction returned **zero** DOIs — a malformed bracket expression in the
+grep. It was caught by a **positive control** (grep for the bare `10.xxxx/` prefix, which
+found 180 occurrences), not by inspection. A zero from a sweep is a claim about the world
+and needs a control saying the sweep can find anything at all.
+
+`ghostcite 0.5.2`, retraction source _Retraction Watch snapshot 2026-07-14 (71,059 rows)_:
+
+```
+ghostcite --format doi --json --max-rps 3 --fail-on retraction docs/dois.txt
+```
+
+**exit 0. 176/176 resolved. 0 retracted. 0 unresolvable.** 11 findings, all tier `U`, and
+all of them Dryad / Zenodo / Cambridge **data deposits** — registered with DataCite rather
+than CrossRef, and each confirmed by ghostcite to resolve at doi.org. Neither non-waivable
+class is present.
+
+**Negative control — the gate was seen to fail before its pass was believed.** Feeding it
+a known-retracted DOI (`10.1016/S0140-6736(97)11096-0`, Wakefield 1998) alongside a valid
+one produced tier `R`, `RETRACTED per Retraction Watch`, and **exit 1**, while the valid
+DOI beside it passed in the same run. So the green above is evidence rather than a
+harness that cannot fire.
+
+⚠️ **Known limitation of this gate, stated rather than glossed.** Run in `--format doi`
+mode against a bare DOI list, ghostcite checks resolvability and retraction but **cannot**
+check author–year correspondence, because a DOI list carries no claimed byline to compare
+against (`claimed_author` is null in every finding). Wrong-author-for-right-DOI is the
+dominant ghost-citation failure mode and this configuration is blind to it.
+
+The two citations on the **public front page** were therefore verified by hand against
+CrossRef:
+
+- **Ballantyne, Baldock & Willmer 2015** `10.1098/rspb.2015.1130` — CrossRef returns
+  authors _Ballantyne, Baldock, Willmer_, year _2015_, _Proc. R. Soc. B_, titled
+  "Constructing more informative plant–pollinator networks: visitation and pollen
+  deposition networks in a heathland plant community". Byline, year and venue all match,
+  and the title is directly on the proposition it is cited for. ✅
+- **Mailly & Lihoreau 2025** — a thesis (`docs/2026-07-31-groundwork-axes.md:32` records it
+  as Mailly, Riotte-Lambert & Lihoreau 2025), carrying **no DOI**. Not in either
+  non-waivable class, but it is an unverifiable-by-DOI citation on the front page and is
+  recorded here as such rather than passed over.
+
+**DONE:** FINDINGS written and its headline re-derived by execution; README rewritten and a
+stale count corrected; ghostcite clean with a seen-to-fail control and its blind spot named.
