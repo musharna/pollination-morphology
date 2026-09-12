@@ -236,3 +236,252 @@ paywall"). Nothing about its readouts, its statistics, or its pre-registration i
    Expose the visit-allocation rule as a visible switch with its own band (0.289 registered vs
    0.026 proportional, `docs/FINDINGS.md:97-98`), or fix it at the registered rule and state it
    in the brief? Recommendation: expose it, since that condition is the finding's own caveat.
+
+## 13. The story after the sandbox
+
+Ruling (2026-09-12): sections 1 to 9 are Act One. What follows is the arc after it, chapter by
+chapter, under the same discipline: a chapter changes an INPUT or adds a registered question.
+The mating rule (`fateOf`, `sim/ibm.js:539-546`) and "placement is never a gene"
+(`sim/placement.js:7-9`; `sim/ibm.js:60-64`) are never touched by any chapter. Each chapter
+gives what a visitor sees first, one checkable question, the inputs and anchors it needs, and a
+size. Anything not in the repo is marked UNGROUNDED, needs a source, or "verify via CrossRef
+before citing in-repo". Chapters are ordered as a story; nothing below is scheduled.
+
+### Act 2, the animal side
+
+**1. The bee gets a genome.**
+Seen: the bee panel, read-only in Act One, opens into sliders of its own, and then those sliders
+are taken away from the visitor and given to selection. Over generations the tube grows, the
+tongue grows after it, and the pollen dot drifts along the body as both change. Darwin's race,
+watched.
+Question: with placement still derived, does a tube-versus-tongue arms race emerge from the
+contact model alone, and does it run away or stop at a bound?
+Inputs and anchors: `DEFAULT_BEE` is a parameter object with `bodyLen`, four named regions and
+`reach` (`sim/placement.js:150-159`); today no bee value is heritable (`docs/ROADMAP.md`, "no bee
+genome", and section 8 above). The chapter gives the animal a bounded genome (`bodyLen`, `reach`
+as tongue, a per-region hair value for chapter 2) expressed the way flower genes are
+(`sim/ibm.js:283-287`) and selected on pollen or nectar received; placement stays the output of
+`placementDistribution` on two shapes. Tongue length is measurable and allometric from body size
+in a named dataset (`docs/2026-07-31-groundwork-axes.md:126-129`, `pollimetry`, 4,438 specimens).
+_Angraecum sesquipedale_ and _Xanthopan_, Darwin's 1862 prediction of the moth: UNGROUNDED, needs a
+source; verify via CrossRef before citing in-repo.
+Size: M.
+
+**2. The animal eats the gametes.**
+Seen: between two flowers the bee grooms, and the dot on its back shrinks; then it packs what it
+reached into its leg baskets, and that pollen is drawn grey, dead as a gamete. Only the part of
+the dot the bee cannot reach is still gold at the next flower.
+Question: does harvest plus per-region grooming, and nothing else, select for precise placement
+onto the unreachable sites, the enumeration's unverified load-bearing candidate?
+Inputs and anchors: grooming already exists as one per-grain probability, uniform over the body
+(`sim/carryover.js:93`, `groom: 0.18`; the IBM bout at `sim/ibm.js:1442` passes no override, so
+that default applies; `sim/evolve.js:331` passes 0.12). Harvest exists too (`sim/carryover.js:105`
+default 0, active packing at `:664-671`; the pollen dilemma stated at `sim/reward.js:8-14`). What
+does not exist is a per-region value: `sim/placement.js:146-149` says regions are separate
+"because retention and grooming reach differ per region", and no line in `sim/carryover.js` or
+`sim/reward.js` reads a region. The input this chapter adds is a grooming reach per region on the
+bee (chapter 1's hair value); the output is which sites survive. The empirical status is stated on
+the page: the enumeration lists grooming / safe sites as UNVERIFIED after two failed queries and
+load-bearing (`docs/2026-07-31-pollination-mechanism-enumeration.md:633`), later superseded by
+IPT as the selective explanation (`:618-619`); per-region pilosity data is NOT VERIFIED
+(`docs/2026-07-31-groundwork-axes.md:500-502`). Westerkamp's pollen dilemma framing: UNGROUNDED,
+needs a source (the repo cites Oliveira et al. 2020 for the dilemma, `sim/reward.js:12`).
+Size: M.
+
+**3. The pollinator is an agent, and often a society.**
+Seen: the bee has a fuel gauge. Each flower pays nectar, each flight costs, and when the gauge
+runs low the bee goes home. With a hive on the page, a bee that came home full sends out more
+bees to the same kind of flower; the common flower gets commoner on the visit log.
+Question: does a social pollinator with recruitment make HELD impossible where a solitary one
+with the same energy budget does not?
+Inputs and anchors: today visits are allocated by `allocExponent` (`sim/ibm.js:686`) through
+`allocWeights` (`:1413`), rarity read off the placement cloud and never off ancestry
+(`docs/ROADMAP.md:226-228`); the learner exists but is null by default (`sim/ibm.js:791,1412`).
+The inputs added are an energy budget (nectar gained against flight cost; the enumeration's own
+ruling that the currency must be chosen and named, `enumeration.md:502-505`, with the mechanical
+optimum at `:506-509`) and, for the social case, recruitment as POSITIVE frequency dependence:
+the majority gets more visits. That is the direct antagonist of the northstar, which asks for a
+minority advantage derived from pollination (`docs/ROADMAP.md:325-335`, six route families spent,
+five on visitation or attraction), and no run in the project has ever contained it. Colony
+recruitment (dance communication) is UNGROUNDED in the repo, needs a source; the only `recruit`
+lines are ants as a herbivore filter (`enumeration.md:328-329`) and lottery recruitment in
+demography (`sim/evolve.js:429`), which is a different word.
+Size: L.
+
+**4. Syndromes without an enum.**
+Seen: five animals on the page instead of one, each a body plan with its own reach and regions,
+and one flower population. Over a run the field sorts itself into shape clusters, one cluster per
+animal, or it does not.
+Question: with several animal body plans and continuous flower genes, do convergent flower shapes
+fall out of the contact geometry as clusters, one per animal?
+Inputs and anchors: the animals are parameter objects in the shape of `DEFAULT_BEE`
+(`sim/placement.js:150-159`), no enum anywhere. Doctrine: syndromes must be EMERGENT, not an enum
+(`enumeration.md:22-28`); two heavyweight tests disagree on whether syndromes predict pollinators
+at all (Ollerton et al. 2009 against Rosas-Guerrero et al. 2014, 417 species, `:25-27`), so
+either answer on the page is a result. The hummingbird syndrome has evolved more than 100 times
+in one region (`enumeration.md:445-447`); one tribe spans six syndromes (`:204`). Bat and
+hawkmoth body plans: reach and region values are UNGROUNDED, need morphometric sources.
+Size: L.
+
+**5. Landing is not the end: the stigma runs a race.**
+Seen: under the stigma tile a second, smaller tile: the grains that landed, and the tubes that
+won. When the stigma prefers outcross tubes, a self grain that landed first can still lose.
+Question: with a stigma that discounts self tubes, does the k = 1 wall move, where a lone plant's
+fitness is exactly 0.000 because every grain it receives is its own?
+Inputs and anchors: the wall is measured, not modelled: at k = 1 the minority's fitness is
+EXACTLY 0.000, its self-pollen share EXACTLY 1.0000, at all three N0 in both arms
+(`docs/ROADMAP.md:714-716`), and selfing lifts the floor to 0.111 (`:781`). The chapter adds one
+post-landing input, a per-grain weight on self versus outcross tubes applied after receipt and
+before mating; it cannot change what lands, only what wins. Pollen tube competition and
+late-acting self-incompatibility are enumerated (`enumeration.md:196`) but cryptic
+self-incompatibility as a named mechanism is UNGROUNDED, needs a source.
+Size: S.
+
+**6. Two morphs, one species: heterostyly.**
+Seen: a level. Two lineages of one species, pin and thrum, anthers high in one and low in the
+other, stigmas the reverse. The visitor must make the two morphs coexist by placement alone.
+Question: does reciprocal herkogamy hold two morphs at HELD with no genetic incompatibility and
+no season, from placement alone?
+Inputs and anchors: today the stigma is derived from the anther, `stigmaT = antherT + HERKOGAMY`
+with `HERKOGAMY = 0.05` fixed (`sim/evolve.js:52,134-141`), so reciprocity is unreachable. The
+input this chapter opens is the sign and size of herkogamy as a locus in `toFlower`; placement
+stays derived from the resulting shape. Heterostyly is enumerated as reciprocal herkogamy
+(`enumeration.md:142,147`). This is the empirical anchor the thesis has lacked: assortative mating
+mediated by placement inside one species, measured since Darwin. Darwin 1877 and Barrett's
+heterostyly work: UNGROUNDED, need sources; verify via CrossRef before citing in-repo (the
+Barrett hit in the enumeration, `:125`, is the wind paper, not this).
+Size: M.
+
+### Act 3, the flower fights back
+
+**7. Moving parts.**
+Seen: the bee touches a trigger and the flower moves: a column snaps down, or the pollen packet is
+fired onto the animal. One shot per flower.
+Question: does an active mechanism reach placements that passive contact cannot, and what does a
+one-shot flower pay in visits that fire on the wrong animal?
+Inputs and anchors: placement still derived, from geometry plus a trigger site and a discharge
+vector; the input added is the trigger, not the site. Enumerated: _Catasetum_ fires its
+pollinarium and _Medicago_ trips (`enumeration.md:136`), the _Salvia_ lever (`:137`). The
+_Stanhopea_ chute and _Coryanthes_ bucket escape trajectory is UNVERIFIED (`enumeration.md:618-619,
+645`), the contact site set by a constrained escape path if real; it needs a primary source
+before it can be a level. _Stylidium_'s column snap: UNGROUNDED, needs a source.
+Size: M.
+
+**8. Pollen as a package.**
+Seen: the dot on the bee becomes one glued lump at one site, not a powder. It cannot be groomed
+off, it does not dilute across many stigmas, and if it lands wrong it is lost whole.
+Question: does discrete packaging change which separations hold, at the cost of removal chances?
+Inputs and anchors: `massulae` already lets a load "resist grooming and not be diluted, like a
+pollinium" (`sim/carryover.js:144`), so the input exists in the bout and is not exposed on the
+page. Enumerated as pollinaria attachment, low removal efficiency 1.4 (`enumeration.md:134`), with
+a 496-pollinaria collection named (`:212`). This is the mechanical face of "a discrete axis is a
+MODELLING CHOICE, not a measurement" (`docs/ROADMAP.md:1207`; route #33/#37, `:333`) and of the
+euglossine ceiling leg (`docs/FINDINGS.md:211-215`, 14 orchid species per bee against the 1-D
+arm's 19).
+Size: S.
+
+**9. The price of the animal.**
+Seen: three economies side by side. In one the moth lays eggs in the flower and its larvae eat
+some seeds; in one the wasp is lured to a flower that pays nothing; in one a fly is sent to a
+flower that smells of what it wanted to lay eggs on.
+Question: when the animal is paid in offspring, or robbed, does the placement that holds two
+lineages differ from the nectar case?
+Inputs and anchors: the reward currency is already a named input (`sim/reward.js:8-17`, pollen or
+nectar). This chapter adds a third and fourth currency, offspring and nothing, as inputs to the
+same bout. Nursery pollination is enumerated as a mutualism-antagonism continuum held by
+sanctions (`enumeration.md:287-292`) and, in the open list, asserted not verified (`:635`). Sexual
+deception has DOIs (`:86-88`) and hybrid scent novelty attracting a different pollinator (`:89-93`).
+Brood-site deception is "not yet explored in depth" (`:94-95`).
+Size: L.
+
+### Levels 7 and 8, the escape hatches
+
+Two rows appended to section 5's table by number. Each needs a registered question before any
+mechanic; they are levels because the visitor can already try both by hand.
+
+| #   | start                                                         | brief                                                      | lesson                                                                                                                                                                                                                                                                                                                                                                        | finding                         |
+| --- | ------------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| 7   | level 2 pair; mating mode set to the random null              | Give up on the animal: wind. Placement = none. Win: HELD   | the random null is the model's wind; it fuses at 8 where placement excludes (`docs/2026-08-04-secondary-contact.md:47-50`). Wind pollinates >=10% of angiosperms (`enumeration.md:125`); ambophily UNGROUNDED, needs a source                                                                                                                                                 | none registered; question first |
+| 8   | level 2 pair; hybrids allowed to found a third ancestry label | Let the bridge become a lineage. Win: three labels at HELD | hybrids land between their parents and pay 19.1% (`docs/FINDINGS.md:196-198`); the fate rule has two labels only (`sim/ibm.js:539-546`), so a third outcome is a registered question, not a tile. Hybrid speciation and polyploidy as instant isolation UNGROUNDED, need sources (`enumeration.md:417` mentions polyploidy in perception only; hybrid scent novelty `:89-93`) | none registered; question first |
+
+### Act 4: Darwin's prediction is B
+
+Given a flower, the model names the body plan that can be pollinated by it: run the contact model
+over a bank of animal parameter objects and report which ones receive and deliver. The empirical
+turn (section 10) is the test of that mode: a real site's recorded visits, and which of them the
+geometry says cannot pollinate.
+
+### Cards, no inputs
+
+Each is a card in the sense of section 4: it names a measured quantity or a documented reason,
+and it never moves the model. None is a level.
+
+- **Ants.** Some visitors can never pollinate: pollen exposed to ants shows reduced viability and
+  shorter tubes, attributed to antibiotic secretions (`enumeration.md:318-323`, Beattie et al.
+  1984). The card fires when a visitor body plan is flagged pollen-hostile. Mechanism detail
+  beyond that row: UNGROUNDED.
+- **Nectar robbing.** A hole in the tube defeats the geometry: reward without contact. Named in
+  the interaction list (`enumeration.md:178`), observed as a switch under florivory (`:238`),
+  resolved in batch 3 (`:627`).
+- **Third parties.** Ambush predators, florivores, nectar microbes: all batch-3 rows
+  (`enumeration.md:178,238,627`). The card says the visit log the visitor is reading omits them.
+- **The animal's eyes.** Signal scored in the receiver's colour space, UV included; hummingbird
+  flowers differ from bee flowers in UV, not red (`enumeration.md:396-401`). Extends the
+  deception finding that the advertisement splits, not the plant (`docs/ROADMAP.md:243-245`).
+- **Across-years mismatch.** Flowering time reaches placement (`docs/FINDINGS.md:65-70`); a
+  season that moves with warming moves that result. Phenological mismatch under warming:
+  UNGROUNDED, needs a source; present-day stakes only.
+
+## 14. The speculative tier
+
+Rule, carried verbatim from the `~/dyson-tree` speculative-tier spec: **a card moves an input,
+never the mating rule.** Every card names one input the engine already has or one this document
+registers; none names `fateOf` or a placement site.
+
+Anchor badges on every card:
+
+- **MEASURED**: a number in `docs/` with a line.
+- **DEMONSTRATED**: a mechanism with a DOI in the enumeration or groundwork, not yet in a run.
+- **DECLARED**: an idea with no source in the repo. A DECLARED card cannot enter a registered run;
+  it can only propose a question.
+
+The deck is a data table, one JSON file beside the page (no `web/` directory exists today; the
+site allowlist is `tools/build-site.sh:19-25`, and the file would be added there). One test asserts
+that every row's `input` names a key that exists in `IBM.DEFAULTS`, `Evolve.GENE_BOUNDS`,
+`DEFAULT_BEE`, or the inputs registered in section 13, and that no row names `fateOf`.
+
+### The grounded backbone
+
+This is what pollination has and the dyson tier did not: real floral genes behind the sliders.
+Each is a card whose input is a slider that already exists.
+
+| card                      | input                                        | badge        | anchor                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------- | -------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CYCLOIDEA knockout        | `polarity` (`sim/evolve.js:29-35`)           | DEMONSTRATED | CYC-like genes control symmetry, orientation and nectar guides together (`enumeration.md:577-580`, Yang et al. 2023); knockdown measured as 3D shape (`:592-593`, Berger et al. 2017). Caveat on the card: the three traits are pleiotropically coupled (`:581-584`), and the slider moves one of them. Verify before citing outside the enumeration |
+| spur-length genes         | `axisLen`                                    | DECLARED     | _Aquilegia_ spur genetics: zero hits in the repo. UNGROUNDED, needs a source                                                                                                                                                                                                                                                                         |
+| scent by structural genes | `signal` (`sim/ibm.js:65-72`, `SIGNAL_GENE`) | DEMONSTRATED | gain and loss of scent via structural genes in _Petunia_ (`enumeration.md:452-453`, Amrad et al. 2016). A signal genome, never a shape gene: `shapeOf` keeps it out of the geometry (`sim/ibm.js:70-71,301`)                                                                                                                                         |
+| MYB colour factors        | `signal`                                     | DECLARED     | MYB: zero hits in the repo. UNGROUNDED, needs a source                                                                                                                                                                                                                                                                                               |
+| architecture is simple    | all shape sliders                            | DEMONSTRATED | major QTL under syndrome divergence in _Penstemon_; hummingbird syndrome evolved more than 100 times (`enumeration.md:445-448`); "simple genetic architecture and low constraint" in _Jaltomata_ (`:449-451`)                                                                                                                                        |
+
+### DECLARED cards
+
+- **Robot pollinators.** A drone body plan in `DEFAULT_BEE`'s shape: no grooming, no harvest, no
+  learner. Input: the bee parameter object (`sim/placement.js:150-159`) with `groom` and `harvest`
+  at zero (`sim/carryover.js:93,105`). DECLARED.
+- **Sonar flowers.** A bat-pollinated vine's concave leaf as an acoustic retroreflector; echoes
+  classified by CNN, so a dataset exists (`enumeration.md:103-105`, Simon et al. 2021). Input: a
+  signal channel the bat body plan reads. DEMONSTRATED as a mechanism; the body plan is DECLARED.
+- **Design the moth.** A flower for an animal that does not exist: the chapter 1 race run
+  backwards, the visitor sets the flower and the page reports the body plan that would be needed.
+  Input: the animal bank from Act 4. DECLARED.
+- **S-locus self-incompatibility.** A card on the selfing budget: `selfing.cover`
+  (`sim/ibm.js:1963`) at zero with a per-grain self rejection (chapter 5's input). Late-acting
+  self-incompatibility is enumerated (`enumeration.md:196`); the S-locus itself is UNGROUNDED.
+  DECLARED.
+- **Cleistogamy.** The opposite card on the same budget: a closed flower that only selfs, the
+  floor at its maximum with no animal. Input: `selfing.cover` at 1. Cleistogamy: zero hits in the
+  repo, UNGROUNDED. DECLARED.
+- **No-insect worlds.** A Mars greenhouse or the inside of a Dyson tree: no animal, so placement
+  is none and the only routes are wind (level 7) and self (the card above); the cross-over with
+  `~/dyson-tree` is one line, that its speculative tier and this one share the rule at the top of
+  this section. DECLARED.
