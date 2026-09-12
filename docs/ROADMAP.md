@@ -4,6 +4,13 @@
 Last updated 2026-09-11 (release 1.0.1 — documentation corrections only; no measurement changed).
 Previously 2026-08-07.
 
+> 🎯 **NORTHSTAR SET 2026-09-12: A then B.** A = the sandbox with a goal (all eight shape genes
+> live on two lineages, placement drawn on the bee, RUN until the fate reads HELD, failures
+> explained by measured quantities); B = the empirical turn (predict non-pollinating visits in a
+> real network from morphometrics), next arc. Design spec for A:
+> [`docs/superpowers/specs/2026-09-12-northstar-design.md`](superpowers/specs/2026-09-12-northstar-design.md).
+> The `:219`-family northstar ("minority advantage DERIVED") stays open and is level 6 there.
+
 ## Where this stands
 
 Seven things are built and measured, in this order, each gating the next:
