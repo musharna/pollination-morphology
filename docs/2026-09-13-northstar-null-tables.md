@@ -15,6 +15,19 @@ an a = 1 seed exceeded both gap-occupancy means. A card that can open on its own
 nothing, so every threshold is now set beyond the most extreme value any null seed reached, and
 the whole distribution is filed here.
 
+**Round 4 (2026-09-13).** Three additions. (1) Rows print to three decimals and the round-3 edges
+were read off the printed rows, so card 2's 0.433 was the printed value of seed 13's peak
+0.43333..., which is ABOVE 0.433: the null crossed its own edge. `edges` re-runs each defining
+seed at full precision and rounds the edge OUTWARD (a lower edge down, an upper edge up, one more
+step when the rounding lands on the value); the committed edges are the `edges` output below.
+(2) Cards 2 and 3 get a second null, `card23 rm8`: the same seeds under `randomMating`, where a
+filled gap is not a bridge because parentage ignores placement (`sim/ibm.js:2130,2203`). Its gap
+occupancy exceeds every a = 1 edge (peaks to 0.909, means to 0.634), so the cards read a third
+quantity, the LEAD (the generation ancestry variance first halved minus the generation the gap
+first held 10%), whose random-mating edge is 1. (3) Card 6 gets a per-seed null, `card6null`: the
+shuffled arm at `widthRng(seed)` minus the shuffled arm at `widthRng(seed + 1000)`; its edge
+replaces the document's interval bound 0.140, which was a bound on a 12-seed mean.
+
 ## Configurations
 
 - **page:** `IBM.DEFAULTS` (N = 18, 24 generations, `siteN` 90), founded by `foundTwoLineages`
@@ -35,6 +48,14 @@ the whole distribution is filed here.
   `widthMut` 0.03, `conserveDisplay`; treatment (`widthLocus`) against the same seed with
   `shuffleWidth`. `width` is the experiment's own statistic, mean expressed width over the last
   five generations.
+- **cards 2 and 3, second null (round 4):** `card23 rm8`, the level configuration at d = 8 under
+  `randomMating`, both a = 1 and a = 0.25 (the two are identical row for row: under random mating
+  parentage ignores the transfer matrix, so `allocExponent` changes nothing that gap occupancy
+  reads). Rows are tagged `card23rm`.
+- **card 6, per-seed null (round 4):** `card6null`, the card-6 configuration with `shuffleWidth`
+  in both arms, differing only in the width stream (`widthRng(seed)` against
+  `widthRng(seed + 1000)`; `wrng` is a plain parameter of `step`, `sim/ibm.js:1131`). `diff` is
+  arm A minus arm B, a draw from the null of card 6's treatment-minus-shuffled statistic.
 
 Hybrid = ancestry strictly in (0.15, 0.85) (`experiments/hybrids-or-balance.js:87`). Card 1's
 ratio = mean `received` of hybrids over mean `received` of the rest in the last generation where
@@ -58,6 +79,11 @@ node tools/northstar-null-tables.js card23 d4 1 10
 node tools/northstar-null-tables.js card5  - 1 6;       ... 7 12; 13 18; 19 24; 25 30
 node tools/northstar-null-tables.js card6  - 1 8;       ... 9 15; 16 23; 24 30
 node tools/northstar-null-tables.js summarise <all row files>
+# round 4 (each chunk under `timeout 600`, six or ten chunks in parallel on a loaded host)
+node tools/northstar-null-tables.js card23 rm8 1 5;     ... 6 10; 11 15; 16 20; 21 25; 26 30
+node tools/northstar-null-tables.js card6null - 1 3;    ... 4 6; 7 9; 10 12; 13 15; 16 18; 19 21; 22 24; 25 27; 28 30
+node tools/northstar-null-tables.js summarise <all row files>
+node tools/northstar-null-tables.js edges <all row files>
 ```
 
 ## Output
@@ -552,9 +578,131 @@ card6 seed 28 treatment 0.716 one lost shuffled 0.509 one lost diff 0.206
 card6 seed 29 treatment 0.853 one lost shuffled 0.289 one lost diff 0.565
 card6 seed 30 treatment 0.892 one lost shuffled 0.636 one lost diff 0.256
 EXIT 0
+# card23rm d=8 N=30 gens=35 siteN=160 randomMating seeds 1-5
+card23rm d=8 a=1 seed 1 realised 8.163 fate FUSED peak 0.733 mean 0.558 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 1 realised 8.163 fate FUSED peak 0.733 mean 0.558 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 2 realised 8.062 fate FUSED peak 0.767 mean 0.418 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 2 realised 8.062 fate FUSED peak 0.767 mean 0.418 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 3 realised 8.136 fate FUSED peak 0.667 mean 0.444 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 3 realised 8.136 fate FUSED peak 0.667 mean 0.444 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 4 realised 7.663 fate FUSED peak 0.767 mean 0.509 tGap 1 tAnc 2
+card23rm d=8 a=0.25 seed 4 realised 7.663 fate FUSED peak 0.767 mean 0.509 tGap 1 tAnc 2
+card23rm d=8 a=1 seed 5 realised 8.136 fate FUSED peak 0.633 mean 0.481 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 5 realised 8.136 fate FUSED peak 0.633 mean 0.481 tGap 1 tAnc 1
+EXIT 0
+# card23rm d=8 N=30 gens=35 siteN=160 randomMating seeds 6-10
+card23rm d=8 a=1 seed 6 realised 7.998 fate FUSED peak 0.720 mean 0.507 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 6 realised 7.998 fate FUSED peak 0.720 mean 0.507 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 7 realised 8.032 fate FUSED peak 0.767 mean 0.485 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 7 realised 8.032 fate FUSED peak 0.767 mean 0.485 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 8 realised 7.996 fate FUSED peak 0.733 mean 0.526 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 8 realised 7.996 fate FUSED peak 0.733 mean 0.526 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 9 realised 8.042 fate FUSED peak 0.900 mean 0.484 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 9 realised 8.042 fate FUSED peak 0.900 mean 0.484 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 10 realised 8.146 fate FUSED peak 0.800 mean 0.590 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 10 realised 8.146 fate FUSED peak 0.800 mean 0.590 tGap 1 tAnc 1
+EXIT 0
+# card23rm d=8 N=30 gens=35 siteN=160 randomMating seeds 11-15
+card23rm d=8 a=1 seed 11 realised 7.882 fate FUSED peak 0.667 mean 0.411 tGap 2 tAnc 1
+card23rm d=8 a=0.25 seed 11 realised 7.882 fate FUSED peak 0.667 mean 0.411 tGap 2 tAnc 1
+card23rm d=8 a=1 seed 12 realised 8.005 fate FUSED peak 0.870 mean 0.513 tGap 1 tAnc 2
+card23rm d=8 a=0.25 seed 12 realised 8.005 fate FUSED peak 0.870 mean 0.513 tGap 1 tAnc 2
+card23rm d=8 a=1 seed 13 realised 8.010 fate FUSED peak 0.833 mean 0.634 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 13 realised 8.010 fate FUSED peak 0.833 mean 0.634 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 14 realised 8.213 fate FUSED peak 0.733 mean 0.442 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 14 realised 8.213 fate FUSED peak 0.733 mean 0.442 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 15 realised 8.012 fate FUSED peak 0.867 mean 0.622 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 15 realised 8.012 fate FUSED peak 0.867 mean 0.622 tGap 1 tAnc 1
+EXIT 0
+# card23rm d=8 N=30 gens=35 siteN=160 randomMating seeds 16-20
+card23rm d=8 a=1 seed 16 realised 8.088 fate FUSED peak 0.733 mean 0.489 tGap 1 tAnc 2
+card23rm d=8 a=0.25 seed 16 realised 8.088 fate FUSED peak 0.733 mean 0.489 tGap 1 tAnc 2
+card23rm d=8 a=1 seed 17 realised 8.100 fate FUSED peak 0.633 mean 0.452 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 17 realised 8.100 fate FUSED peak 0.633 mean 0.452 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 18 nobuild
+card23rm d=8 a=0.25 seed 18 nobuild
+card23rm d=8 a=1 seed 19 realised 8.069 fate FUSED peak 0.700 mean 0.274 tGap 1 tAnc 2
+card23rm d=8 a=0.25 seed 19 realised 8.069 fate FUSED peak 0.700 mean 0.274 tGap 1 tAnc 2
+card23rm d=8 a=1 seed 20 realised 8.101 fate FUSED peak 0.733 mean 0.398 tGap 1 tAnc 2
+card23rm d=8 a=0.25 seed 20 realised 8.101 fate FUSED peak 0.733 mean 0.398 tGap 1 tAnc 2
+EXIT 0
+# card23rm d=8 N=30 gens=35 siteN=160 randomMating seeds 21-25
+card23rm d=8 a=1 seed 21 realised 7.907 fate FUSED peak 0.667 mean 0.394 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 21 realised 7.907 fate FUSED peak 0.667 mean 0.394 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 22 realised 8.114 fate FUSED peak 0.567 mean 0.266 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 22 realised 8.114 fate FUSED peak 0.567 mean 0.266 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 23 realised 8.143 fate FUSED peak 0.900 mean 0.523 tGap 1 tAnc 2
+card23rm d=8 a=0.25 seed 23 realised 8.143 fate FUSED peak 0.900 mean 0.523 tGap 1 tAnc 2
+card23rm d=8 a=1 seed 24 realised 8.446 fate FUSED peak 0.786 mean 0.577 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 24 realised 8.446 fate FUSED peak 0.786 mean 0.577 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 25 realised 7.760 fate FUSED peak 0.909 mean 0.633 tGap 1 tAnc 2
+card23rm d=8 a=0.25 seed 25 realised 7.760 fate FUSED peak 0.909 mean 0.633 tGap 1 tAnc 2
+EXIT 0
+# card23rm d=8 N=30 gens=35 siteN=160 randomMating seeds 26-30
+card23rm d=8 a=1 seed 26 realised 8.089 fate FUSED peak 0.700 mean 0.436 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 26 realised 8.089 fate FUSED peak 0.700 mean 0.436 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 27 realised 7.719 fate FUSED peak 0.467 mean 0.290 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 27 realised 7.719 fate FUSED peak 0.467 mean 0.290 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 28 realised 7.867 fate FUSED peak 0.667 mean 0.372 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 28 realised 7.867 fate FUSED peak 0.667 mean 0.372 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 29 realised 8.013 fate FUSED peak 0.667 mean 0.407 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 29 realised 8.013 fate FUSED peak 0.667 mean 0.407 tGap 1 tAnc 1
+card23rm d=8 a=1 seed 30 realised 7.847 fate FUSED peak 0.767 mean 0.607 tGap 1 tAnc 1
+card23rm d=8 a=0.25 seed 30 realised 7.847 fate FUSED peak 0.767 mean 0.607 tGap 1 tAnc 1
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 1-3
+card6null seed 1 shuffledA 0.589 one lost shuffledB 0.325 one lost diff 0.263
+card6null seed 2 shuffledA 0.815 one lost shuffledB 0.817 one lost diff -0.002
+card6null seed 3 shuffledA 0.473 one lost shuffledB 0.170 one lost diff 0.303
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 4-6
+card6null seed 4 shuffledA 0.544 one lost shuffledB 0.256 HELD diff 0.287
+card6null seed 5 shuffledA 0.416 one lost shuffledB 0.874 one lost diff -0.459
+card6null seed 6 shuffledA 0.211 one lost shuffledB 0.283 one lost diff -0.071
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 7-9
+card6null seed 7 shuffledA 0.734 one lost shuffledB 0.602 one lost diff 0.132
+card6null seed 8 shuffledA 0.673 one lost shuffledB 0.582 one lost diff 0.091
+card6null seed 9 shuffledA 0.591 one lost shuffledB 0.240 HELD diff 0.351
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 10-12
+card6null seed 10 shuffledA 0.529 one lost shuffledB 0.389 HELD diff 0.140
+card6null seed 11 shuffledA 0.151 one lost shuffledB 0.387 one lost diff -0.235
+card6null seed 12 shuffledA 0.483 one lost shuffledB 0.654 one lost diff -0.171
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 13-15
+card6null seed 13 shuffledA 0.110 one lost shuffledB 0.275 one lost diff -0.165
+card6null seed 14 shuffledA 0.403 one lost shuffledB 0.405 one lost diff -0.002
+card6null seed 15 shuffledA 0.271 one lost shuffledB 0.282 one lost diff -0.011
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 16-18
+card6null seed 16 shuffledA 0.405 one lost shuffledB 0.825 one lost diff -0.420
+card6null seed 17 shuffledA 0.359 one lost shuffledB 0.590 one lost diff -0.231
+card6null seed 18 shuffledA nobuild shuffledB nobuild diff null
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 19-21
+card6null seed 19 shuffledA 0.392 one lost shuffledB 0.406 one lost diff -0.014
+card6null seed 20 shuffledA 0.583 HELD shuffledB 0.389 one lost diff 0.195
+card6null seed 21 shuffledA 0.653 one lost shuffledB 0.503 one lost diff 0.150
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 22-24
+card6null seed 22 shuffledA 0.589 one lost shuffledB 0.556 one lost diff 0.034
+card6null seed 23 shuffledA 0.673 one lost shuffledB 0.270 one lost diff 0.403
+card6null seed 24 shuffledA 0.345 one lost shuffledB 0.349 one lost diff -0.005
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 25-27
+card6null seed 25 shuffledA 0.552 one lost shuffledB 0.392 one lost diff 0.161
+card6null seed 26 shuffledA 0.643 one lost shuffledB 0.445 one lost diff 0.199
+card6null seed 27 shuffledA 0.785 one lost shuffledB 0.739 one lost diff 0.046
+EXIT 0
+# card6null evolving-width S=8 conserved shuffled(widthRng seed) minus shuffled(widthRng seed+1000) N0=30 gens=35 siteN=160 d=8 widthMut 0.03 seeds 28-30
+card6null seed 28 shuffledA 0.509 one lost shuffledB 0.351 one lost diff 0.158
+card6null seed 29 shuffledA 0.289 one lost shuffledB 0.901 one lost diff -0.612
+card6null seed 30 shuffledA 0.636 one lost shuffledB 0.328 one lost diff 0.309
+EXIT 0
 ```
 
-## Edges (`summarise`)
+## Edges (`summarise`, round 4: over the committed rows plus the `card23rm` and `card6null` rows)
 
 ```
 
@@ -582,23 +730,25 @@ EXIT 0
   d=4 null hybGens: min 34.000 max 34.000 n 29 -> edge 34 (card 4 opens at 0, which must be BELOW this)
   d=4 placed, `one lost` with 0 hybrid generations: 3 of 29 seeds
 
-== cards 2 and 3 at level config, d=8: gap occupancy, null a=1 (29 seeds)
-  null peak: min 0.000 max 0.433 n 29 -> card 2 edge 0.433 (peak must be ABOVE this)
-  null mean: min 0.000 max 0.170 n 29 -> card 3 edge 0.170 (mean must be ABOVE this)
+== cards 2 and 3 at level config, d=8: gap occupancy, null a=1 (29 seeds) + randomMating (58 rows, a=1 and a=0.25 are identical: parentage ignores T)
+  a=1 null peak: min 0.000 max 0.433 n 29; mean: min 0.000 max 0.170 n 29 -> card 2 peak edge 0.433, card 3 mean edge 0.170 (3-decimal rows; `edges` prints the outward-rounded value)
+  randomMating null peak: min 0.467 max 0.909 n 58; mean: min 0.266 max 0.634 n 58; fates HELD/FUSED/one lost/BOTH LOST: 0/58/0/0; lead (tAnc - tGap, both >= 0): min -1 max 1 n 58 -> lead edge 1 (the lead must be ABOVE this; integer, no rounding)
+  randomMating null reaches every peak/mean edge (max peak 0.909, max mean 0.634), so gap occupancy alone cannot close it; the lead does
   null fates HELD/FUSED/one lost/BOTH LOST: 0/0/29/0
   null FUSED with gap-before-halving: 0
+  a=1 null seeds reaching card 2's full signature: 0; card 3's: 0; randomMating null seeds reaching card 2's: 0; card 3's: 0
   a=0.25 (29 seeds) fates HELD/FUSED/one lost/BOTH LOST: 4/8/17/0
-  card 2 opens (FUSED, peak > 0.433, gap first): 5 seeds -> 6 (0.633), 17 (0.633), 20 (0.700), 23 (0.800), 25 (0.733)
-  card 3 opens (FUSED, mean > 0.170): 4 seeds -> 6 (0.266), 17 (0.249), 23 (0.548), 25 (0.416)
+  card 2 opens (FUSED, peak > 0.433, lead > 1): 5 seeds -> 6 (0.633, lead 3), 17 (0.633, lead 3), 20 (0.700, lead 3), 23 (0.800, lead 3), 25 (0.733, lead 2)
+  card 3 opens (FUSED, mean > 0.170, lead > 1): 4 seeds -> 6 (0.266, lead 3), 17 (0.249, lead 3), 23 (0.548, lead 3), 25 (0.416, lead 2)
 
 == cards 2 and 3 at level config, d=4: gap occupancy, null a=1 (10 seeds)
-  null peak: min 0.100 max 0.900 n 10 -> card 2 edge 0.900 (peak must be ABOVE this)
-  null mean: min 0.011 max 0.596 n 10 -> card 3 edge 0.596 (mean must be ABOVE this)
+  a=1 null peak: min 0.100 max 0.900 n 10; mean: min 0.011 max 0.596 n 10 -> card 2 peak edge 0.900, card 3 mean edge 0.596 (3-decimal rows; `edges` prints the outward-rounded value)
   null fates HELD/FUSED/one lost/BOTH LOST: 0/8/2/0
   null FUSED with gap-before-halving: 7
+  a=1 null seeds reaching card 2's full signature: 0; card 3's: 0; randomMating null seeds reaching card 2's: 0; card 3's: 0
   a=0.25 (10 seeds) fates HELD/FUSED/one lost/BOTH LOST: 0/10/0/0
-  card 2 opens (FUSED, peak > 0.900, gap first): 0 seeds
-  card 3 opens (FUSED, mean > 0.596): 0 seeds
+  card 2 opens (FUSED, peak > 0.900, lead > -Infinity): 0 seeds
+  card 3 opens (FUSED, mean > 0.596, lead > -Infinity): 0 seeds
 
 == card 5 at level-4 config (30 seeds): paired fate against the flat floor (q = 0 is bit-identical to flat, docs/2026-09-12-northstar-page-config-probe.md)
   R200q69: flat HELD 11, arm HELD 6; opens (flat HELD, arm not) 9 -> seeds 8, 9, 10, 11, 12, 13, 17, 23, 27; reversed (flat not, arm HELD) 4 -> seeds 1, 7, 19, 20
@@ -607,4 +757,29 @@ EXIT 0
 == card 6 at S = 8 conserved (29 seeds): treatment minus shuffled width
   per-seed diff: min -0.137 max 0.768 n 29 mean 0.303 sd 0.225; seeds with diff <= 0: 2
   t interval over these seeds: [0.217, 0.389] (the finding's n = 12 interval is [0.140, 0.442], docs/FINDINGS.md:115-117)
+  shuffled-minus-shuffled null (29 seeds): min -0.612 max 0.403 n 29 mean 0.028 sd 0.249 -> card 6 edge 0.403 (treatment minus shuffled must be ABOVE this; 3-decimal rows, see `edges`)
+  treatment minus shuffled above that edge: 9 of 29 seeds
 ```
+
+## Committed edges (`edges`, round 4: the defining seed of each edge re-run at full precision, rounded outward)
+
+```
+# edges: the defining seed of each null edge re-run at full precision; committed edge = outward rounding (card 1 DOWN, cards 2, 3, 6 UP)
+card1 page d=8 defining seed 22 null ratio 0.6032441066314166 (row 0.603) -> edge 0.603 (ratio must be BELOW this; the seed is not)
+card1 page d=4 defining seed 19 null ratio 0.6420531009068156 (row 0.642) -> edge 0.642 (ratio must be BELOW this; the seed is not)
+card1 level d=8 defining seed 29 null ratio 0 (row 0.000) -> edge -0.001 (ratio must be BELOW this; the seed is not)
+card1 level d=4 defining seed 26 null ratio 0.5303547107955984 (row 0.530) -> edge 0.530 (ratio must be BELOW this; the seed is not)
+card2 d=8 defining seed 13 a=1 null peak 0.43333333333333335 (row 0.433) -> edge 0.434 (peak must be ABOVE this; the seed is not)
+card3 d=8 defining seed 13 a=1 null mean 0.16952380952380952 (row 0.170) -> edge 0.170 (mean must be ABOVE this; the seed is not)
+cards 2 and 3 d=8 randomMating null lead (tAnc - tGap): max 1 over 58 rows -> lead edge 1 (the lead must be ABOVE this; integer, exact)
+card2 d=4 defining seed 8 a=1 null peak 0.9 (row 0.900) -> edge 0.901 (peak must be ABOVE this; the seed is not)
+card3 d=4 defining seed 8 a=1 null mean 0.5961904761904763 (row 0.596) -> edge 0.597 (mean must be ABOVE this; the seed is not)
+card6 defining seed 23 shuffled-minus-shuffled diff 0.4027742215535734 (row 0.403) -> edge 0.403 (treatment minus shuffled must be ABOVE this; the seed is not)
+```
+
+Read against the cards: card 1 keeps 0.603 (seed 22's 0.60324 is above it) and the level
+configuration has no edge (a null ratio of exactly 0); card 2's edge moves from 0.433 to **0.434**;
+card 3's 0.170 already sat above seed 13's 0.16952; at target 4 no card-2 or card-3 threshold
+exists (`edges` 0.901 / 0.597, and 0 of 10 a = 0.25 seeds above); the random-mating lead edge is
+**1** for both; card 6's edge is **0.403** (seed 23's 0.40277 rounded up), cleared by 9 of 29
+treatment-minus-shuffled seeds.

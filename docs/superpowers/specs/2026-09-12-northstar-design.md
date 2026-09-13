@@ -10,10 +10,24 @@ measurement clears the EDGE of its null distribution over 30 seeds, tabulated pe
 card 1's control moved (its old pair sat inside the null); card 2 carries a founding eligibility;
 card 3 reads FUSED only; `demography` joins the reserved keys; M1 keeps the `d` path until M2
 re-measures.
+Revised a fourth time 2026-09-13 after the round-4 panel (29 findings, every one re-run against the
+engine by an independent verifier; the responses are the last section of this document). Its two
+root classes: **a stall that returns the parents is a win that cannot fail** (a run with zero
+recruits in every generation read HELD), and **an edge defined by a seed is crossed by that seed**
+(card 2's edge 0.433 was the rounded value of the seed that defined it, 0.4333...). A stalled
+generation is now a loss at the engine (`fateOf` gains a `stalled` argument and a fifth string,
+STALLED) and on every level; every edge is re-run at full precision and rounded outward
+(`tools/northstar-null-tables.js edges`); cards 2 and 3 carry a second null (`randomMating`), a
+founding eligibility and edges beyond both nulls; card 6 gets a per-seed null; ONE rng protocol,
+the page's, is named and the tables are shown to use it; M1's founding recipe carries the signal
+locus and its acceptance cannot pass on either branch; the grey rule compares the whole option
+signature, not only N, generations and siteN.
 
-Design spec. Engine at master `f6b5a7f` (unchanged under `sim/` since `d18f972`). Every claim about
-current code carries a `file:line`; every number carries its result document and the configuration
-(N, generations, siteN) it was measured at. Nothing here changes a measurement.
+Design spec. Engine at master `2fc9414` (unchanged under `sim/` since `d18f972`; `git log
+d18f972..HEAD -- sim/` is empty). Every claim about current code carries a `file:line`; every
+number carries its result document and the configuration (N, generations, siteN) it was measured
+at. Nothing here changes a measurement; the one change registered under `sim/` (section 8) adds a
+fate string and alters no existing caller's result.
 
 ## 1. Northstar
 
@@ -44,9 +58,9 @@ page with the genomes opened up and a goal attached.
 | gap occupancy        | `sim/ibm.js:1107`                                                                                                                       | `gapOccupancy(places, pA, pB)` against founding placements                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | the mating rule      | `sim/ibm.js:2120-2204`                                                                                                                  | parentage from the transfer matrix `T`: mother by `weight` (`:2130`), sires by `r.T[i][mother]` (`:2201-2203`), father drawn at `:2204`; `randomMating` severs exactly this link (`:2123-2130`, uniform sires `:2203`). See the paragraph in section 13                                                                                                                                                                                                                                              |
 | the page's run loop  | `population.html:717-776`                                                                                                               | `buildRun`: reads N, seed, generations, d, mating mode (`:718-722`); calls `I.foundTwoLineages` (`:727`); drives `I.step(pop, opts, rng, g, srng)` itself, no `brng`/`wrng`/`crng` (`:754-760`); stores `flowers`, `sites`, `sep = res.cluster.separation`, `ancVar` per generation (`:762-772`); returns `realised` (`:775`)                                                                                                                                                                        |
-| loop fidelity test   | `tests/browser-bundle.test.js:157-200`                                                                                                  | "the page's own generation loop reproduces run() exactly"; it calls `I.step(pop, opts, rng, g, srng)` with `DEFAULTS` only (`:165,183`)                                                                                                                                                                                                                                                                                                                                                              |
+| loop fidelity test   | `tests/browser-bundle.test.js:157-200`                                                                                                  | "the page's own generation loop reproduces run() exactly"; it calls `I.step(pop, opts, rng, g, srng)` with `DEFAULTS` only (`:165,183`). It asserts a COPY of the loop with restarted streams (`const rng = E.makeRng(seed)` at `:177-178`, after founding) against `run({found})`, which restarts them too (`sim/ibm.js:2373-2376`); the page founds and steps on ONE `rng` (`population.html:725-727`). It does not test the page's protocol; M1 rewrites it (section 9, the protocol paragraph)                                                                                                                                                                                                                                                                                                                                                              |
 | bundle               | `sim/browser-bundle.js`, built by `tools/build-browser-bundle.js:29-45`                                                                 | globals `Placement`, `Packing`, `Carryover`, `Evolve`, `Deception`, `IBM`; page aliases at `population.html:270-272`                                                                                                                                                                                                                                                                                                                                                                                 |
-| 3D renderer          | `population.html:437` (ancestry tint), `:645` (pollen at the model's own `(s, phi)`), `:686` (scene dressing labelled as such)          | canvas `#field` (`:220`), drag to orbit                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 3D renderer          | `population.html:437` (ancestry tint), `:645` (pollen at the model's own `(s, phi)`), `:686` (scene dressing labelled as such)          | canvas `#field` (`:220`), drag to orbit. Draws the logged bout: `draw` clears the canvas (`:814`), reads `G.log` and returns if it is empty (`:826-828`). Under `phenology` the engine logs no bout, `log: !PH && opts.logBout && bi === 0 ? opts.logBout : null` (`sim/ibm.js:1438`, "THE SLICED PATH DOES NOT LOG", `:1432-1437`), so on levels 4 and 5 the field would be blank; M3b adds the no-log fallback (section 9)                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | body map             | `population.html:248-261`, `drawMap` ending at `:1023`                                                                                  | placements plotted on the animal, along the body vs around it                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | fate tile            | `population.html:236-243`, `fateOf` copy at `:1025-1032`, `show` at `:1034-1049`                                                        | tiles: generation, cluster separation, ancestry variance, fate                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | site build           | `tools/build-site.sh:19-25`                                                                                                             | allowlist `visit.html population.html greybox.html` plus `sim/placement.js sim/browser-bundle.js`; script-src check `:56-69`                                                                                                                                                                                                                                                                                                                                                                         |
@@ -112,8 +126,14 @@ What you would see, top to bottom:
 4. **Run controls**, from `population.html:184-217`: seed, N, generations, mating mode
    (placement-mediated vs random null). The `d` input (`:188-191`) goes away: the sandbox founds
    the two lineages from the two hand-set genomes, so `foundTwoLineages`'s search
-   (`sim/ibm.js:568-579`) is replaced by `foundPopulation(half, ..., {base: g1, anc: 0})` and
-   `foundPopulation(n - half, ..., {base: g2, anc: 1})` with the same `spread: 0.02` (`:584-592`).
+   (`sim/ibm.js:568-579`) is replaced by
+   `foundPopulation(half, rng, {spread: 0.02, srng, base: {...g1, [IBM.SIGNAL_GENE]: srng()}, anc: 0})`
+   and the same for `g2` with `anc: 1` (`:584-592`). The `base` MUST carry the signal locus:
+   `foundPopulation` takes `base` whole (`b = base || {...randomGenome, [SIGNAL_GENE]: sr()}`,
+   `:438`) and then wraps `h[SIGNAL_GENE] + gauss * spread` (`:442`), so a base of the eight shape
+   sliders alone gives `NaN` signal on every founder (round 4, verified: founders' signal
+   `[[NaN, NaN], ...]`; with `signal: 0.5` in the base, 0.476 to 0.538). The two signal draws come
+   from `srng` in the order lineage 1, lineage 2, as `foundTwoLineages` draws its own (`:562,572`).
    Placement stays derived; only the founding genomes change source. Levels set N, generations
    and `siteN` (section 5); the free sandbox keeps the page defaults.
 
@@ -135,15 +155,33 @@ of one label and 15 of the other give variance 0.139, above 0.10, so HELD can re
 lineage down to 3 of 18; the tile shows the label counts beside the fate. The other fates are the
 engine's: `one lost`, `FUSED`, and `BOTH LOST` when extinct or below 2 plants (`:540,544-545`).
 The page prints "one lineage lost" today (`population.html:1030`) where the engine prints "one
-lost" (`sim/ibm.js:545`); the sandbox uses the engine's four strings verbatim, and
+lost" (`sim/ibm.js:545`); the sandbox uses the engine's strings verbatim, and
 `tests/browser-bundle.test.js:157` is extended to assert the page's `fateOf` returns them.
+
+**A stall is a loss.** A generation that recruits nothing hands the parents back unchanged:
+`pop: opts.demography ? next : next.length ? next : pop` (`sim/ibm.js:2246`), with `recruits:
+next.length` (`:2256`) and `stalled: next.length < target` (`:2345`) returned beside it. The
+population, its ancestry variance and therefore `fateOf` are then those of the founders, and a run
+that never reproduces reads HELD: at the level configuration with `bee.reach` 0, 35 of 35
+generations recruit zero, the final variance is 0.25 = the founding variance, and the fate reads
+HELD; the control at `reach` 0.85 recruits 1050 and reads `one lost` (round 4, verified). That is
+a win that cannot fail, so the sandbox never scores a stalled run as HELD. Engine level (the one
+change under `sim/`, section 8): `fateOf(finalPop, ancVar0, extinct, stalled = false)` returns
+**STALLED** when `stalled` is true, tested before the HELD line (`:543`); every existing caller
+passes three arguments and is unchanged. The page passes `stalled` = true when any generation's
+`recruits` (`:2256`) was 0, the exact case in which `:2246` returns the parents; the broader
+engine flag at `:2345` (an under-filled generation that still shrank) is printed as a count and
+does not score. STALLED is a loss on every level (section 5) and opens no card: no card's fate
+condition names it, and the tile itself prints "k of G generations recruited nothing" as the
+reason. `experiments/density-dependence.js:432-435` already keeps stalls visible for the same
+reason ("a frozen run would otherwise read as a clean result").
 
 ## 4. Why you failed
 
 What you would see: after a run ends, one or two cards open under the fate tile, each naming a
 measured quantity, its value, the band it crossed, and the finding. Cards 1 to 5 read a run that
-did not end HELD; card 6 reads any fate, because it explains a trait, not a failure. No card is
-attached to a level.
+ended `one lost` or FUSED; card 6 reads any fate, because it explains a trait, not a failure; a
+STALLED run opens none (section 3). No card is attached to a level.
 
 **The trigger rule.** Every card opens on a quantity measured on this run, or on this run paired
 with its named rerun, never on an input: not an option's value, not the founding separation, not
@@ -152,41 +190,62 @@ its threshold sits beyond the EDGE of that arm's distribution: the most extreme 
 reached in the null tables (seeds 1 to 30 per arm, at the configuration the card is read at; seed
 18 founds nothing at either target under either configuration and is the one gap), never the arm's
 mean. A mean is a value the null crosses about half the time; the round-3 panel found card 1's old
-band, set from ten null seeds, inside the null on 15 of 28 further seeds. An option condition may
-narrow when a card is eligible; it is never the reason a card is closed on its null. The null arms:
+band, set from ten null seeds, inside the null on 15 of 28 further seeds. **An edge is rounded
+outward** (round 4): rows print to three decimals, and card 2's committed 0.433 was the printed
+value of the seed that defined it, whose peak is 0.43333..., ABOVE 0.433, so the null crossed its
+own edge; every edge below comes from `tools/northstar-null-tables.js edges`, which re-runs the
+defining seed at full precision and rounds an upper edge up and a lower edge down (one more step
+when the rounding lands on the value), so the defining seed sits strictly on the null side. An
+option condition may narrow when a card is eligible; it is never the reason a card is closed on
+its null: for every null arm the card names, the count of null seeds reaching the card's FULL
+signature is 0 in the tables, and the row says which measured component closes it. The null arms:
 cards 1 and 4, the same seed under `randomMating` (`population.html:722`), which severs placement
 from parentage (`sim/ibm.js:2123-2130`, uniform sires `:2203`) but not from receipt, so a receipt
-quantity is placement-derived on both arms; cards 2 and 3, a = 1; card 5, the same seed at q = 0,
-the flat floor; card 6, the same seed with `shuffleWidth`. A band is drawn grey on a run at any
-configuration other than the one it was measured at, in both directions: a page-config card on a
-level run, or a level-config card on the free sandbox, prints "measured at N / generations / siteN;
-this run N / generations / siteN" instead of opening. The smoke test (section 9) runs each null and
-asserts the quantity sits on the null side of the edge, not that the card is closed.
+quantity is placement-derived on both arms; cards 2 and 3, TWO nulls (round 4): a = 1, where no
+subsidy exists, and the same seed under `randomMating`, where a filled gap is not a bridge because
+parentage ignores placement (the round-4 panel opened both cards there), closed by the lead
+statistic in the row; card 5, the same seed at q = 0, the flat floor; card 6, the same seed with
+`shuffleWidth`, whose edge is the per-seed shuffled-against-shuffled null (round 4). **The
+signature rule** (round 4, replacing the N / generations / siteN rule): a card is drawn grey on any
+run whose (N, generations, siteN, mating mode, option object) is not the exact signature its null
+table was run at, in both directions, and prints "measured at ...; this run ..." instead of
+opening. Cards 1 and 4: `DEFAULTS` plus `siteN` at either configuration, no option key set, so
+`demography`, `space`, `allocExponent`, `selfing`, `phenology` and `linkSignal` all grey them
+(round 4: with `demography {K: 2}` a run reads `one lost` with 0 hybrid generations from
+demographic loss, which would have opened card 4). Cards 2 and 3: the level configuration with
+`allocExponent` alone. Card 5: level 4's exact object. Card 6: the null tables' exact phenology
+object (`{slices: 8, widthLocus: true, widthMut: 0.03, conserveDisplay: true}`), because its edge
+was measured with `conserveDisplay` and `widthMut` 0.03 and a flipped `widthLocus` on level 5's
+first object loads neither (round 4). The smoke test (section 9) runs each null and asserts the
+quantity sits on the null side of the edge, not that the card is closed.
 
 | card                                            | fate condition | option condition                                                                                                                                                                  | measured quantity and band                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | what the card says, with source and its config                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ----------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1. hybrids pay from geometry                    | not HELD       | `!randomMating`                                                                                                                                                                   | the run's own hybrid receipt: mean `received` (`sim/ibm.js:1777-1782`, returned `:2279`) of plants with `anc` strictly in (0.15, 0.85) over mean `received` of the rest, in the last generation where both sets are non-empty; the card prints how many generations held a hybrid. Opens when the ratio is below **0.603**, the lowest value any of the 58 null runs reached at the page configuration (target 8, seed 22; the target-4 null floor is 0.642, seed 19; two null runs read Infinity, the rest received nothing; null tables). Closed when either set is always empty. At the level configuration a null run reaches **0.000** (target 8, seed 29: hybrids present, none received), so no threshold exists there and the card is grey on levels 2 to 6. Control at the page configuration: target 4, seed 16 reads `one lost`, hybrids in 1 of 24 generations, ratio 0.111; the same seed's null reads FUSED, 23 of 24, 1.085. Five of 58 placement-mediated runs clear the edge (target 4 seeds 16, 19, 20, 24; target 8 seed 25). The round-2 control, target 4 seed 3 at 0.842, sat inside the null and is retired     | hybrids land between their parents (`sim/ibm.js:38-41`); the constructed experiment measured 0.809 [0.706, 0.912] against parents at one separation, a 19.1% cost from geometry alone (`docs/2026-08-02-hybrid-placement.md:60-64,75`; `docs/FINDINGS.md:196-198`); the card prints the run's ratio first and the experiment's second                                                                                                                                                                              |
-| 2. the shared pollinator is the bridge          | FUSED          | `allocExponent` set and < 1 (`sim/ibm.js:686`, `null` = no bias); founded at target 8 (realised separation 7.6 or more, printed as eligibility, never the trigger)                | peak gap occupancy over the run (`IBM.gapOccupancy`, founding placements fixed) above **0.433**, the highest peak any of the 29 a = 1 seeds reached at N = 30, 35 generations, siteN 160, d = 8 (seed 13, `one lost`; null tables); the document's 0.129 (`docs/2026-08-05-gap-occupancy.md:122`) is that arm's mean over 12 seeds and sat inside the null. And the generation the gap first held 10% of plants precedes the generation ancestry variance halved (`:66-68`). The a = 1 arm fuses in 0 of 29 seeds at target 8; at target 4 it fuses in 8 of 10 with the gap filling first in 7 and peaks to 0.900, which is why the card needs the founding eligibility. At a = 0.25, target 8, the card opens in 5 of 29 seeds (6, 17, 20, 23, 25; peaks 0.633 to 0.800) of 8 that fused                                                                                                                                                                                                                                                                                                                                              | intermediates sit at d/2 where the barrier is leaky, m = 0.083 (`docs/2026-08-04-rare-biased-visits.md:103-104`); at a = 0.25, d = 8, 35 generations, 40 seeds, in 11 of the 12 FUSED replicates the gap filled first (`docs/2026-08-05-gap-occupancy.md:66-73`; `docs/ROADMAP.md:254-255`). That count is a = 0.25 only; at a = 1 no replicate fused (`:122`, 0 / 0 / 12)                                                                                                                                         |
-| 3. preferring the rare defeats itself           | FUSED          | `allocExponent` set and < 1                                                                                                                                                       | mean gap occupancy over the run above **0.170**, the highest mean any of the 29 a = 1 seeds reached (seed 13; null tables; the document's 0.024 at `docs/2026-08-05-gap-occupancy.md:122` is the arm mean and sat inside the null). FUSED only: at a = 0.25 the gap fills and one lineage is still lost in 17 of 29 seeds (seeds 1 and 2, means 0.238 and 0.143), and the document says gap-filling is not sufficient for fusion (`docs/2026-08-05-gap-occupancy.md:78-81`), so a `one lost` run does not show the subsidy defeating itself. Opens in 4 of 29 a = 0.25 seeds (6, 17, 23, 25; means 0.249 to 0.548). No visit-weight trigger: `allocWeights(sites, a, n)` (`sim/ibm.js:845`) weighs a site set, and the engine offers no midpoint-plant call                                                                                                                                                                                                                                                                                                                                                                            | the document's constructed intermediate at d/2 draws 136x the visits of an ordinary plant at d = 8, computed, not measured on a run (`docs/2026-08-04-rare-biased-visits.md:96-99,103-104`); mean gap 0.107 at a = 0.25 against 0.024 at a = 1 (`docs/2026-08-05-gap-occupancy.md:120,122`, 12 seeds per arm)                                                                                                                                                                                                      |
-| 4. secondary contact excludes                   | `one lost`     | `!randomMating`; no `allocExponent`, `selfing`, `phenology`                                                                                                                       | hybrid generations: the count of generations in which any plant's `anc` is strictly in (0.15, 0.85) (`population.html:742`); opens at 0, the two lineages never made a seed together before one was lost. Null arm: 23 of 24 in every one of the 58 null runs at the page configuration, 34 of 35 in every one of the 58 at the level configuration (null tables), so 0 is beyond the edge at both. Placement-mediated at target 8: `one lost` with 0 hybrid generations in 27 of 29 seeds (page) and 28 of 29 (level). Realised separation (`sim/ibm.js:594`) is printed beside it, never the trigger: it is the founding input. No FUSED branch: below d = 4 the model fuses exactly as the null does (`docs/2026-08-04-secondary-contact.md:36-40`), so fusion names no bee; card 1 carries it                                                                                                                                                                                                                                                                                                                                      | at target d of 0.5 to 4 every seed fuses, at d = 8 one lineage is lost in every seed while the random null fuses (`docs/2026-08-04-secondary-contact.md:36-40,47-50`, 5 seeds per cell, N = 30, 35 generations, siteN 160, `experiments/secondary-contact.js:66-69`); per-capita receipt at 10% frequency is 0.214 of the majority's at d = 8 (`docs/2026-08-04-density-dependence.md:90-94`), exponent 0.70 on own-frequency odds (`docs/2026-08-04-limiting-factors.md:53`); both quoted, never read off the run |
-| 5. a floor spread thin is worse than a flat one | not HELD       | `selfing.rate > 0 && selfing.cover > 0` (`sim/ibm.js:1844,1963`): the cover branch sits inside `rate > 0 \|\| always`, so `cover` without `rate` runs no floor and throws nothing | the paired fate: the same seed rerun in-page at q = 0 with the same `rate` (bit-identical to the flat floor, `sim/ibm.js:2384-2386`; `docs/2026-09-06-selfing-cover.md:41`) ends HELD while this run did not. Null arm: that flat run; the card opens only when it HELD. The starved count `round(q x N)` (`:2015`) is printed as the input it is, never as the measurement. Over seeds 1 to 30 at level 4's configuration (null tables) the flat floor HELD in 11, q = 0.69 in 6, q = 0.85 in 2 (the document's 0.404 / 0.183 / 0.055 over 109 seeds); the card opens in 9 pairs at q = 0.69 and 10 at q = 0.85 (seed 8 among them), and the pair runs the other way, flat lost and cover HELD, in 4 pairs at q = 0.69 (seeds 1, 7, 19, 20) and 1 at q = 0.85 (seed 19). One pair is one draw and the card says so; the rates are the document's, and the 0.266 with no floor at all is printed as copy, never compared                                                                                                                                                                                                               | at q = 0.69 HELD is 0.183 and at q = 0.85 it is 0.055, against 0.404 for the flat floor and 0.266 with no floor at all (`docs/2026-09-06-selfing-cover.md:14,40,44-46`; N0 = 30, rate 2.0, cost 0, 35 generations, 109 seeds per cell, `:5-7`; `phenology` 8 slices width 0.12 and `visitsPerPlant` 800, `experiments/rare-floor.js:28-32,127-133`); the harm 0.349 exceeds the floor's whole benefit 0.138 (`:60`)                                                                                                |
-| 6. flowering width evolves wide                 | any fate       | `phenology.widthLocus` (`sim/ibm.js:1185`) AND the in-page shuffled arm (M3b)                                                                                                     | mean expressed width (`:1312-1313`, `WIDTH_GENE` at `:127`), the experiment's statistic (mean over the last five generations, `experiments/evolving-width.js` `replicate()`), treatment minus the same seed run with `phenology.shuffleWidth` (`:1340`), the primary comparison the engine names (`:1299-1304`); opens when the paired difference exceeds 0.140, the lower edge of the finding's interval at S = 8 (n = 12, t; `docs/FINDINGS.md:115-117`); between 0 and 0.140 it prints the difference uncoloured; at or below 0 it stays closed. Over seeds 1 to 30 at that configuration (null tables) the difference runs -0.137 to 0.768, 21 of 29 clear 0.140, 2 are at or below 0, t interval [0.217, 0.389]. The threshold is the document's interval, not a null-seed edge: the null arm is the paired shuffled run itself, and the engine has no second shuffled stream from which a shuffled-against-shuffled difference could be drawn at the same seed. The founding mean is not the comparator: the engine says a drop from 0.5 alone "would put an arithmetic artefact on the same footing as a result" (`:1302-1304`) | width drifts wider, +0.291 / +0.084 / +0.233 at S = 8 / 16 / 32, treatment minus shuffled, the middle one spanning zero (`docs/FINDINGS.md:115-117,132-134`; 30 plants, 35 generations, 12 seeds, d = 8, `docs/2026-08-31-evolving-width-conserved.md:6`); conserving display removed four fifths of the gradient and the direction survived (`docs/FINDINGS.md:143-148`)                                                                                                                                          |
+| 1. hybrids pay from geometry | `one lost` or FUSED | signature: `DEFAULTS` at the page configuration, placement-mediated (`!randomMating`), no option key set | the run's own hybrid receipt: mean `received` (`sim/ibm.js:1777-1782`, returned `:2279`) of plants whose `anc` is strictly in (0.15, 0.85) over mean `received` of the rest, read on the PARENTS of each generation (the `anc` array is taken before `step`, `population.html:742`; `tools/northstar-null-tables.js:112-116`), in the last generation where both sets are non-empty; the card prints how many generations' parents held a hybrid. Opens when the ratio is below **0.603**, the lowest value any of the 58 null runs reached at the page configuration (target 8, seed 22, re-run at full precision 0.60324 and rounded DOWN, so the seed is not below it; the target-4 null floor is 0.642, seed 19 at 0.64205; two null runs read Infinity, the rest received nothing; null tables, `edges`). Closed when either set is always empty. At the level configuration a null run reaches exactly 0 (target 8, seed 29: hybrids present, none received), so no threshold exists there and the card is grey on levels 2 to 6. Control at the page configuration: target 4, seed 16 reads `one lost`, hybrids in 1 of 24 generations, ratio 0.111; the same seed's null reads FUSED, 23 of 24, 1.085. Five of 58 placement-mediated runs clear the edge (target 4 seeds 16, 19, 20, 24; target 8 seed 25). The round-2 control, target 4 seed 3 at 0.842, sat inside the null and is retired. Round 4: the statistic is maternal-role, non-clonal receipt, not the document's (next cell); with identical hand-set genomes it opens only under `mutRate` 0 and `visits` 10 (ratio 0.309, seed 1), neither a page control, and at the page defaults identical genomes read 0.819 to 1.330 over seeds 1 to 5, card closed | the card says "hybrids received less than the rest of the field": hybrids land between their parents (`sim/ibm.js:38-41`). The constructed experiment's 0.809 [0.706, 0.912], a 19.1% cost from geometry alone (`docs/2026-08-02-hybrid-placement.md:60-64,75`; `docs/FINDINGS.md:196-198`), is a DIFFERENT statistic: transfer summed over both sex roles, `T[i][j] + T[j][i]` (`experiments/hybrid-placement.js:262-274`), as the ratio of the hybrid rare among its parents to the hybrid among clones of itself (`docs/2026-08-02-hybrid-placement.md:54-57`); the card prints it labelled as that statistic, as the document's number, never as this run's second reading |
+| 2. the shared pollinator is the bridge | FUSED | signature: level configuration, `allocExponent` set and < 1 (`sim/ibm.js:686`, `null` = no bias), placement-mediated; founded at target 8 (realised separation 7.6 or more, printed as eligibility, never the trigger). At target 4 the card has no threshold: the a = 1 null there reaches its whole signature (8 of 10 seeds FUSED, peaks to 0.900, leads to 4; `edges` 0.901 / 0.597 with 0 of 10 a = 0.25 seeds above), so it is grey there, as answered question 4 provides | three quantities on this run, together beyond BOTH nulls: (i) fate FUSED; (ii) peak gap occupancy over the run (`IBM.gapOccupancy`, founding placements fixed) above **0.434**, the a = 1 edge (seed 13, `one lost`, whose peak is 0.43333..., re-run at full precision and rounded UP; the round-3 value 0.433 sat below it and the seed crossed it); (iii) the LEAD, the generation ancestry variance first halved minus the generation the gap first held 10% of plants (the ordering of `docs/2026-08-05-gap-occupancy.md:66-68`), above **1**, the `randomMating` edge. Under random mating the same seeds fuse at once (58 of 58 rows FUSED, variance halves at generation 1 or 2, lead -1 to 1) with peaks 0.467 to 0.909 and means 0.266 to 0.634, so gap occupancy alone cannot tell a bridge from random mating; a lead can, because a bridge fills the gap before the lineages merge and random mating merges them first. Counts (null tables, d = 8, N = 30, 35 generations, siteN 160): the a = 1 null reaches the full signature in 0 of 29 seeds (0 fuse; max peak 0.4333); the `randomMating` null in 0 of 58 rows (max lead 1); at a = 0.25 the card opens in 5 of 29 seeds (6, 17, 20, 23, 25; peaks 0.633 to 0.800, leads 2 to 3) of 8 that fused. The document's 0.129 (`docs/2026-08-05-gap-occupancy.md:122`) is the a = 1 arm's mean over 12 seeds and sat inside the null | intermediates sit at d/2 where the barrier is leaky, m = 0.083 (`docs/2026-08-04-rare-biased-visits.md:103-104`); at a = 0.25, d = 8, 35 generations, 40 seeds, in 11 of the 12 FUSED replicates the gap filled first (`docs/2026-08-05-gap-occupancy.md:66-73`; `docs/ROADMAP.md:254-255`). That count is a = 0.25 only; at a = 1 no replicate fused (`:122`, 0 / 0 / 12) |
+| 3. preferring the rare defeats itself | FUSED | the same signature and founding eligibility as card 2 (round 4: card 3 had none, and at target 4 its a = 1 null reaches means to 0.596, so only the option kept it closed there; and at a = 1 - epsilon a run is identical to its a = 1 null, seed 8 at target 4, mean 0.596 either way, which the eligibility now greys) | three quantities, together beyond both nulls: fate FUSED; mean gap occupancy over the run above **0.170**, the a = 1 edge (seed 13, mean 0.16952, so 0.170 already sits above it; the document's 0.024 at `docs/2026-08-05-gap-occupancy.md:122` is the arm mean and sat inside the null); and the lead above **1**, the `randomMating` edge as on card 2 (the random-mating null reaches means to 0.634, so the mean alone cannot close it). FUSED only: at a = 0.25 the gap fills and one lineage is still lost in 17 of 29 seeds (seeds 1 and 2, means 0.238 and 0.143), and the document says gap-filling is not sufficient for fusion (`docs/2026-08-05-gap-occupancy.md:78-81`), so a `one lost` run does not show the subsidy defeating itself. Null counts: a = 1 reaches the full signature in 0 of 29 seeds, `randomMating` in 0 of 58 rows. Opens in 4 of 29 a = 0.25 seeds (6, 17, 23, 25; means 0.249 to 0.548, leads 2 to 3). No visit-weight trigger: `allocWeights(sites, a, n)` (`sim/ibm.js:845`) weighs a site set, and the engine offers no midpoint-plant call | the document's constructed intermediate at d/2 draws 136x the visits of an ordinary plant at d = 8, computed, not measured on a run (`docs/2026-08-04-rare-biased-visits.md:96-99,103-104`); mean gap 0.107 at a = 0.25 against 0.024 at a = 1 (`docs/2026-08-05-gap-occupancy.md:120,122`, 12 seeds per arm) |
+| 4. secondary contact excludes | `one lost` | signature: `DEFAULTS` at either configuration, placement-mediated (`!randomMating`), no option key set: `allocExponent`, `selfing`, `phenology`, and (round 4) `demography` and `space` all grey it. With `demography {K: 2, seedsPerGrain: 1}` and identical genomes a run reads `one lost` with 0 hybrid generations and a final N of 2, demographic loss with no bee in it, which the old exclusion list admitted | hybrid generations: the count of generations whose PARENTS included a plant with `anc` strictly in (0.15, 0.85) (`population.html:742`, the `anc` array taken before `step`; a hybrid born in the final step is therefore not counted, and the card says "parents"); opens at 0, the two lineages never made a seed together before one was lost. Null arm: 23 of 24 in every one of the 58 null runs at the page configuration, 34 of 35 in every one of the 58 at the level configuration (null tables), so 0 is beyond the edge at both. Placement-mediated at target 8: `one lost` with 0 hybrid generations in 27 of 29 seeds (page) and 28 of 29 (level). Realised separation (`sim/ibm.js:594`) is printed beside it, never the trigger: it is the founding input. No FUSED branch: below d = 4 the model fuses exactly as the null does (`docs/2026-08-04-secondary-contact.md:36-40`), so fusion names no bee; card 1 carries it | at target d of 0.5 to 4 every seed fuses, at d = 8 one lineage is lost in every seed while the random null fuses (`docs/2026-08-04-secondary-contact.md:36-40,47-50`, 5 seeds per cell, N = 30, 35 generations, siteN 160, `experiments/secondary-contact.js:66-69`); per-capita receipt at 10% frequency is 0.214 of the majority's at d = 8 (`docs/2026-08-04-density-dependence.md:90-94`), exponent 0.70 on own-frequency odds (`docs/2026-08-04-limiting-factors.md:53`); both quoted, never read off the run |
+| 5. a floor spread thin is worse than a flat one | `one lost` or FUSED | `selfing.rate > 0 && selfing.cover > 0 && selfing.cover < 1` (`sim/ibm.js:1844,1963`): the cover branch sits inside `rate > 0 \|\| always`, so `cover` without `rate` runs no floor and throws nothing; and (round 4) `cover` = 1 sets `nKeep = n - Math.round(q * n)` to 0 (`:2015`), every `selfW` to 0, and no mother selfs, so the old condition `cover > 0` opened the card on a run that spent no assurance at all (seed 8 at q = 1: `one lost` with zero self weight, flat HELD). Signature: level 4's exact object, placement-mediated | the paired fate: the same seed rerun in-page at q = 0 with the same `rate` (bit-identical to the flat floor, `sim/ibm.js:2384-2386`; `docs/2026-09-06-selfing-cover.md:41`) ends HELD while this run did not. Null arm: that flat run; the card opens only when it HELD. The starved count `round(q x N)` (`:2015`) is printed as the input it is, never as the measurement. Over seeds 1 to 30 at level 4's configuration (null tables) the flat floor HELD in 11, q = 0.69 in 6, q = 0.85 in 2 (the document's 0.404 / 0.183 / 0.055 over 109 seeds); the card opens in 9 pairs at q = 0.69 and 10 at q = 0.85 (seed 8 among them), and the pair runs the other way, flat lost and cover HELD, in 4 pairs at q = 0.69 (seeds 1, 7, 19, 20) and 1 at q = 0.85 (seed 19). One pair is one draw and the card says so; the rates are the document's, and the 0.266 with no floor at all is printed as copy, never compared | at q = 0.69 HELD is 0.183 and at q = 0.85 it is 0.055, against 0.404 for the flat floor and 0.266 with no floor at all (`docs/2026-09-06-selfing-cover.md:14,40,44-46`; N0 = 30, rate 2.0, cost 0, 35 generations, 109 seeds per cell, `:5-7`; `phenology` 8 slices width 0.12 and `visitsPerPlant` 800, `experiments/rare-floor.js:28-32,127-133`); the harm 0.349 exceeds the floor's whole benefit 0.138 (`:60`) |
+| 6. flowering width evolves wide | any fate | signature (round 4): the exact phenology object the null tables ran, `{slices: 8, widthLocus: true, widthMut: 0.03, conserveDisplay: true}` (`widthLocus` at `sim/ibm.js:1185`; `widthMut` otherwise defaults to `mutRate` 0.02, `:409`), placement-mediated, AND the in-page shuffled arm (M3b). A flipped `widthLocus` on level 5's first object loads neither `conserveDisplay` nor `widthMut` 0.03 and is grey | mean expressed width (`:1312-1313`, `WIDTH_GENE` at `:127`), the experiment's statistic (mean over the last five generations, `experiments/evolving-width.js` `replicate()`), treatment minus the same seed run with `phenology.shuffleWidth` (`:1340`), the primary comparison the engine names (`:1299-1304`); opens when the paired difference exceeds **0.403**, the edge of a per-seed null (round 4): the shuffled arm at `widthRng(seed)` minus the shuffled arm at `widthRng(seed + 1000)`, the width stream being a plain parameter of `step` (`:1131`) and the only thing the second arm changes; over seeds 1 to 30 (null tables, `card6null`) that difference runs -0.612 to 0.403, mean 0.028, and seed 23's 0.40277 rounded up gives the edge. Between 0 and 0.403 it prints the difference uncoloured; at or below 0 it stays closed. Over seeds 1 to 30 the treatment-minus-shuffled difference runs -0.137 to 0.768, 9 of 29 clear 0.403 (seeds 6, 11, 12, 13, 14, 15, 17, 24, 29), 2 are at or below 0, t interval [0.217, 0.389]. The document's 0.140 is the lower end of the t interval on the 12-seed MEAN (`docs/FINDINGS.md:115-117`, "n = 12, t"), not a per-seed edge, and is printed as the document's interval, never as the line. The founding mean is not the comparator: the engine says a drop from 0.5 alone "would put an arithmetic artefact on the same footing as a result" (`:1302-1304`) | width drifts wider, +0.291 / +0.084 / +0.233 at S = 8 / 16 / 32, treatment minus shuffled, the middle one spanning zero (`docs/FINDINGS.md:115-117,132-134`; 30 plants, 35 generations, 12 seeds, d = 8, `docs/2026-08-31-evolving-width-conserved.md:6`); conserving display removed four fifths of the gradient and the direction survived (`docs/FINDINGS.md:143-148`) |
 
 Cards 2, 3, 5 and 6 are not eligible outside a run that sets their option, because `DEFAULTS`
-leaves `allocExponent`, `selfing` and `phenology` null (`sim/ibm.js:686,722,670`), and card 2 is
-not eligible outside a target-8 founding, because at target 4 the a = 1 arm fuses with card 2's
-whole signature (null tables, d = 4: 8 of 10 seeds FUSED, 7 with the gap filling before ancestry
-variance halved, peaks to 0.900). That is eligibility, not the trigger: each card still opens only
-on its measured quantity against its null's edge, and reads the option or the founding, never the
-level id. Cards 5 and 6 ship only with their in-page paired arm (M3b), because without it they have
-no valid comparator.
+leaves `allocExponent`, `selfing` and `phenology` null (`sim/ibm.js:686,722,670`), and cards 2
+and 3 (round 4: card 3 had no founding condition) are not eligible outside a target-8 founding,
+because at target 4 the a = 1 arm reaches both cards' whole signature (null tables, d = 4: 8 of 10
+seeds FUSED, 7 with the gap filling before ancestry variance halved, peaks to 0.900, means to
+0.596, and 0 of 10 a = 0.25 seeds above those). That is eligibility, not the trigger: each card
+still opens only on its measured quantities against its nulls' edges, and reads the option or the
+founding, never the level id. Cards 5 and 6 ship only with their in-page paired arm (M3b),
+because without it they have no valid comparator.
 
 ## 5. Levels
 
 What you would see: a "level" select above the gene panels. Choosing one loads a starting
 configuration into the sliders and run controls and shows a one-line brief. Every slider stays
-live in every level; from level 2 on the win is the fate tile, nothing else (level 1 has no run;
-its win is the separation readout). Every rate below names its configuration; levels 2 to 6 load it
+live in every level; from level 2 on the win is the fate tile reading HELD, nothing else (level 1
+has no run; its win is the separation readout). STALLED, `one lost`, FUSED and `BOTH LOST` all
+lose: a run in which some generation recruited nothing reads STALLED, never HELD (section 3), so
+the win can fail on a run that never reproduced. Every rate below names its configuration; levels 2 to 6 load it
 (N = 30, 35 generations, `siteN` 160), so the quoted rate and every card band are the visitor's. The
 free sandbox keeps the page defaults, where no HELD rate is measured.
 
@@ -196,8 +255,8 @@ free sandbox keeps the page defaults, where no HELD rate is measured.
 | 2   | the pair from level 1; N = 30, 35 generations, `siteN` 160, placement-mediated                                                                                                                                                                                                                                           | Now make them stay two kinds. Win: HELD. No configuration is known to win here; the page says so and asks the visitor to note seed and settings  | nothing holds: HELD 0 of 5 at every target d from 0.5 to 8; fuse at or below 4, one lost at 8, and the random null fuses at 8 where the model excludes (`docs/2026-08-04-secondary-contact.md:36-40,47-50`; N = 30, 35 generations, siteN 160, `experiments/secondary-contact.js:66-69`). Same disclosure as level 6                                                                                                                                                                      | secondary contact            |
 | 3   | level 2 pair at realised separation 8; `allocExponent` = 0.25; N = 30, 35 generations, `siteN` 160                                                                                                                                                                                                                       | The bee now prefers the rarer flower. Win: HELD; measured 4 of 12 at this setting                                                                | the rarest placement is the intermediate; the subsidy builds the bridge (`docs/2026-08-04-rare-biased-visits.md:103-109`); a = 0.25 gives 4 HELD of 12 with mean gap 0.107 and peak 0.298 (`docs/2026-08-05-gap-occupancy.md:120`, 12 seeds, d = 8; the 11 of 12 ordering at `:66-73`, 35 generations, 40 seeds)                                                                                                                                                                          | rare-bias self-defeat        |
 | 4   | level 2 pair; `selfing` = `{rate: 2.0, cost: 0, cover: q}`, q = 0.69 then 0.85 (the engine holds the budget at `rate` x total receipt, `sim/ibm.js:2014`); `phenology` 8 slices, width 0.12, and `visitsPerPlant` 800, as the sweep ran (`experiments/rare-floor.js:28-32,127-133`); N = 30, 35 generations, `siteN` 160 | A floor under the rare lineage, spread over some plants. Win: HELD; measured 0.183 at q = 0.69 and 0.055 at q = 0.85, against 0.404 flat         | thinner cover harms: primary -0.221 [-0.339, -0.101] against the flat floor (`docs/FINDINGS.md:34`); at q = 0.85 below no floor at all, 0.055 against 0.266 (`docs/2026-09-06-selfing-cover.md:14,44-46`; N0 = 30, rate 2.0, cost 0, 35 generations, 109 seeds per cell, `:5-7`)                                                                                                                                                                                                          | selfing budget               |
-| 5   | level 2 pair; `phenology` with `slices` = 8 (`sliceCountOf`, `sim/ibm.js:204`) and a narrow fixed `width` = 0.12 (read at `:1473`); registered visit rule; N = 30, 35 generations, `siteN` 160                                                                                                                           | Give them different seasons. Win: HELD; measured 11 of 38 at this setting, replicated 5 of 12. Then flip `widthLocus` on and run again           | HELD 0.289 at S = 8, 11 of 38 built seeds, under the registered visit rule (`docs/2026-08-25-phenology.md:37-38,46`; `docs/FINDINGS.md:65-70`; N = 30, 35 generations, siteN 160, d = 8); the evolving-width sweep replicated the cell at 0.417, 5 of 12 (`docs/ROADMAP.md:403-405`); conditional on the allocation rule: proportional visits drop it to 0.026 (`:94-102`); with width heritable it evolves wide (`:139-141`). At S = 32 the same cell gives 0.083 (`docs/ROADMAP.md:61`) | phenology, evolving width    |
-| 6   | level 2 pair; every option exposed; N = 30, 35 generations, `siteN` 160, so cards 2, 3, 5 and 6 read bands at their measured configuration                                                                                                                                                                               | Find a way for the rare lineage to gain from being rare. Unsolved                                                                                | six route families spent, five attacking visitation or attraction (`docs/ROADMAP.md:324-335`); the northstar is open (`docs/FINDINGS.md:202-207`)                                                                                                                                                                                                                                                                                                                                         | the open northstar           |
+| 5   | level 2 pair; `phenology` with `slices` = 8 (`sliceCountOf`, `sim/ibm.js:204`) and a narrow fixed `width` = 0.12 (read at `:1473`); registered visit rule; N = 30, 35 generations, `siteN` 160. The second run loads the exact object card 6 was measured with, `phenology = {slices: 8, widthLocus: true, widthMut: 0.03, conserveDisplay: true}` (the null tables' `card6` and `card6null`; `widthMut` otherwise defaults to `mutRate` 0.02, `sim/ibm.js:409`), not a flipped `widthLocus` on the first object                                                                                                                           | Give them different seasons. Win: HELD; measured 11 of 38 at this setting, replicated 5 of 12. Then load the width-locus object and run again           | HELD 0.289 at S = 8, 11 of 38 built seeds, under the registered visit rule (`docs/2026-08-25-phenology.md:37-38,46`; `docs/FINDINGS.md:65-70`; N = 30, 35 generations, siteN 160, d = 8); the evolving-width sweep replicated the cell at 0.417, 5 of 12 (`docs/ROADMAP.md:403-405`); conditional on the allocation rule: proportional visits drop it to 0.026 (`:94-102`); with width heritable it evolves wide (`:139-141`). At S = 32 the same cell gives 0.083 (`docs/ROADMAP.md:61`) | phenology, evolving width    |
+| 6   | level 2 pair; every option exposed; N = 30, 35 generations, `siteN` 160, so cards 2, 3, 5 and 6 read bands at their measured configuration                                                                                                                                                                               | Find a way for the rare lineage to gain from being rare. No known win FROM A POLLINATION-DERIVED MINORITY ADVANTAGE; the phenology and selfing wins of levels 4 and 5 are reachable here too (level 5's cell reads HELD at seeds 1 and 3 at this configuration under one option, section 9) and the page lists them as already known, so a HELD that reuses them is not the northstar. Win: HELD by a route the page does not list                                                                                | six route families spent, five attacking visitation or attraction (`docs/ROADMAP.md:324-335`); the northstar is open (`docs/FINDINGS.md:202-207`)                                                                                                                                                                                                                                                                                                                                         | the open northstar           |
 
 Per level, what the cited document measured: level 2, fate per cell at 5 seeds, HELD 0 of 5
 everywhere at N = 30, 35, 160 (`docs/2026-08-04-secondary-contact.md:36-40`); level 3, HELD / FUSED / one lost of
@@ -216,8 +275,8 @@ every band names the configuration it came from.
 | realised separation                                                       | printed with the experiment's founding outcomes as labels: realised 3.898 to 4.027 (target 4) "fused 5 of 5", 7.663 to 8.163 (target 8) "one lost 5 of 5", anything else "not measured"; never on the cluster tile                                                                                                                                                  | fates `docs/2026-08-04-secondary-contact.md:36-40,47-50`, by target d, 5 seeds per cell, N = 30, 35 generations, siteN 160; realised values of those same foundings, probe doc |
 | ancestry variance                                                         | founding value from the run; HELD line at 0.4 x founding (`sim/ibm.js:543`); "fused or lost" at 0.000, which every secondary-contact arm reached (`docs/2026-08-04-secondary-contact.md:28`); the 3-of-18 edge printed beside the line (section 3)                                                                                                                  | engine predicate                                                                                                                                                               |
 | fate                                                                      | HELD / one lost / FUSED / BOTH LOST, with the base rates the visitor is up against at the level's configuration: 0 of 5 at every d (level 2, `docs/2026-08-04-secondary-contact.md:36-40`), 0 of 38 in every spatial cell (`docs/FINDINGS.md:166`), 0.266 with no floor (`docs/2026-09-06-selfing-cover.md:46`), 0.289 at S = 8 (`docs/2026-08-25-phenology.md:46`) | each at the config named in section 5; none applies at the page defaults until re-measured                                                                                     |
-| hybrid fraction                                                           | any value above 0 is labelled "hybrids present"; the receipt ratio beside it with the null edge 0.603 (page configuration; grey at any other) and the experiment's 0.809 [0.706, 0.912] as the comparison, not as the run's number                                                                                                                                  | edge from the null tables; threshold from `experiments/hybrids-or-balance.js:64-65`; `docs/2026-08-02-hybrid-placement.md:60-64,75`                                            |
-| gap occupancy                                                             | the a = 1 edges, peak 0.433 and mean 0.170 (the most any of 29 seeds reached); the document's arm means, peak 0.129 and mean 0.024 "no bias", mean 0.107 and 0.143, peak 0.298 and 0.406 "rare-biased", printed as means, never as a line a run must cross                                                                                                          | null tables, 29 seeds, d = 8, N = 30, 35 generations, siteN 160; `docs/2026-08-05-gap-occupancy.md:120-122`, 12 seeds per arm at the same configuration                        |
+| hybrid fraction | any value above 0 is labelled "hybrids present"; the receipt ratio beside it, "hybrids received less than the rest" below the null edge 0.603 (page configuration; grey at any other) and the experiment's 0.809 [0.706, 0.912] as the comparison, labelled as its own statistic (card 1), never as the run's number | edge from the null tables; threshold from `experiments/hybrids-or-balance.js:64-65`; `docs/2026-08-02-hybrid-placement.md:54-57,60-64,75` |
+| gap occupancy | the a = 1 edges, peak 0.434 and mean 0.170 (outward-rounded from the most any of 29 seeds reached), and the random-mating lead edge 1; the document's arm means, peak 0.129 and mean 0.024 "no bias", mean 0.107 and 0.143, peak 0.298 and 0.406 "rare-biased", printed as means, never as a line a run must cross | null tables (`card23`, `card23rm`, `edges`), 29 seeds, d = 8, N = 30, 35 generations, siteN 160; `docs/2026-08-05-gap-occupancy.md:120-122`, 12 seeds per arm at the same configuration |
 | cross receipt at 10% frequency (shown on the secondary-contact card only) | 0.214                                                                                                                                                                                                                                                                                                                                                               | `docs/2026-08-04-density-dependence.md:90-94`, d = 8                                                                                                                           |
 | visit-allocation rule (level 5 switch)                                    | 0.289 registered against 0.026 proportional                                                                                                                                                                                                                                                                                                                         | `docs/FINDINGS.md:97-98`; N = 30, 35 generations, siteN 160 (`docs/2026-08-25-phenology.md:37-38`)                                                                             |
 
@@ -246,7 +305,12 @@ has two entries, sandbox and visit.
 ## 8. Non-goals
 
 - No new sim mechanics: the arc is a UI on `sim/` as shipped at `d18f972`; a change under `sim/`
-  would need a pre-registration, and this is not an experiment.
+  would need a pre-registration, and this is not an experiment. The one registered exception
+  (round 4) is scoring, not mechanics: `fateOf` (`sim/ibm.js:539-546`) gains a fourth argument
+  `stalled` and returns STALLED before testing HELD (section 3). No draw, weight, or offspring
+  changes; every caller that passes three arguments gets the four strings it gets today, asserted
+  by a test that runs the reach-0 level-configuration pair of section 3 (STALLED with the flag,
+  HELD without it; the reach-0.85 control `one lost` under both) beside `tests/fate-of.test.js`.
 - No new experiments: every band and card text quotes a result document at its measured
   configuration. The two exceptions are the probe doc and the null tables, dated probes (not
   results) of what the page itself shows: M2's controls, every card's null distribution seed by
@@ -264,23 +328,45 @@ has two entries, sandbox and visit.
 
 |     | scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | size | acceptance a stranger can check on the live page                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1  | all eight genes for both lineages as sliders: seven with bounds read from `Evolve.GENE_BOUNDS` (`sim/evolve.js:28-36`) plus `antherTheta`, which is `IBM.ALL_KEYS[7]` (`sim/ibm.js:73`), has no row in `GENE_BOUNDS`, and wraps to (-pi, pi] (`sim/evolve.js:118`); `reach` and `bodyLen` sliders labelled "bee, fixed for the run"; live anther and stigma sites of both on the bee; realised separation with band and level 1's target "reach 8" shown at load; founding from the two hand-set genomes via `foundPopulation` (section 3, item 4). The `d` input and the `foundTwoLineages` search stay behind a "found at target d" switch until M2 has re-measured its seeds against the hand-set founding: M2's acceptance pairs are `foundTwoLineages` seeds, and a hand-set founding draws a different stream | M    | drag lineage 2's anther angle from 0 to pi and watch its dot move from the bee's back to its belly with no run; every slider at either bound moves at least one dot, or the panel says "no effect at this bee"; the target reads beside the separation before any click                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| M2  | RUN on the hand-set pair; hybrid fraction and gap occupancy tiles; bands on every tile with their config; the engine's four fate strings; cards 1 and 4, each opening on its measured quantity beyond its null's edge                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | M    | page defaults, each pair founded by `foundTwoLineages` as `population.html:727` founds it today (seed 18 founds nothing at either target and is skipped). Card 4: target 8, seed 1, placement-mediated reads `one lost`, 0 of 24 hybrid generations, card 4 open, realised 8.124 printed. Card 1: target 4, seed 16 reads `one lost`, hybrids in 1 of 24 generations, receipt ratio 0.111, card 1 open. Null: the null tables' seeds 1 to 5 at both targets under the random null read 23 of 24 hybrid generations in all 10 (card 4's quantity beyond its edge) and ratios of 1.146 or more (card 1's quantity on the null side of 0.603); the smoke asserts those ten quantities, not the cards' state (null tables). A hand-set founding of the same genomes draws a different stream, so these seeds are re-measured before the `d` switch is removed |
-| M3a | the level select, briefs, the per-level (N, generations, siteN) load, the level 2 and level 6 "no known win" copy; the 35-generation, `siteN` 160 run timed inside 60 s                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | M    | pick level 3 and read N = 30, 35, 160 in the controls before running; pick level 1 and reach separation 8 by sliders alone                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| M3b | options from the page: `allocExponent`, `selfing` (`rate`, `cost`, `cover`, as level 4 loads them), `phenology` (`slices`, `width`, `widthLocus`, `conserveDisplay`, `displayProportionalVisits` at `sim/ibm.js:204,1185-1188,1473,1552,1570`), `visitsPerPlant`, and the visit-allocation switch with its band; cards 2, 3, 5, 6; the two in-page paired arms (q = 0 for card 5; `shuffleWidth`, `:1340`, for card 6); the three rng streams                                                                                                                                                                                                                                                                                                                                                                       | L    | pick level 5 and run seeds 1 to 5 at its config: at least one ends HELD (2 of 5, seeds 3 and 4; 0 of 5 at the page defaults, probe doc); pick level 4 at q = 0.85, seed 8: the run reads `one lost`, its in-page flat arm reads HELD, card 5 opens; at q = 0.69, seed 1 reads HELD, its flat arm `one lost`, card 5 stays closed and the card prints the reversed pair (null tables); pick level 3 at seed 6: FUSED, peak gap 0.633, mean 0.266, cards 2 and 3 open; at seed 1: `one lost`, both closed (null tables)                                                                                                                                                                                                                                                                                                                                     |
+| M1 | all eight genes for both lineages as sliders: seven with bounds read from `Evolve.GENE_BOUNDS` (`sim/evolve.js:28-36`) plus `antherTheta`, which is `IBM.ALL_KEYS[7]` (`sim/ibm.js:73`), has no row in `GENE_BOUNDS`, and wraps to (-pi, pi] (`sim/evolve.js:118`); `reach` and `bodyLen` sliders labelled "bee, fixed for the run"; live anther and stigma sites of both on the bee; realised separation with band and level 1's target "reach 8" shown at load; founding from the two hand-set genomes via `foundPopulation` with the signal locus in the `base` (section 3, item 4); `tests/browser-bundle.test.js:157-200` rewritten to the page protocol (section 9). The `d` input and the `foundTwoLineages` search stay behind a "found at target d" switch until M2 has re-measured its seeds against the hand-set founding: M2's acceptance pairs are `foundTwoLineages` seeds, and a hand-set founding draws a different stream | M | level 1's start genome is fixed, the one `Evolve.randomGenome(Evolve.makeRng(1))` draws (`sim/evolve.js:112,54`) with `signal` 0.5, and at `DEFAULT_BEE` each slider swept bound to bound moves lineage 2's anther dot by (body distance, `sim/ibm.js:825`; the founding placement recipe `:563-564`): `antherT` 11.216, `throatR` 7.544, `antherTheta` (0 to pi) 7.465, `axisLen` 4.376, `polarity` 0.642, `mouthR` 0.415, `antherProject` 0.188, `curve` 0.000 (`tmp/v4-pollen/probe5_gene_sensitivity.out`; `curve` moves nothing at three base genomes, and `antherT` at 0.85 on base seed 2 never touches the bee). Round 4: the old line passed on either branch ("moves a dot" or "no effect"), so the acceptance now names both: the test asserts that each of the seven moving genes shifts the dot by at least 0.1 body distance AND that `curve` alone carries "no effect at this bee"; a slider wired to nothing fails the first, a label on a moving gene fails the second. Founders: every allele at every key of `IBM.ALL_KEYS` on both haplotypes of every founder is finite (`Number.isFinite`) for both lineages, asserted on the recipe (a base without `signal` was seen to give `NaN` on every founder). The rewritten fidelity test shares `rng` and `srng` with founding and asserts the loop's fate and quantities at the page configuration equal the null tables' rows: target 8 seed 1 `one lost`, 0 of 24 hybrid generations, realised 8.124; target 4 seed 16 `one lost`, 1 of 24, ratio 0.111; the target reads beside the separation before any click |
+| M2 | RUN on the hand-set pair; the page keeps the FINAL offspring (today `buildRun` stores the parents each generation and drops the last `res.pop`, `population.html:761-775`, and fate is read off the last stored frame, `:1025-1032`) and prints `IBM.fateOf(pop, v0, extinct, stalled)` on it as the tool does (`tools/northstar-null-tables.js:130`), with `stalled` = any generation's `recruits` (`sim/ibm.js:2256`) equal to 0 and the stalled count on the tile; hybrid fraction and gap occupancy tiles; bands on every tile with their signature; the engine's five fate strings; cards 1 and 4, each opening on its measured quantity beyond its null's edge | M | page defaults, each pair founded by `foundTwoLineages` as `population.html:727` founds it today (seed 18 founds nothing at either target and is skipped), under the page protocol the null tables use. Card 4: target 8, seed 1, placement-mediated reads `one lost`, 0 of 24 hybrid generations, card 4 open, realised 8.124 printed. Card 1: target 4, seed 16 reads `one lost`, hybrids in 1 of 24 generations, receipt ratio 0.111, card 1 open. The page's fate and quantities on both equal the tool's rows (`node tools/northstar-null-tables.js card14 page 16 16`, `1 1`), which is the assertion that the page and the tool run ONE protocol. Null: the null tables' seeds 1 to 5 at both targets under the random null read 23 of 24 hybrid generations in all 10 (card 4's quantity beyond its edge) and ratios of 1.146 or more (seed 4 target 8 reads Infinity, the rest received nothing; card 1's quantity on the null side of 0.603); the smoke asserts those ten quantities, not the cards' state (null tables). Stall: the smoke drives section 3's pair at the level configuration, `bee.reach` 0 against 0.85, and asserts STALLED with 35 stalled generations against `one lost` with 0; the STALLED run opens no card. A hand-set founding of the same genomes draws a different stream, so these seeds are re-measured before the `d` switch is removed |
+| M3a | the level select, briefs, the per-level (N, generations, siteN) load, STALLED as a loss on every level, the level 2 and level 6 "no known win" copy (level 6 lists the known wins of levels 4 and 5); the 35-generation, `siteN` 160 run timed inside 60 s | M | pick level 3 and read N = 30, 35, 160 in the controls before running; pick level 1 and reach separation 8 by sliders alone; pick level 2 at seed 1 (target 8): `one lost`, and the page says no configuration is known to win |
+| M3b | options from the page: `allocExponent`, `selfing` (`rate`, `cost`, `cover`, as level 4 loads them), `phenology` (`slices`, `width`, `widthLocus`, `conserveDisplay`, `displayProportionalVisits` at `sim/ibm.js:204,1185-1188,1473,1552,1570`), `visitsPerPlant`, and the visit-allocation switch with its band; cards 2, 3, 5, 6; the two in-page paired arms (q = 0 for card 5; `shuffleWidth`, `:1340`, for card 6); the three rng streams; the no-log field for phenology runs: the engine logs no bout under `phenology` (`sim/ibm.js:1438`) and `draw` returns on an empty log (`population.html:826-828`), so on levels 4 and 5 the field draws the flowers and both lineages' sites from `G.flowers` and `G.sites` with no flight and the caption reads "bout not drawn: the sliced season does not log one (`sim/ibm.js:1432-1438`)"                                                                                                                                                                                                                                                                                                                                                                       | L | pick level 5 and run seeds 1 to 5 at its config under the page protocol: seeds 1 and 3 end HELD, seeds 2, 4 and 5 `one lost`, no generation recruits nothing (`tmp/v4-pollen/probe5b_level5_protocol.out`; the probe doc's seeds 3 and 4 were the restart protocol's and are retired); pick level 4 at q = 0.85, seed 8: the run reads `one lost`, its in-page flat arm reads HELD, card 5 opens; at q = 1, seed 8: `one lost` again, flat HELD again, and the card stays CLOSED (cover < 1 fails: zero self weight was spent); at q = 0.69, seed 1 reads HELD, its flat arm `one lost`, card 5 stays closed and the card prints the reversed pair (null tables); pick level 3 at seed 6: FUSED, peak gap 0.633, mean 0.266, lead 3, cards 2 and 3 open; at seed 1: `one lost`, both closed; seed 6 under `randomMating`: FUSED, peak 0.720, mean 0.507, lead 0, both closed by the lead and grey by the signature (null tables, `card23rm`); the second level-5 run with the width-locus object at seed 3: treatment minus shuffled 0.393, below 0.403, card 6 prints the difference uncoloured; at seed 13: 0.768, card 6 opens; at seed 23: -0.006, closed (null tables, `card6`) |
 | M4  | consolidation: greybox removed, `population.html` renamed `sandbox.html` with its two tests and the smoke SPEC updated, landing page leads with the sandbox, README and build allowlist updated, `python3 tools/smoke-site.py` added as a step of `.github/workflows/pages.yml` after `build-site.sh`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S    | the live index's first link opens the sandbox; `greybox.html` returns 404; the Pages run shows the smoke step green                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
-**The three rng streams (M3b).** `run()` creates `brng` when `phenology` is set (`sim/ibm.js:2379`),
-`wrng` when `widthLocus` is set (`:2382-2383`) and `crng` when `selfing.cover` is set
-(`:2387-2388`), and `step` takes them as its sixth to eighth arguments (`:1130-1132`).
-`selfing.cover` throws without `crng` (`:2005-2010`) and runs only inside `rate > 0` (`:1844`); the page loop passes none
-(`population.html:754-760`). M3b builds the three from the seed as `run()` does and extends
-`tests/browser-bundle.test.js:157` with one case per stream so the loop still reproduces `run()`.
+**ONE rng protocol, the page's (round 4).** The page makes `rng = E.makeRng(seed)` and
+`srng = I.signalRng(seed)` once, founds the pair with them (`population.html:725-727`) and drives
+every generation with the same two (`:754-760`): founding's draws are consumed before generation 0.
+`run({found})` makes fresh `rng` and `srng` (`sim/ibm.js:2373-2376`), so the same seed, founding,
+configuration and options give a different run: at level 5's cell (30 / 35 / 160, `phenology`
+8 slices width 0.12, seeds 1 to 5) the restart protocol reads `one lost / one lost / HELD / HELD /
+one lost` and the page's reads `HELD / one lost / HELD / one lost / one lost` (seeds 1 and 4 differ;
+round 4, verified and re-run for this revision, `tmp/v4-pollen/probe5b_level5_protocol.out`). The
+probe doc's level-5 seeds (3 and 4) were the restart protocol's and are retired. The null tables
+use the page's protocol: `tools/northstar-null-tables.js` makes one `rng` (`:92`), founds with it
+(`:94`) and steps with it (`:113`), so every edge and every control seed in section 4 is the
+page's. The experiments use `run({found})` (`experiments/secondary-contact.js:382-388`,
+`experiments/gap-occupancy.js:115-121`); their rates are quoted as copy at their configuration and
+are never a seed the page must reproduce. `tests/browser-bundle.test.js:157-200` restarts the
+streams (`:177-178`) and is rewritten in M1 to share `rng` and `srng` with founding and to assert
+the loop's fate and quantities against the null tables' rows, the protocol the page runs, instead
+of against `run()`.
+
+**The three other streams (M3b).** `run()` creates `brng` when `phenology` is set
+(`sim/ibm.js:2379`), `wrng` when `widthLocus` is set (`:2382-2383`) and `crng` when
+`selfing.cover` is set (`:2387-2388`), and `step` takes them as its sixth to eighth arguments
+(`:1130-1132`). `selfing.cover` throws without `crng` (`:2005-2010`) and runs only inside
+`rate > 0` (`:1844`); the page loop passes none (`population.html:754-760`). M3b builds the three
+from the seed as `run()` does (founding draws only `rng` and `srng`, so they are untouched by it)
+and extends the rewritten fidelity test with one case per stream, asserted against the null
+tables' card-5 and card-6 rows (the page protocol with `brng`, `crng`, `wrng`).
 
 Each milestone extends `tools/smoke-site.py` with one assertion for its acceptance line and one
 negative control: the card's null arm at the null tables' seeds 1 to 5, asserting each quantity sits
 on the null side of the edge (section 4), so the control is a fixed block of seeds, not one seed
-chosen from the passing half. Until M4 the smoke runs locally only.
+chosen from the passing half; for cards 2 and 3 the block is run under BOTH nulls. Every assertion
+is a quantity or a fate string, never a card's open/closed state, and every acceptance line above
+names the branch that fails it. Until M4 the smoke runs locally only.
 
 ## 10. B, the empirical turn (next arc, not designed here)
 
@@ -306,7 +392,8 @@ paywall"). Nothing about its readouts, its statistics, or its pre-registration i
    every option stays live in every level, the win is the engine's `fateOf` and nothing else,
    and levels 2 and 6 ship with no known winning configuration and say so.
 4. **A band quoted at the wrong configuration.** Level 5 measured 0 of 5 HELD at the page
-   defaults against 2 of 5 at the experiment's (probe doc). Guard: every band carries its config, levels 2
+   defaults (probe doc) against 2 of 5 at the experiment's configuration (seeds 1 and 3 under the
+   page protocol, section 9). Guard: every band carries its config, levels 2
    to 6 load it, and section 8 forbids quoting a band where it was not measured.
 
 ## 12. Open questions
@@ -328,6 +415,16 @@ Answered 2026-09-13:
    a document's arm mean; a card whose null reaches its own quantity at some seed has no
    threshold at that configuration and is grey there (card 1 on levels 2 to 6). Cards open less
    often as a result, and that is accepted: a card that can open on its null explains nothing.
+5. (round 4) There is ONE rng protocol, the page's: `rng` and `srng` are made once from the seed,
+   found the pair and drive every generation (`population.html:725-727,754-760`). `run({found})`
+   restarts both (`sim/ibm.js:2373-2376`) and is a different protocol that changes fates (section
+   9, the streams paragraph). The null tables use the page's (`tools/northstar-null-tables.js:92-94,
+   113`), so every edge in this document is the page's; no acceptance seed is quoted from the other.
+6. (round 4) A generation with zero recruits is a loss, STALLED, at the engine and on every level
+   (section 3). The check "fate reads HELD" can now fail on a run that never reproduced.
+7. (round 4) An edge is committed only after its defining seed is re-run at full precision and the
+   edge rounded outward (`edges` mode), because rows print to three decimals and the printed value
+   can sit on the wrong side of the true one.
 
 ## 13. The story after the sandbox
 
@@ -345,10 +442,23 @@ read off where pollen landed; plus `fateOf` (`:539-546`), which scores the resul
 that region calls `placementOf` (`:1784`), `dist` (`:1812`, only under `optima`), `crng` (`:2024`,
 only under `selfing.cover`), `poisson` (`:2059`, only under `demography`) and `gauss` on the main
 stream (`:2092-2093`, seed positions, only under the spatial option), and reads these option keys
-and no others: `optima` and `optimaK` (`:1809-1813`); `selfing.rate`, `always`, `dose`, `resid`
-and `cover` (`:1844-2041`); `demography.K` and `demography.seedsPerGrain` (`:2055-2059`);
-`logMatings` (`:2119`, observation only, not a `DEFAULTS` key); `randomMating` (`:2123-2130`). That list, plus the keys
-the parentage block reads after `pick`, is the reserved set. "Placement is never a gene"
+(round 4: the list is now complete, checked by grep over `:1777-2256`): `optima` and `optimaK`
+(`:1809-1813`); `selfing.rate`, `always`, `dose`, `resid` and `cover` (`:1844-2041`);
+`demography.K` and `demography.seedsPerGrain` (`:2055-2059`); `logMatings` (`:2119`, observation
+only, not a `DEFAULTS` key); `randomMating` (`:2130`, `:2203`); `space` (`SP.seedRange`, the
+child's position after the pair is drawn, `:2090-2098`); and, inside the parentage block after the
+pair is drawn, the gamete options `linkSignal`, `signalMut`, `phenology.link`, `phenology.mut`,
+`phenology.widthMut` (`gopts`, `:2135-2147`) and `mutRate` (`:2225-2226`). The reserved set is
+the keys that change WHICH parents are drawn or HOW MANY: `randomMating`, `optima`, `optimaK`,
+`demography`, every `selfing` key, and (round 4) `linkSignal` and `phenology.link`: a supergene
+arm (`:797`) draws its coin on the main stream (`linkCoin = rng() < 0.5`, `:344`) and changes the
+realised parent pairs at identical receipt (verified: pairs `(8,2)(15,13)(2,5)` against
+`(8,2)(16,9)(3,1)` at the page defaults, seed 1, `received` identical), so a deck row that set it
+would move parentage without touching the geometry. `mutRate`, `signalMut`, `phenology.mut`,
+`phenology.widthMut` and `space` act on the child after both parents are fixed and are inputs by
+the criterion above; a run that sets one of them is nevertheless grey for every card (the
+signature rule, section 4). Stream consumption alone is not "the rule": a different seed also
+changes every realised draw. "Placement is never a gene"
 (`sim/placement.js:7-9`; `sim/ibm.js:60-64`) is the other invariant. Neither is touched by any
 chapter or card. Reserved under that criterion, and settable by no card: `randomMating` (`:613`;
 `:2130`, `:2203`); `optima` and `optimaK` (`:610-611`), which reweight after receipt
@@ -359,7 +469,10 @@ key of the `selfing` option, `DEFAULTS.selfing` being `null` (`:722`) with the b
 `:1843-2042`: `rate` (`:1844,2037-2040`), `always` (`:1845-1849`; "a CONTROL, not a mechanism" is
 the comment at `:710`, not a `DEFAULTS` key), `dose` (`:1850`), `resid` (`:1880`), `cover`
 (`:1963-2035`), `floorOnly` (`:2191`), and `cost` (`:2155`) and `ancNull` (`:2163-2164`) inside
-the selfed-seed path. The reservation binds the card deck (section 14), not
+the selfed-seed path; and `linkSignal` (`DEFAULTS`, `:797`) with `phenology.link` (`:2143`), for
+the reason above. A pre-registration is never written by the code that checks it: every question
+below is registered in a dated `docs/*-prereg.md` before the run, and the test that scores it
+reads the predicate from that document, never from a constant the scorer defines. The reservation binds the card deck (section 14), not
 the sandbox's option controls, which set a registered engine option for a run; level 4 loads
 `rate`, `cost` and `cover` exactly as the sweep ran them. `allocExponent` (`:1413`) and
 `phenology` (width read at `:1473`) are inputs by the same criterion: they act in the bout that
@@ -442,7 +555,11 @@ Inputs and anchors: the animals are parameter objects in the shape of `DEFAULT_B
 a k-cluster criterion before any run: k, the assignment rule (k medoids on body distance, `:825`,
 seeded from the k most mutually distant points as `:884-889` seeds two), and the pass condition
 (each animal's cluster holds a majority of the plants whose anther site lies in its contact
-region). Doctrine: syndromes must be EMERGENT, not an
+region). k-medoids at a fixed k always partitions, so the criterion carries a control (round 4): the
+same run scored against a SHUFFLED animal assignment (each plant's contact region relabelled by a
+permutation drawn once per seed), and the registration asks for the majority pass on the real
+assignment over a seed count fixed in advance, with the shuffled pass rate reported beside it; a
+pass rate the shuffle matches is no cluster. Doctrine: syndromes must be EMERGENT, not an
 enum (`enumeration.md:22-28`); two heavyweight tests disagree on whether syndromes predict
 pollinators at all (Ollerton et al. 2009 against Rosas-Guerrero et al. 2014, 417 species,
 `:25-27`), so either answer on the page is a result. The hummingbird syndrome has evolved more
@@ -459,10 +576,18 @@ above the measured k = 2 value? Not asked at k = 1: the self-pollen share there 
 1.0000 (`docs/ROADMAP.md:714-716`), so no tube weight can change which grain wins.
 Inputs and anchors: the wall is measured, not modelled: at k = 1 the minority's fitness is
 EXACTLY 0.000, its self-pollen share EXACTLY 1.0000, at all three N0 in both arms
-(`docs/ROADMAP.md:714-716`), and selfing lifts the floor to 0.111 (`:781`). The chapter adds one
-per-grain weight on self versus outcross tubes after receipt and before parentage; it cannot
-change what lands, only what wins, and sitting between `T` and the parents it changes the mating
-rule and must be registered as such. Pollen tube competition and
+(`docs/ROADMAP.md:714-716`), and selfing lifts the floor to 0.111 (`:781`). Round 4: a discount on
+self tubes applied to `T` is INERT, because self grains never count: receipt skips the diagonal
+(`if (i === j) continue; // selfing is not mating success`, `sim/ibm.js:1781`) and the sire draw
+gives the mother weight 0 (`i === mother ? 0 : ...`, `:2203`); the only place a self grain wins is
+the selfing branch, where a mother selfs when `rng() * weight[mother] < selfW[mother]`
+(`:2189-2193`) with `selfW` set from the floor (`:2014-2015`). The mechanism this chapter
+registers is therefore a per-mother tube weight INSIDE that test, scaling `selfW[mother]` by the
+share of the mother's landed pollen that is outcross (from `r.T[.][mother]`, `:2203`), so a mother
+that received outcross grains selfs less: it changes a non-zero quantity (the k = 2 selfing test)
+and leaves `T`, receipt and the sire draw untouched. It cannot change what lands, only what wins,
+and sitting between `T` and the parents it changes the mating rule and must be registered as
+such; it is asked at the selfing floor (`selfing.rate` > 0), where `selfW` is non-zero. Pollen tube competition and
 late-acting self-incompatibility are enumerated (`enumeration.md:196`) but cryptic
 self-incompatibility as a named mechanism is UNGROUNDED, needs a source.
 Size: S.
@@ -477,8 +602,15 @@ Inputs and anchors: today the stigma is derived from the anther,
 (`sim/evolve.js:52,134-141`), so reciprocity is unreachable. The input this chapter opens is the
 sign and size of herkogamy as a locus in `toFlower`, inside the same 0.92 clamp; placement stays
 derived from the resulting shape. Heterostyly is enumerated as reciprocal herkogamy
-(`enumeration.md:142,147`). This is the empirical anchor the thesis has lacked: assortative mating
-mediated by placement inside one species, measured since Darwin. Darwin 1877 and Barrett's
+(`enumeration.md:142,147`). This is the empirical anchor the thesis has lacked: DISASSORTATIVE
+mating mediated by placement inside one species, measured since Darwin: pin anthers load the site
+thrum stigmas sweep and the reverse, so the morphs mate BETWEEN themselves. Round 4: HELD is the
+wrong predicate for it. The tracer averages parents (`anc: (m + f) / 2`, `sim/ibm.js:2229`), so a
+population that mates between morphs collapses its ancestry variance and reads FUSED (`:543-545`)
+while both morphs persist. The registered predicate is morph-frequency persistence: with the
+herkogamy sign as the morph label, both morphs above a floor (registered before the run) at the
+last generation over a fixed seed count, against the same seed with `HERKOGAMY` at its fixed value
+(one morph), and never `fateOf`. Darwin 1877 and Barrett's
 heterostyly work: UNGROUNDED, need sources; verify via CrossRef before citing in-repo (the
 Barrett hit in the enumeration, `:125`, is the wind paper, not this).
 Size: M.
@@ -534,7 +666,7 @@ mechanic; they are levels because the visitor can already try both by hand.
 
 | #   | start                                                         | brief                                                                                                                           | lesson                                                                                                                                                                                                                                                                                                                                                                                                | finding                         |
 | --- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| 7   | level 2 pair; mating mode set to the random null              | Give up on the animal: wind. Placement = none. Win: HELD                                                                        | the random null is the model's wind; it fuses at 8 where placement excludes (`docs/2026-08-04-secondary-contact.md:40,47-50`). Wind pollinates >=10% of angiosperms (`enumeration.md:125`); ambophily UNGROUNDED, needs a source                                                                                                                                                                      | none registered; question first |
+| 7   | level 2 pair; mating mode set to the random null              | Give up on the animal: wind. Placement still lands (receipt is still read off the bee, section 4); parentage ignores it (`sim/ibm.js:2123-2130,2203`). Win: HELD                                                                        | the random null is the model's wind; it fuses at 8 where placement excludes (`docs/2026-08-04-secondary-contact.md:40,47-50`). Wind pollinates >=10% of angiosperms (`enumeration.md:125`); ambophily UNGROUNDED, needs a source                                                                                                                                                                      | none registered; question first |
 | 8   | level 2 pair; hybrids allowed to found a third ancestry label | Let the bridge become a lineage. No win line: the fate rule scores two labels, so "three labels held" is a question, not a tile | hybrids land between their parents and pay 19.1% (`docs/FINDINGS.md:196-198`); `fateOf` reads one tracer with two labels (`sim/ibm.js:539-546`), so a third outcome needs a registered predicate before it can be scored. Hybrid speciation and polyploidy as instant isolation UNGROUNDED, need sources (`enumeration.md:417` mentions polyploidy in perception only; hybrid scent novelty `:89-93`) | none registered; question first |
 
 ### Act 4: Darwin's prediction is B
@@ -549,10 +681,13 @@ geometry says cannot pollinate.
 Each is a card in the sense of section 4: it names a measured quantity or a documented reason,
 and it never moves the model. None is a level.
 
-- **Ants.** Some visitors can never pollinate: pollen exposed to ants shows reduced viability and
-  shorter tubes, attributed to antibiotic secretions (`enumeration.md:318-323`, Beattie et al.
-  1984). The card fires when a visitor body plan is flagged pollen-hostile. Mechanism detail
-  beyond that row: UNGROUNDED.
+- **Ants.** Some visitors pollinate badly for a chemical reason: pollen exposed to ants shows
+  reduced viability, reduced germination and shorter pollen tubes, attributed to antibiotic
+  secretions (`docs/2026-07-31-pollination-mechanism-enumeration.md:318-323`, Beattie et al.
+  1984). This is an ANNOTATION on a visitor body plan in the animal bank (Act 4), shown whenever
+  that body plan is on the page; it is not a card of section 4, because a flag on an input is an
+  input, not a run measurement, and it says "reduced", as the source does, never "never".
+  Mechanism detail beyond that row: UNGROUNDED.
 - **Nectar robbing.** A hole in the tube defeats the geometry: reward without contact. Named in
   the interaction list (`enumeration.md:178`), observed as a switch under florivory (`:238`),
   resolved in batch 3 (`:627`).
@@ -569,8 +704,8 @@ and it never moves the model. None is a level.
 
 Rule, carried verbatim from the `~/dyson-tree` speculative-tier spec: **a card moves an input,
 never the mating rule.** The mating rule is defined in section 13: the `T` to parents map plus
-`fateOf`, with the reserved keys `randomMating`, `optima`, `optimaK`, `demography` and every
-`selfing` key. Every card names one input the engine already has or one this document registers;
+`fateOf`, with the reserved keys `randomMating`, `optima`, `optimaK`, `demography`, every
+`selfing` key, `linkSignal` and `phenology.link`. Every card names one input the engine already has or one this document registers;
 none names `fateOf`, a placement site, or a reserved key.
 
 Anchor badges on every card:
@@ -588,11 +723,15 @@ dotted path whose tail the test lists for its option (`phenology.width`, read at
 `DEFAULTS.phenology` is `null`); a key of `DEFAULT_BEE`; a bout parameter on a named allowlist
 (`groom`, `harvest`: `sim/carryover.js:93,105`, not `DEFAULT_BEE` keys); or an input registered in
 section 13. It also asserts that no row names `fateOf` and that no row's path is or starts with
-`randomMating`, `optima`, `optimaK`, `demography` or `selfing`. The test carries its own must-fail
-rows, so it is not satisfied by an empty deck: a fixture deck with one row naming `selfing.rate`,
-one naming `demography.K`, one naming `fateOf` and one naming a key in none of the lists must fail
-the test with all four rows reported, and the same fixture minus those rows must pass; the test
-runs both in one case, so a broken loader reads as a failure rather than a pass.
+`randomMating`, `optima`, `optimaK`, `demography`, `selfing`, `linkSignal` or `phenology.link`
+(round 4, section 13). The test carries its own must-fail rows, so it is not satisfied by an
+empty deck: a fixture deck with one row naming `selfing.rate`, one naming `demography.K`, one
+naming `linkSignal`, one naming `fateOf` and one naming a key in none of the lists must fail the
+test with all five rows reported, and the same fixture minus those rows must pass; the test runs
+both in one case, so a broken loader reads as a failure rather than a pass. Round 4: the fixture
+alone leaves the REAL deck untested, so the same test loads the committed deck file and asserts
+it has at least the five rows of the backbone table below, each resolving under the rules above;
+an empty or missing deck fails.
 
 ### The grounded backbone
 
@@ -636,3 +775,102 @@ Each is a card whose input is a slider that already exists.
   rule (section 13) and cannot be a card here. Late-acting self-incompatibility is enumerated
   (`enumeration.md:196`); the S-locus itself is UNGROUNDED. Registered question first.
 - **Chapter 5, the stigma race**, for the same reason, at k = 2 (section 13).
+
+## Round 4 responses
+
+Each finding of the round-4 verified table (29 rows, all CONFIRMED by the verifier's own re-runs)
+and what changed, by line of this revision. Every engine number quoted above was taken from the
+verified table, the null tables, or a probe run for this revision (`tmp/v4-pollen/probe5_*`,
+`rm8_*`, `card6null_*`, `edges.out`, `summarise.out`).
+
+- **A0a-A0d** (pre-checks, confirmed): no change needed; the fresh seeds 31 to 35 are not added
+  to the committed tables (the edges are defined over seeds 1 to 30 and the fresh seeds crossed
+  none of them at d = 8; the d = 4 crossings are the reason cards 2 and 3 are grey at target 4,
+  :225-226, :231-239).
+- **A1** (card 2 edge crossed by its defining seed): fixed. `edges` mode re-runs the defining seed
+  at full precision and rounds outward (:196-201, :417-426 item 7; `tools/northstar-null-tables.js`
+  `edges`, null tables "Committed edges"); card 2's edge is 0.434 (:225), card 3's 0.170 stands
+  (seed 13 at 0.16952, :226), card 1's 0.603 stands (seed 22 at 0.60324, :224), card 6's is 0.403
+  (:229).
+- **A2** (card 3 without founding eligibility; a = 1 - epsilon opens it): fixed. Card 3 carries
+  card 2's target-8 eligibility (:226, :231-239); at target 4 neither card has a threshold and both
+  are grey (`edges` 0.901 / 0.597, 0 of 10 a = 0.25 seeds above).
+- **A3** (cards 2 and 3 open under `randomMating` + a = 0.25): fixed with a measured quantity, not
+  an option condition. `randomMating` is a second null arm for both cards, tabulated over the same
+  seeds (null tables `card23rm`, 58 rows); its gap occupancy exceeds every a = 1 edge, so the cards
+  read the LEAD (variance-halving generation minus gap-filling generation), whose random-mating
+  edge is 1; 0 of 58 random-mating rows and 0 of 29 a = 1 seeds reach either card's full
+  signature, and the same 5 and 4 a = 0.25 seeds open them (:192-215, :225-226). The signature
+  rule (:209-215) additionally greys every card on a run whose mating mode differs from the one
+  its table ran at.
+- **A4** (card 1's statistic is not the document's; identical shapes open it): fixed in wording.
+  The card says "hybrids received less than the rest of the field", and prints 0.809 labelled as
+  the document's both-role, clonal-control statistic (`experiments/hybrid-placement.js:262-274`;
+  `docs/2026-08-02-hybrid-placement.md:54-57`), never as the run's second reading (:224, :278);
+  the identical-shape counterexample needs `mutRate` 0 and `visits` 10, neither a page control,
+  and at the page defaults reads 0.819 to 1.330, closed (:224).
+- **A5** (`demography` opens card 4; hybrid generations counted on parents): fixed. The signature
+  rule greys cards 1 and 4 on any run with `demography`, `space` or any other option key set
+  (:209-215, :227); the quantity is named "generations whose parents held a hybrid" (:224, :227).
+- **A6** (q = 1 opens card 5 with zero assurance spent): fixed. Option condition
+  `cover > 0 && cover < 1` with the `nKeep = 0` mechanism stated (:228); M3b acceptance asserts
+  the q = 1, seed 8 pair stays closed (:334).
+- **A7** (card 6's 0.140 is a CI on a 12-seed mean): fixed. Card 6 opens beyond a per-seed null,
+  shuffled against shuffled at a second width stream (`card6null`, 29 seeds, edge 0.403, 9 of 29
+  treatment seeds clear it); 0.140 is printed as the document's interval, never the line (:229).
+- **A8** (grey rule keys on N / generations / siteN only): fixed. The signature rule compares
+  mating mode and the option object too (:209-215); card 6's eligibility is the exact phenology
+  object; level 5's second run loads that object, not a flipped `widthLocus` (:229, :258).
+- **A9** (two rng protocols): fixed. ONE protocol, the page's, is named; the null tables are shown
+  to use it (`tools/northstar-null-tables.js:92-94,113`); the level-5 acceptance is restated under
+  it (seeds 1 and 3 HELD, re-run for this revision, `probe5b_level5_protocol.out`) and the probe
+  doc's restart-protocol seeds 3 and 4 are retired; the fidelity test is rewritten in M1 to share
+  `rng` with founding and to assert against the tables' rows; M2's acceptance asserts the page's
+  fate and quantities equal the tool's rows for the two control seeds (:337-353, :331-334,
+  :417-421).
+- **A10** (reserved-key inventory incomplete; `linkSignal` unreserved): fixed. Every key read in
+  `:1777-2256` is listed and classed (:443-459); `linkSignal` and `phenology.link` are reserved
+  (they change realised pairs at identical receipt); `mutRate`, `signalMut`, `phenology.mut`,
+  `phenology.widthMut` and `space` are inputs by the criterion but grey every card; stream
+  consumption alone is ruled not to be "the rule" (:459-461). Deck test forbids the two new keys
+  (:707, :724-727).
+- **A11** (BLOCKER, a stalled run reads HELD): fixed at the engine and on every level. `fateOf`
+  gains `stalled` and returns STALLED before HELD (:161-177, :307-313); the page passes
+  `recruits === 0` (:332); every level's win is HELD only, STALLED loses (:245-248); STALLED opens
+  no card (:181-184); M2's smoke drives the reach-0 pair and asserts STALLED against `one lost`
+  (:332).
+- **A12** (level 6 has known wins): fixed. Level 6's copy names the known phenology and selfing
+  wins, lists them as already known, and asks for a route the page does not list (:259, :333).
+- **A13** (page scores fate on the last parents' frame; MINOR): fixed. M2 keeps the final
+  offspring and calls `IBM.fateOf(pop, v0, extinct, stalled)` on it as the tool does (:332).
+- **A14** (M1 acceptance passes on either branch; deck test never checks the real deck): fixed.
+  M1 names the per-gene dot movement at the fixed level-1 genome (`probe5_gene_sensitivity.out`),
+  asserts the seven moving genes shift the dot by at least 0.1 AND that `curve` alone reads "no
+  effect", and asserts every founder allele finite (:331); the deck test loads the committed deck
+  and requires at least the backbone's five rows (:724-733).
+- **A15** (phenology disables the bout log; the field draws nothing): fixed. M3b specifies the
+  no-log field for levels 4 and 5 with its caption (:63, :334).
+- **A16** (chapter 5's self-tube discount is inert): fixed. The chapter names the selfing test
+  (`sim/ibm.js:2189-2193`) as the only place a self grain wins and registers a per-mother tube
+  weight inside it, asked at the selfing floor (:569-592).
+- **A17** (chapter 6 calls heterostyly assortative and wins on HELD): fixed. Disassortative; the
+  registered predicate is morph-frequency persistence against a fixed-herkogamy control, never
+  `fateOf` (:594-615).
+- **A18** (k-medoids always partitions; MINOR): fixed. A shuffled-animal control is registered
+  beside the majority pass condition (:545-567).
+- **A19** (ant card fires on an input flag; "never"): fixed. It is an annotation on a body plan in
+  the animal bank, not a card, and says "reduced" (:683-689).
+- **A20** (BLOCKER, `foundPopulation` with an eight-slider base gives `NaN` signal): fixed. The
+  recipe carries `[IBM.SIGNAL_GENE]: srng()` in the base, with the mechanism at `:438,442` and the
+  verified `NaN` / 0.476-0.538 control (:127-136); M1's acceptance asserts every founder allele
+  finite (:331).
+- **C1** (row 47 says the test tests the page's loop): fixed, the row says what it asserts and
+  that M1 rewrites it (:61).
+- **C2** (mating-rule key list "and no others"): fixed, = A10 (:443-461).
+- **C3** (level 7 "Placement = none"): fixed, "Placement still lands; parentage ignores it"
+  (:668).
+- **S1, S2** (scope checks, confirmed): no change.
+- **Verifier's brief-readiness line**: both M1 blockers addressed, the founding recipe (:127-136)
+  and the either-branch acceptance (:331); M2 and M3a/b carry the stall, the two-null cards and
+  the single protocol they were waiting on.
+
