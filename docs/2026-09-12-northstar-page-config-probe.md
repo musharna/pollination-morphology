@@ -4,7 +4,14 @@
 (`docs/superpowers/specs/2026-09-12-northstar-design.md`) quotes at the page's own
 configuration has a document and a command behind it. It changes nothing under `sim/`,
 registers no hypothesis, and supports only the spec's acceptance controls and the null-arm
-values its cards must clear. Engine at `0562868`.
+values its cards must clear. Engine at `0562868` (`sim/` unchanged through `f6b5a7f`).
+
+> **Superseded for the null arms (2026-09-13).** Readouts 1 and 2 below rest on ten null
+> seeds. The round-3 panel showed that a band set from ten seeds is a point the null crosses:
+> over seeds 6 to 30 the card-1 null ratio falls below 1 in 15 of 28 runs, and at target 8,
+> seed 22, it reaches 0.603. Every card's null distribution is now tabulated over seeds 1 to
+> 30 in `docs/2026-09-13-northstar-null-tables.md`, and the spec's thresholds and M2 controls
+> come from there. This document still stands for readouts 3 to 6.
 
 ## Configurations
 
@@ -38,77 +45,152 @@ timeout 590 node probe.js
 /* northstar round-2 probe, 2026-09-12. Read-only against sim/. Run from repo root:
  *   node /tmp/ns-r2/probe.js                                                    */
 const R = process.cwd() + "/";
-const I = require(R + "sim/ibm.js"), E = require(R + "sim/evolve.js");
+const I = require(R + "sim/ibm.js"),
+  E = require(R + "sim/evolve.js");
 const { selfingFor } = require(R + "experiments/selfing-arms.js");
 const mean = (x) => x.reduce((a, b) => a + b, 0) / x.length;
 const isHyb = (x) => x > 0.15 && x < 0.85;
-const f = (x) => (x == null ? "null" : Number.isFinite(x) ? x.toFixed(3) : String(x));
+const f = (x) =>
+  x == null ? "null" : Number.isFinite(x) ? x.toFixed(3) : String(x);
 
 /* the page loop: DEFAULTS, step(pop, opts, rng, g, srng) as population.html and
  * tests/browser-bundle.test.js drive it */
 function page({ n = 18, gens = 24, seed, d, randomMating }) {
   const opts = { ...I.DEFAULTS, randomMating };
-  const rng = E.makeRng(seed), srng = I.signalRng(seed);
+  const rng = E.makeRng(seed),
+    srng = I.signalRng(seed);
   const built = I.foundTwoLineages(n, rng, srng, d, opts);
   const v0 = I.ancestryVar(built.pop);
-  let pop = built.pop, extinct = false, sep0 = null, hybGens = 0, ratio = null;
+  let pop = built.pop,
+    extinct = false,
+    sep0 = null,
+    hybGens = 0,
+    ratio = null;
   for (let g = 0; g < gens; g++) {
-    if (pop.length < 2) { extinct = true; break; }
+    if (pop.length < 2) {
+      extinct = true;
+      break;
+    }
     const anc = pop.map((i) => (i.anc === undefined ? 0 : i.anc));
     const res = I.step(pop, opts, rng, g, srng);
     if (g === 0) sep0 = res.cluster.separation;
-    const h = [], r = [];
+    const h = [],
+      r = [];
     anc.forEach((a, i) => (isHyb(a) ? h : r).push(res.received[i]));
     if (h.length) hybGens++;
     if (h.length && r.length) ratio = mean(h) / mean(r);
     pop = res.pop;
   }
-  return { realised: built.realised, sep0, fate: I.fateOf(pop, v0, extinct), hybGens, gens, ratio };
+  return {
+    realised: built.realised,
+    sep0,
+    fate: I.fateOf(pop, v0, extinct),
+    hybGens,
+    gens,
+    ratio,
+  };
 }
 console.log("A. page config N=18, 24 gens, siteN 90");
 for (const d of [8, 4])
   for (const seed of [1, 2, 3, 4, 5])
     for (const randomMating of [false, true]) {
       const x = page({ seed, d, randomMating });
-      console.log(`d=${d} seed ${seed} ${randomMating ? "null  " : "placed"} realised ${f(x.realised)} sep0 ${f(x.sep0)} fate ${x.fate} hybridGens ${x.hybGens}/${x.gens} card1ratio ${f(x.ratio)}`);
+      console.log(
+        `d=${d} seed ${seed} ${randomMating ? "null  " : "placed"} realised ${f(x.realised)} sep0 ${f(x.sep0)} fate ${x.fate} hybridGens ${x.hybGens}/${x.gens} card1ratio ${f(x.ratio)}`,
+      );
     }
 
-console.log("\nB. realised separation at secondary-contact.js config (N=30, siteN 160), target d");
+console.log(
+  "\nB. realised separation at secondary-contact.js config (N=30, siteN 160), target d",
+);
 for (const d of [4, 8])
-  console.log(`d=${d}`, [1, 2, 3, 4, 5].map((s) =>
-    f(I.foundTwoLineages(30, E.makeRng(s), I.signalRng(s), d, { ...I.DEFAULTS, siteN: 160 }).realised)).join(" "));
+  console.log(
+    `d=${d}`,
+    [1, 2, 3, 4, 5]
+      .map((s) =>
+        f(
+          I.foundTwoLineages(30, E.makeRng(s), I.signalRng(s), d, {
+            ...I.DEFAULTS,
+            siteN: 160,
+          }).realised,
+        ),
+      )
+      .join(" "),
+  );
 
-console.log("\nC. level 5 cell, phenology slices 8 width 0.12, target d=8, via I.run");
-for (const c of [{ l: "30/35/160", n: 30, g: 35, s: 160 }, { l: "18/24/90", n: 18, g: 24, s: 90 }]) {
+console.log(
+  "\nC. level 5 cell, phenology slices 8 width 0.12, target d=8, via I.run",
+);
+for (const c of [
+  { l: "30/35/160", n: 30, g: 35, s: 160 },
+  { l: "18/24/90", n: 18, g: 24, s: 90 },
+]) {
   const fates = [1, 2, 3, 4, 5].map((seed) => {
-    const opts = { ...I.DEFAULTS, siteN: c.s, phenology: { slices: 8, width: 0.12 } };
-    const b = I.foundTwoLineages(c.n, E.makeRng(seed), I.signalRng(seed), 8, opts);
-    const o = I.run({ n: c.n, generations: c.g, seed, found: b.pop, siteN: c.s, phenology: { slices: 8, width: 0.12 } });
+    const opts = {
+      ...I.DEFAULTS,
+      siteN: c.s,
+      phenology: { slices: 8, width: 0.12 },
+    };
+    const b = I.foundTwoLineages(
+      c.n,
+      E.makeRng(seed),
+      I.signalRng(seed),
+      8,
+      opts,
+    );
+    const o = I.run({
+      n: c.n,
+      generations: c.g,
+      seed,
+      found: b.pop,
+      siteN: c.s,
+      phenology: { slices: 8, width: 0.12 },
+    });
     return `${seed}:${I.fateOf(o.pop, I.ancestryVar(b.pop), o.extinct)}`;
   });
   console.log(c.l, fates.join("  "));
 }
 
-console.log("\nD. card 5 pairs at experiments/rare-floor.js replicate() config (N0=30, 35 gens, siteN 160, d=8, phenology 8/0.12, visitsPerPlant 800)");
+console.log(
+  "\nD. card 5 pairs at experiments/rare-floor.js replicate() config (N0=30, 35 gens, siteN 160, d=8, phenology 8/0.12, visitsPerPlant 800)",
+);
 function rf(seed, arm) {
-  const rng = E.makeRng(seed), srng = I.signalRng(seed), brng = I.bloomRng(seed);
+  const rng = E.makeRng(seed),
+    srng = I.signalRng(seed),
+    brng = I.bloomRng(seed);
   const self = selfingFor(arm);
   const crng = self && self.cover != null ? I.coverRng(seed) : null;
-  const opts = { ...I.DEFAULTS, siteN: 160, phenology: { slices: 8, width: 0.12 }, visitsPerPlant: 800, logMatings: true };
+  const opts = {
+    ...I.DEFAULTS,
+    siteN: 160,
+    phenology: { slices: 8, width: 0.12 },
+    visitsPerPlant: 800,
+    logMatings: true,
+  };
   if (self) opts.selfing = self;
   const b = I.foundTwoLineages(30, rng, srng, 8, opts);
-  let pop = b.pop, extinct = false;
+  let pop = b.pop,
+    extinct = false;
   const v0 = I.ancestryVar(pop);
   for (let g = 0; g < 35; g++) {
-    if (pop.length < 2) { extinct = true; break; }
+    if (pop.length < 2) {
+      extinct = true;
+      break;
+    }
     opts.phenology.displayProportionalVisits = false;
     pop = I.step(pop, opts, rng, g, srng, brng, null, crng).pop;
   }
   return I.fateOf(pop, v0, extinct);
 }
-console.log("selfingFor:", JSON.stringify(selfingFor("R200")), JSON.stringify(selfingFor("R200q85")));
+console.log(
+  "selfingFor:",
+  JSON.stringify(selfingFor("R200")),
+  JSON.stringify(selfingFor("R200q85")),
+);
 for (let seed = 1; seed <= 10; seed++)
-  console.log(`seed ${seed}  flat R200 ${rf(seed, "R200")}  q69 ${rf(seed, "R200q69")}  q85 ${rf(seed, "R200q85")}  q0 ${rf(seed, "R200q0")}`);
+  console.log(
+    `seed ${seed}  flat R200 ${rf(seed, "R200")}  q69 ${rf(seed, "R200q69")}  q85 ${rf(seed, "R200q85")}  q0 ${rf(seed, "R200q0")}`,
+  );
 ```
 
 ## Output
