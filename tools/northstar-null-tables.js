@@ -585,8 +585,12 @@ function edges(files) {
       if (!b) continue;
       const seed = num(b.l, "seed");
       const x = run({ ...CONFIGS[cfg], seed, d, randomMating: true });
+      /* round 5: a ratio is a non-negative quotient, so a null that reaches 0
+       * leaves NO edge below it; printing -0.001 was an impossible edge. */
       console.log(
-        `card1 ${cfg} d=${d} defining seed ${seed} null ratio ${F(x.ratio)} (row ${b.v.toFixed(3)}) -> edge ${outDown(x.ratio).toFixed(3)} (ratio must be BELOW this; the seed is not)`,
+        x.ratio <= 0
+          ? `card1 ${cfg} d=${d} defining seed ${seed} null ratio ${F(x.ratio)} (row ${b.v.toFixed(3)}) -> no edge (null reaches 0; the card is grey here)`
+          : `card1 ${cfg} d=${d} defining seed ${seed} null ratio ${F(x.ratio)} (row ${b.v.toFixed(3)}) -> edge ${outDown(x.ratio).toFixed(3)} (ratio must be BELOW this; the seed is not)`,
       );
     }
   for (const d of [8, 4]) {

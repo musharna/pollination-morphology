@@ -767,7 +767,7 @@ EXIT 0
 # edges: the defining seed of each null edge re-run at full precision; committed edge = outward rounding (card 1 DOWN, cards 2, 3, 6 UP)
 card1 page d=8 defining seed 22 null ratio 0.6032441066314166 (row 0.603) -> edge 0.603 (ratio must be BELOW this; the seed is not)
 card1 page d=4 defining seed 19 null ratio 0.6420531009068156 (row 0.642) -> edge 0.642 (ratio must be BELOW this; the seed is not)
-card1 level d=8 defining seed 29 null ratio 0 (row 0.000) -> edge -0.001 (ratio must be BELOW this; the seed is not)
+card1 level d=8 defining seed 29 null ratio 0 (row 0.000) -> no edge (null reaches 0; the card is grey here)
 card1 level d=4 defining seed 26 null ratio 0.5303547107955984 (row 0.530) -> edge 0.530 (ratio must be BELOW this; the seed is not)
 card2 d=8 defining seed 13 a=1 null peak 0.43333333333333335 (row 0.433) -> edge 0.434 (peak must be ABOVE this; the seed is not)
 card3 d=8 defining seed 13 a=1 null mean 0.16952380952380952 (row 0.170) -> edge 0.170 (mean must be ABOVE this; the seed is not)
@@ -778,7 +778,8 @@ card6 defining seed 23 shuffled-minus-shuffled diff 0.4027742215535734 (row 0.40
 ```
 
 Read against the cards: card 1 keeps 0.603 (seed 22's 0.60324 is above it) and the level
-configuration has no edge (a null ratio of exactly 0); card 2's edge moves from 0.433 to **0.434**;
+configuration has no edge (a null ratio of exactly 0; round 5: `edges` now prints "no edge" there
+instead of the impossible -0.001); card 2's edge moves from 0.433 to **0.434**;
 card 3's 0.170 already sat above seed 13's 0.16952; at target 4 no card-2 or card-3 threshold
 exists (`edges` 0.901 / 0.597, and 0 of 10 a = 0.25 seeds above); the random-mating lead edge is
 **1** for both; card 6's edge is **0.403** (seed 23's 0.40277 rounded up), cleared by 9 of 29
