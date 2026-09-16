@@ -103,6 +103,33 @@
         opacity: 0.45;
         cursor: default;
       }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      canvas:focus-visible {
+        outline: 2px solid var(--gold);
+        outline-offset: 2px;
+      }
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
+      }
       .panel {
         background: var(--panel);
         border: 1px solid var(--rule);
@@ -165,7 +192,7 @@
     </style>
   </head>
   <body>
-    <div id="wrap">
+    <main id="wrap">
       <header>
         <h1>
           The field — a population of flowers, one bee, and a split that fails
@@ -180,7 +207,7 @@
         </p>
       </header>
 
-      <div class="panel">
+      <section class="panel" aria-label="Controls">
         <div class="row">
           <div class="ctl">
             <label for="seed">seed</label
@@ -214,11 +241,20 @@
           </div>
           <button id="run">Run</button>
           <button id="play" disabled>Play</button>
-          <span id="status" class="note"></span>
+          <span id="status" class="note" aria-live="polite"></span>
         </div>
-      </div>
+      </section>
 
-      <canvas id="field" width="1180" height="560"></canvas>
+      <canvas
+        id="field"
+        width="1180"
+        height="560"
+        role="img"
+        aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold A, magenta B, white mixed), with the bee carrying pollen between them. Drag to orbit."
+      ></canvas>
+      <p id="fieldLive" class="visually-hidden" aria-live="polite">
+        No run yet. Set the inputs and press Run.
+      </p>
       <div class="key">
         <span><i class="dot" style="background: #e8b23a"></i>lineage A</span>
         <span><i class="dot" style="background: #cc6699"></i>lineage B</span>
@@ -231,8 +267,16 @@
         >
       </div>
 
-      <div class="panel">
-        <input type="range" id="scrub" min="0" max="0" value="0" disabled />
+      <section class="panel" aria-label="Playback">
+        <input
+          type="range"
+          id="scrub"
+          min="0"
+          max="0"
+          value="0"
+          disabled
+          aria-label="generation"
+        />
         <div class="stats" style="margin-top: 10px">
           <div class="stat"><b id="sGen">—</b><span>generation</span></div>
           <div class="stat">
@@ -243,10 +287,16 @@
           </div>
           <div class="stat"><b id="sFate">—</b><span>fate</span></div>
         </div>
-      </div>
+      </section>
 
       <div class="side">
-        <canvas id="map" width="760" height="260"></canvas>
+        <canvas
+          id="map"
+          width="760"
+          height="260"
+          role="img"
+          aria-label="Pollen placement map on the animal's body: position along the body left to right, around the body top to bottom; one dot per flower coloured by lineage."
+        ></canvas>
         <div>
           <p class="note" style="margin-top: 0">
             <strong>Where the pollen actually goes.</strong> The same
@@ -263,7 +313,7 @@
         </div>
       </div>
       <p id="selfcheck" class="note"></p>
-    </div>
+    </main>
 
     <script src="sim/browser-bundle.js"></script>
     <script>
@@ -991,7 +1041,23 @@
           cv.height - 13,
         );
 
-        if (playing) raf = requestAnimationFrame(draw);
+        if (playing) raf = nextFrame(draw);
+      }
+
+      /* prefers-reduced-motion: the render loop drops from continuous rAF to
+       * ~4 frames/s. The model is untouched — every generation is computed
+       * in buildRun() before the first frame, and draw() only reads GENS. */
+      const REDUCED_MOTION = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      );
+      function nextFrame(fn) {
+        if (REDUCED_MOTION.matches)
+          return setTimeout(() => requestAnimationFrame(fn), 250);
+        return requestAnimationFrame(fn);
+      }
+      function cancelFrame(h) {
+        cancelAnimationFrame(h);
+        clearTimeout(h);
       }
 
       function drawMap(g) {
@@ -1043,6 +1109,13 @@
         $("sFate").textContent = w;
         $("sFate").style.color = c;
         $("scrub").value = g;
+        /* Text mirror of the field for assistive tech — the same readouts as
+         * the stat tiles, nothing computed here. Updated per generation, not
+         * per animation frame, so a screen reader is not flooded. */
+        $("fieldLive").textContent =
+          `Generation ${g} of ${GENS.length - 1}. ` +
+          `Cluster separation ${G.sep.toFixed(2)}. ` +
+          `Ancestry variance ${G.ancVar.toFixed(4)}. Fate: ${w}.`;
         if (!playing) {
           t0 = performance.now();
           draw(performance.now());
@@ -1052,7 +1125,7 @@
       function stopPlay() {
         playing = false;
         $("play").textContent = "Play";
-        if (raf) cancelAnimationFrame(raf);
+        if (raf) cancelFrame(raf);
         raf = null;
       }
 
@@ -1111,7 +1184,7 @@
         playing = true;
         $("play").textContent = "Pause";
         t0 = performance.now();
-        raf = requestAnimationFrame(draw);
+        raf = nextFrame(draw);
         clearInterval(window.__gen);
         window.__gen = setInterval(() => {
           if (!playing) return clearInterval(window.__gen);
