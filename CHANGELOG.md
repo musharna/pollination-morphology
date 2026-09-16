@@ -5,6 +5,16 @@ public release; the full research history is in `docs/ROADMAP.md`, which is cano
 
 ## [Unreleased]
 
+### Added
+
+- Basic accessibility on `visit.html` and `population.html`: every control is labelled, each
+  canvas carries `role="img"` + `aria-label` and a visually-hidden `aria-live` text mirror of the
+  readouts the page already computes, landmarks (`<main>`, `<section aria-label="Controls">`),
+  a `:focus-visible` style, and `prefers-reduced-motion` (CSS animations off; the render loop
+  drops to ~4 fps — the model is untouched, since both pages compute results independently of
+  the frame clock). `tests/a11y.test.js` asserts this and fails against the pre-change pages.
+  (Independent review panel, 2026-09-15.)
+
 ### Fixed
 
 - `visit.html` and `population.html` had no `<meta name="viewport">`, so phones rendered them
