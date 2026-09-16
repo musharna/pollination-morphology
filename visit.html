@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>The visit — pollen loaded, carried, and not delivered</title>
     <style>
       :root {
@@ -15,18 +16,39 @@
         --ok: #6fbf73;
         --bad: #d9704f;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
         background: var(--bg);
         color: var(--ink);
-        font: 15px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+        font:
+          15px/1.5 "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
         padding: 22px 20px 60px;
       }
-      header { max-width: 1180px; margin: 0 auto 14px; }
-      h1 { font-size: 1.42rem; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
-      header p { margin: 0; color: var(--ink-2); max-width: 78ch; }
-      #wrap { max-width: 1180px; margin: 0 auto; }
+      header {
+        max-width: 1180px;
+        margin: 0 auto 14px;
+      }
+      h1 {
+        font-size: 1.42rem;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      header p {
+        margin: 0;
+        color: var(--ink-2);
+        max-width: 78ch;
+      }
+      #wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
       canvas {
         display: block;
         width: 100%;
@@ -36,7 +58,9 @@
         border-radius: 3px;
         cursor: grab;
       }
-      canvas:active { cursor: grabbing; }
+      canvas:active {
+        cursor: grabbing;
+      }
 
       #stage {
         display: grid;
@@ -44,7 +68,11 @@
         gap: 16px;
         margin-top: 14px;
       }
-      @media (max-width: 900px) { #stage { grid-template-columns: 1fr; } }
+      @media (max-width: 900px) {
+        #stage {
+          grid-template-columns: 1fr;
+        }
+      }
 
       .panel {
         background: var(--panel);
@@ -53,22 +81,42 @@
         padding: 14px 16px;
       }
       .step {
-        font: 600 0.7rem/1 ui-monospace, Menlo, monospace;
+        font:
+          600 0.7rem/1 ui-monospace,
+          Menlo,
+          monospace;
         letter-spacing: 0.12em;
         text-transform: uppercase;
         color: var(--ink-2);
         margin-bottom: 10px;
       }
-      #narr { font-size: 1.02rem; min-height: 3.4em; margin-bottom: 14px; }
+      #narr {
+        font-size: 1.02rem;
+        min-height: 3.4em;
+        margin-bottom: 14px;
+      }
       .kv {
-        font: 0.8rem/1.7 ui-monospace, Menlo, monospace;
+        font:
+          0.8rem/1.7 ui-monospace,
+          Menlo,
+          monospace;
         border-top: 1px solid var(--rule);
         padding-top: 10px;
       }
-      .kv div { display: flex; justify-content: space-between; gap: 10px; }
-      .kv span:first-child { color: var(--ink-2); }
-      .load { color: var(--gold); }
-      .sweep { color: var(--mag); }
+      .kv div {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .kv span:first-child {
+        color: var(--ink-2);
+      }
+      .load {
+        color: var(--gold);
+      }
+      .sweep {
+        color: var(--mag);
+      }
       #verdict {
         margin-top: 12px;
         padding: 9px 11px;
@@ -78,16 +126,41 @@
         text-align: center;
         border: 1px solid var(--rule);
       }
-      #verdict.no { color: var(--bad); border-color: #59332a; background: #251a17; }
-      #verdict.yes { color: var(--ok); border-color: #2f4a32; background: #17231a; }
-      #verdict.wait { color: var(--ink-2); }
+      #verdict.no {
+        color: var(--bad);
+        border-color: #59332a;
+        background: #251a17;
+      }
+      #verdict.yes {
+        color: var(--ok);
+        border-color: #2f4a32;
+        background: #17231a;
+      }
+      #verdict.wait {
+        color: var(--ink-2);
+      }
 
-      .ctl { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-      .ctl label { flex: 0 0 116px; font-size: 0.82rem; color: var(--ink-2); }
-      input[type="range"] { flex: 1; accent-color: var(--gold); }
+      .ctl {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .ctl label {
+        flex: 0 0 116px;
+        font-size: 0.82rem;
+        color: var(--ink-2);
+      }
+      input[type="range"] {
+        flex: 1;
+        accent-color: var(--gold);
+      }
       output {
         flex: 0 0 92px;
-        font: 0.78rem ui-monospace, Menlo, monospace;
+        font:
+          0.78rem ui-monospace,
+          Menlo,
+          monospace;
         color: var(--ink);
         text-align: right;
       }
@@ -101,8 +174,13 @@
         font-size: 0.85rem;
         cursor: pointer;
       }
-      button:hover { background: #343a45; }
-      button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+      button:hover {
+        background: #343a45;
+      }
+      button:focus-visible {
+        outline: 2px solid var(--gold);
+        outline-offset: 2px;
+      }
       footer {
         max-width: 1180px;
         margin: 20px auto 0;
@@ -112,16 +190,20 @@
         padding-top: 12px;
         max-width: 92ch;
       }
-      b { color: var(--ink); font-weight: 600; }
+      b {
+        color: var(--ink);
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
     <header>
       <h1>The visit — pollen loaded, carried, and not delivered</h1>
       <p>
-        Two flowers face each other. One bee shuttles between them. The only difference between
-        the flowers is where the anther and stigma sit on the tube wall. Watch where the pollen
-        goes on the animal, and where the second flower reaches for it. Drag to rotate.
+        Two flowers face each other. One bee shuttles between them. The only
+        difference between the flowers is where the anther and stigma sit on the
+        tube wall. Watch where the pollen goes on the animal, and where the
+        second flower reaches for it. Drag to rotate.
       </p>
     </header>
 
@@ -133,8 +215,14 @@
           <div class="step" id="stepLabel">—</div>
           <div id="narr"></div>
           <div class="kv">
-            <div><span>pollen loaded on</span><span class="load" id="kLoad">—</span></div>
-            <div><span>flower B stigma sweeps</span><span class="sweep" id="kSweep">—</span></div>
+            <div>
+              <span>pollen loaded on</span
+              ><span class="load" id="kLoad">—</span>
+            </div>
+            <div>
+              <span>flower B stigma sweeps</span
+              ><span class="sweep" id="kSweep">—</span>
+            </div>
             <div><span>site overlap</span><span id="kOv">—</span></div>
           </div>
           <div id="verdict" class="wait">—</div>
@@ -144,7 +232,14 @@
           <div class="step">flower B only</div>
           <div class="ctl">
             <label for="theta">anther &amp; stigma</label>
-            <input id="theta" type="range" min="0" max="180" value="180" step="1" />
+            <input
+              id="theta"
+              type="range"
+              min="0"
+              max="180"
+              value="180"
+              step="1"
+            />
             <output id="thetaOut"></output>
           </div>
           <div class="ctl">
@@ -160,14 +255,16 @@
       </div>
 
       <footer>
-        <b>Placement is never an input.</b> Where the pollen lands is computed from tube shape,
-        body shape, and how far the animal can push in — there is no variable anywhere that sets
-        it. Flower A is fixed; the slider moves flower B's anther and stigma together, because a
-        species' own stigma must collect from wherever its own anther deposits.
-        <b>Still not modelled:</b> carryover across many visits, packaging efficiency, last-male
-        advantage, pollinator learning, or any reward at all. The bee's body is drawn rigid while
-        the contact model lets it follow the tube's curve — at these curvatures the two differ by
-        less than a grain's width.
+        <b>Placement is never an input.</b> Where the pollen lands is computed
+        from tube shape, body shape, and how far the animal can push in — there
+        is no variable anywhere that sets it. Flower A is fixed; the slider
+        moves flower B's anther and stigma together, because a species' own
+        stigma must collect from wherever its own anther deposits.
+        <b>Still not modelled:</b> carryover across many visits, packaging
+        efficiency, last-male advantage, pollinator learning, or any reward at
+        all. The bee's body is drawn rigid while the contact model lets it
+        follow the tube's curve — at these curvatures the two differ by less
+        than a grain's width.
       </footer>
     </div>
 
@@ -178,8 +275,18 @@
       const ctx = cv.getContext("2d");
       const bee = P.DEFAULT_BEE;
 
-      const flowerA = { ...P.DEFAULT_FLOWER, antherTheta: 0, stigmaTheta: 0, polarity: 0.45 };
-      const flowerB = { ...P.DEFAULT_FLOWER, antherTheta: Math.PI, stigmaTheta: Math.PI, polarity: 0.45 };
+      const flowerA = {
+        ...P.DEFAULT_FLOWER,
+        antherTheta: 0,
+        stigmaTheta: 0,
+        polarity: 0.45,
+      };
+      const flowerB = {
+        ...P.DEFAULT_FLOWER,
+        antherTheta: Math.PI,
+        stigmaTheta: Math.PI,
+        polarity: 0.45,
+      };
 
       /* --------------------------------------------------------- vector ops */
       const vAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -196,17 +303,27 @@
         return [a[0] / n, a[1] / n, a[2] / n];
       };
       const lerp = (a, b, k) => a + (b - a) * k;
-      const lerp3 = (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
+      const lerp3 = (a, b, k) => [
+        lerp(a[0], b[0], k),
+        lerp(a[1], b[1], k),
+        lerp(a[2], b[2], k),
+      ];
       const clamp01 = (x) => Math.min(1, Math.max(0, x));
       /* Rodrigues rotation — used for the wingbeat and for banking in flight. */
       const vRot = (v, k, a) => {
-        const c = Math.cos(a), sn = Math.sin(a);
-        return vAdd(vAdd(vMul(v, c), vMul(vCrs(k, v), sn)), vMul(k, vDot(k, v) * (1 - c)));
+        const c = Math.cos(a),
+          sn = Math.sin(a);
+        return vAdd(
+          vAdd(vMul(v, c), vMul(vCrs(k, v), sn)),
+          vMul(k, vDot(k, v) * (1 - c)),
+        );
       };
       /* Cheap smooth wobble — incommensurate sines, so it never visibly loops. */
       const wob = (t, k) =>
-        Math.sin(t * (1.7 + k * 0.43) + k * 2.1) * 0.6 + Math.sin(t * (2.9 + k * 0.31) + k) * 0.4;
-      const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+        Math.sin(t * (1.7 + k * 0.43) + k * 2.1) * 0.6 +
+        Math.sin(t * (2.9 + k * 0.31) + k) * 0.4;
+      const ease = (x) =>
+        x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 
       /* ----------------------------------------------------- flower placing
        *
@@ -260,7 +377,12 @@
         const zv = z + camDist;
         if (zv < 0.05) return null;
         const scale = 720;
-        return { x: cv.width / 2 + (scale * x) / zv, y: cv.height / 2 - (scale * y) / zv, z: zv, s: scale / zv };
+        return {
+          x: cv.width / 2 + (scale * x) / zv,
+          y: cv.height / 2 - (scale * y) / zv,
+          z: zv,
+          s: scale / zv,
+        };
       }
       function camForward() {
         const cy = Math.cos(yaw),
@@ -290,14 +412,19 @@
           vAdd(vMul(pose.u, r * Math.cos(phi)), vMul(lat, r * Math.sin(phi))),
         );
       }
-      const axisPoint = (pose, s) => vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen));
+      const axisPoint = (pose, s) =>
+        vAdd(pose.p, vMul(pose.f, -s * bee.bodyLen));
 
       /* Pose when the head has pushed to depth t inside a flower. */
       function poseInFlower(f, b, headT) {
         const fr = P.axisFrame(f, Math.max(headT, 0));
         const lift = P.bodyOffset(f, bee, Math.max(headT, 0));
         const local = vAdd(P.axisAt(f, headT), vMul(fr.dorsal, lift));
-        return { p: toWorld(b, local), f: vUnit(dirWorld(b, fr.fwd)), u: vUnit(dirWorld(b, fr.dorsal)) };
+        return {
+          p: toWorld(b, local),
+          f: vUnit(dirWorld(b, fr.fwd)),
+          u: vUnit(dirWorld(b, fr.dorsal)),
+        };
       }
 
       /* ---------------------------------------------------- draw primitives */
@@ -307,18 +434,40 @@
       function ball(c, r, col, opts = {}) {
         const q = project(c);
         if (!q) return;
-        push({ z: q.z, kind: "ball", x: q.x, y: q.y, r: r * q.s, col, ...opts });
+        push({
+          z: q.z,
+          kind: "ball",
+          x: q.x,
+          y: q.y,
+          r: r * q.s,
+          col,
+          ...opts,
+        });
       }
       function poly(pts, col, opts = {}) {
         const ps = pts.map(project);
         if (ps.some((p) => !p)) return;
-        push({ z: ps.reduce((a, p) => a + p.z, 0) / ps.length, kind: "poly", ps, col, ...opts });
+        push({
+          z: ps.reduce((a, p) => a + p.z, 0) / ps.length,
+          kind: "poly",
+          ps,
+          col,
+          ...opts,
+        });
       }
       function seg(a, b, col, w, opts = {}) {
         const pa = project(a),
           pb = project(b);
         if (!pa || !pb) return;
-        push({ z: (pa.z + pb.z) / 2, kind: "seg", pa, pb, col, w: w * ((pa.s + pb.s) / 2), ...opts });
+        push({
+          z: (pa.z + pb.z) / 2,
+          kind: "seg",
+          pa,
+          pb,
+          col,
+          w: w * ((pa.s + pb.s) / 2),
+          ...opts,
+        });
       }
       /* Named `grain`, not `vDot` — `vDot` is already the vector vDot product
        * above, and two declarations of one name in one scope is a hard
@@ -326,7 +475,15 @@
       function grain(c, r, col, opts = {}) {
         const q = project(c);
         if (!q) return;
-        push({ z: q.z - 0.02, kind: "grain", x: q.x, y: q.y, r: Math.max(1.1, r * q.s), col, ...opts });
+        push({
+          z: q.z - 0.02,
+          kind: "grain",
+          x: q.x,
+          y: q.y,
+          r: Math.max(1.1, r * q.s),
+          col,
+          ...opts,
+        });
       }
 
       function paint() {
@@ -335,7 +492,12 @@
           ctx.globalAlpha = it.alpha === undefined ? 1 : it.alpha;
           if (it.kind === "ball") {
             const g = ctx.createRadialGradient(
-              it.x - it.r * 0.36, it.y - it.r * 0.4, it.r * 0.12, it.x, it.y, it.r,
+              it.x - it.r * 0.36,
+              it.y - it.r * 0.4,
+              it.r * 0.12,
+              it.x,
+              it.y,
+              it.r,
             );
             g.addColorStop(0, it.hi || shade(it.col, 1.5));
             g.addColorStop(0.6, it.col);
@@ -348,7 +510,8 @@
             ctx.fillStyle = it.col;
             ctx.beginPath();
             ctx.moveTo(it.ps[0].x, it.ps[0].y);
-            for (let i = 1; i < it.ps.length; i++) ctx.lineTo(it.ps[i].x, it.ps[i].y);
+            for (let i = 1; i < it.ps.length; i++)
+              ctx.lineTo(it.ps[i].x, it.ps[i].y);
             ctx.closePath();
             ctx.fill();
             if (it.stroke) {
@@ -489,7 +652,8 @@
         /* Petal half-width: narrow at the base, widest at mid-length, closing
          * to a point at the tip. sin() gives the profile; the exponent rounds
          * the shoulders so it reads as a petal and not a diamond. */
-        const wOf = (v) => Math.pow(Math.sin(Math.PI * (0.16 + 0.84 * v)), 0.62);
+        const wOf = (v) =>
+          Math.pow(Math.sin(Math.PI * (0.16 + 0.84 * v)), 0.62);
 
         const pt = (ang, v) => {
           const rr = P.tubeRadius(f, 0, ang);
@@ -500,7 +664,9 @@
           for (let k = 0; k < 3; k++)
             loc[k] =
               base[k] +
-              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) * rr * (flare + cup) +
+              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) *
+                rr *
+                (flare + cup) +
               fr.fwd[k] * back;
           return toWorld(b, loc);
         };
@@ -543,7 +709,8 @@
           for (let k = 0; k < 3; k++)
             loc[k] =
               base[k] +
-              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) * rr -
+              (fr.dorsal[k] * Math.cos(ang) + fr.lateral[k] * Math.sin(ang)) *
+                rr -
               fr.dorsal[k] * ext * platformAngle -
               fr.fwd[k] * ext * platformLen;
           return toWorld(b, loc);
@@ -552,7 +719,11 @@
         for (let j = 0; j < N; j++) {
           const a0 = Math.PI - 1.15 + (2.3 * j) / N,
             a1 = Math.PI - 1.15 + (2.3 * (j + 1)) / N;
-          poly([point(a0, 0), point(a0, 1), point(a1, 1), point(a1, 0)], "#c3b18e", { stroke: "#c3b18e", sw: 1 });
+          poly(
+            [point(a0, 0), point(a0, 1), point(a1, 1), point(a1, 0)],
+            "#c3b18e",
+            { stroke: "#c3b18e", sw: 1 },
+          );
         }
       }
 
@@ -635,7 +806,7 @@
 
         // thorax pile — short hairs so it reads as furry, not moulded
         for (let i = 0; i < 46; i++) {
-          const s = 0.17 + 0.33 * ((i * 7) % 46) / 46;
+          const s = 0.17 + (0.33 * ((i * 7) % 46)) / 46;
           const phi = ((i * 2.39996) % (2 * Math.PI)) - Math.PI;
           const r = P.bodyRadius(bee, s);
           const a = bodyPoint(pose, s, phi);
@@ -651,8 +822,14 @@
         for (const sgn of [-1, 1]) {
           const sw = 0.24 * wob(t * 2.4, sgn > 0 ? 1 : 2) * (1.3 - 0.5 * beat);
           const root = bodyPoint(pose, 0.05, sgn * 0.8);
-          const el = vAdd(vAdd(root, vMul(pose.f, 0.24)), vMul(lat, sgn * 0.12));
-          const tipRel = vAdd(vMul(pose.f, 0.2), vAdd(vMul(lat, sgn * 0.16), vMul(pose.u, -0.1)));
+          const el = vAdd(
+            vAdd(root, vMul(pose.f, 0.24)),
+            vMul(lat, sgn * 0.12),
+          );
+          const tipRel = vAdd(
+            vMul(pose.f, 0.2),
+            vAdd(vMul(lat, sgn * 0.16), vMul(pose.u, -0.1)),
+          );
           const tip = vAdd(el, vRot(tipRel, pose.u, sw));
           seg(root, el, "#171310", 0.036);
           seg(el, tip, "#171310", 0.03);
@@ -667,10 +844,16 @@
             const hip = bodyPoint(pose, s, sgn * 2.1);
             const spread = 0.3 - 0.12 * tuck;
             const drop = -0.26 + 0.14 * tuck;
-            const knee = vAdd(vAdd(hip, vMul(lat, sgn * spread)), vMul(pose.u, drop));
+            const knee = vAdd(
+              vAdd(hip, vMul(lat, sgn * spread)),
+              vMul(pose.u, drop),
+            );
             const foot = vAdd(
               vAdd(knee, vMul(lat, sgn * (0.1 + 0.06 * (1 - tuck)))),
-              vAdd(vMul(pose.u, -0.3 + 0.18 * tuck), vMul(pose.f, -0.12 + 0.22 * tuck)),
+              vAdd(
+                vMul(pose.u, -0.3 + 0.18 * tuck),
+                vMul(pose.f, -0.12 + 0.22 * tuck),
+              ),
             );
             seg(hip, knee, "#241d18", 0.045);
             seg(knee, foot, "#241d18", 0.036);
@@ -680,19 +863,52 @@
         // pollen already carried — varied so it reads as dust, not as printing
         load.forEach((g, i) => {
           const k = ((i * 37) % 11) / 11;
-          grain(bodyPoint(pose, g.s, g.phi), 0.038 + 0.028 * k,
-                k > 0.6 ? "#ffd970" : k > 0.3 ? "#f3c650" : "#dCa832");
+          grain(
+            bodyPoint(pose, g.s, g.phi),
+            0.038 + 0.028 * k,
+            k > 0.6 ? "#ffd970" : k > 0.3 ? "#f3c650" : "#dCa832",
+          );
         });
       }
 
       /* ------------------------------------------------- the visit timeline */
       const PHASES = [
-        { k: "approach", d: 1.5, label: "approach", text: "One bee, two flowers. It goes to the first." },
-        { k: "enterA", d: 1.6, label: "inside flower A", text: "It pushes in as far as its body allows. How far is set by the tube, not by the bee." },
-        { k: "loadA", d: 1.7, label: "anther contact", text: "Flower A's anther touches it — here, and nowhere else." },
-        { k: "exitA", d: 1.2, label: "backing out", text: "It leaves carrying pollen on one specific patch of its body." },
-        { k: "cross", d: 1.8, label: "in flight", text: "Same animal. Same pollen. Now the second flower." },
-        { k: "enterB", d: 1.6, label: "inside flower B", text: "It pushes into flower B exactly as it did into A." },
+        {
+          k: "approach",
+          d: 1.5,
+          label: "approach",
+          text: "One bee, two flowers. It goes to the first.",
+        },
+        {
+          k: "enterA",
+          d: 1.6,
+          label: "inside flower A",
+          text: "It pushes in as far as its body allows. How far is set by the tube, not by the bee.",
+        },
+        {
+          k: "loadA",
+          d: 1.7,
+          label: "anther contact",
+          text: "Flower A's anther touches it — here, and nowhere else.",
+        },
+        {
+          k: "exitA",
+          d: 1.2,
+          label: "backing out",
+          text: "It leaves carrying pollen on one specific patch of its body.",
+        },
+        {
+          k: "cross",
+          d: 1.8,
+          label: "in flight",
+          text: "Same animal. Same pollen. Now the second flower.",
+        },
+        {
+          k: "enterB",
+          d: 1.6,
+          label: "inside flower B",
+          text: "It pushes into flower B exactly as it did into A.",
+        },
         { k: "sweepB", d: 2.4, label: "stigma contact", text: "" },
         { k: "exitB", d: 1.3, label: "backing out", text: "" },
         { k: "hold", d: 2.0, label: "the result", text: "" },
@@ -709,17 +925,30 @@
         transferred = false;
 
       function recompute() {
-        distA = P.placementDistribution(flowerA, bee, { seed: 11, n: 200, part: "anther" });
-        distB = P.placementDistribution(flowerB, bee, { seed: 23, n: 200, part: "stigma" });
+        distA = P.placementDistribution(flowerA, bee, {
+          seed: 11,
+          n: 200,
+          part: "anther",
+        });
+        distB = P.placementDistribution(flowerB, bee, {
+          seed: 23,
+          n: 200,
+          part: "stigma",
+        });
         overlap = P.placementOverlap(distA, distB);
         loadHits = distA.hits.filter((_, i) => i % 4 === 0).slice(0, 46);
         transferred = overlap > 0.35;
 
         const sa = P.dominantSite(distA),
           sb = P.dominantSite(distB);
-        document.getElementById("kLoad").textContent = sa ? sa.label : "no contact";
-        document.getElementById("kSweep").textContent = sb ? sb.label : "no contact";
-        document.getElementById("kOv").textContent = (overlap * 100).toFixed(0) + "%";
+        document.getElementById("kLoad").textContent = sa
+          ? sa.label
+          : "no contact";
+        document.getElementById("kSweep").textContent = sb
+          ? sb.label
+          : "no contact";
+        document.getElementById("kOv").textContent =
+          (overlap * 100).toFixed(0) + "%";
       }
 
       function phaseAt(tt) {
@@ -739,7 +968,11 @@
           depthB = P.entryDepth(flowerB, bee);
         const outA = poseInFlower(flowerA, baseA, -1.55);
         const outB = poseInFlower(flowerB, baseB, -1.55);
-        const far = { p: [0, 2.4, 2.2], f: vUnit([-0.6, -0.35, -0.7]), u: [0, 1, 0] };
+        const far = {
+          p: [0, 2.4, 2.2],
+          f: vUnit([-0.6, -0.35, -0.7]),
+          u: [0, 1, 0],
+        };
 
         const blend = (q, r, k) => ({
           p: lerp3(q.p, r.p, k),
@@ -747,34 +980,74 @@
           u: vUnit(lerp3(q.u, r.u, k)),
         });
 
-        let pose, loaded = 0, sweep = 0;
+        let pose,
+          loaded = 0,
+          sweep = 0;
         switch (p.k) {
-          case "approach": pose = blend(far, outA, ease(u)); break;
-          case "enterA": pose = poseInFlower(flowerA, baseA, lerp(-1.55, depthA, ease(u))); break;
+          case "approach":
+            pose = blend(far, outA, ease(u));
+            break;
+          case "enterA":
+            pose = poseInFlower(flowerA, baseA, lerp(-1.55, depthA, ease(u)));
+            break;
           case "loadA":
-            pose = poseInFlower(flowerA, baseA, depthA + 0.02 * Math.sin(u * 12));
+            pose = poseInFlower(
+              flowerA,
+              baseA,
+              depthA + 0.02 * Math.sin(u * 12),
+            );
             loaded = clamp01((u - 0.15) / 0.5);
             break;
-          case "exitA": pose = poseInFlower(flowerA, baseA, lerp(depthA, -1.55, ease(u))); loaded = 1; break;
+          case "exitA":
+            pose = poseInFlower(flowerA, baseA, lerp(depthA, -1.55, ease(u)));
+            loaded = 1;
+            break;
           case "cross": {
             const arc = ease(u);
             const q = blend(outA, outB, arc);
-            q.p = vAdd(q.p, [0, 1.5 * Math.sin(Math.PI * arc), 0.5 * Math.sin(Math.PI * arc)]);
-            pose = q; loaded = 1; break;
-          }
-          case "enterB": pose = poseInFlower(flowerB, baseB, lerp(-1.55, depthB, ease(u))); loaded = 1; break;
-          case "sweepB":
-            pose = poseInFlower(flowerB, baseB, depthB + 0.02 * Math.sin(u * 10));
-            loaded = 1; sweep = clamp01((u - 0.1) / 0.35);
+            q.p = vAdd(q.p, [
+              0,
+              1.5 * Math.sin(Math.PI * arc),
+              0.5 * Math.sin(Math.PI * arc),
+            ]);
+            pose = q;
+            loaded = 1;
             break;
-          case "exitB": pose = poseInFlower(flowerB, baseB, lerp(depthB, -1.55, ease(u))); loaded = 1; sweep = 1; break;
-          default: pose = blend(outB, far, ease(u * 0.5)); loaded = 1; sweep = 1;
+          }
+          case "enterB":
+            pose = poseInFlower(flowerB, baseB, lerp(-1.55, depthB, ease(u)));
+            loaded = 1;
+            break;
+          case "sweepB":
+            pose = poseInFlower(
+              flowerB,
+              baseB,
+              depthB + 0.02 * Math.sin(u * 10),
+            );
+            loaded = 1;
+            sweep = clamp01((u - 0.1) / 0.35);
+            break;
+          case "exitB":
+            pose = poseInFlower(flowerB, baseB, lerp(depthB, -1.55, ease(u)));
+            loaded = 1;
+            sweep = 1;
+            break;
+          default:
+            pose = blend(outB, far, ease(u * 0.5));
+            loaded = 1;
+            sweep = 1;
         }
         /* Wingbeat activity: full in free flight, almost still while crawling
          * inside a tube. Blended across entry and exit so it does not snap. */
         const BEAT = {
-          approach: [1, 1], enterA: [1, 0.12], loadA: [0.12, 0.12], exitA: [0.12, 1],
-          cross: [1, 1], enterB: [1, 0.12], sweepB: [0.12, 0.12], exitB: [0.12, 1],
+          approach: [1, 1],
+          enterA: [1, 0.12],
+          loadA: [0.12, 0.12],
+          exitA: [0.12, 1],
+          cross: [1, 1],
+          enterB: [1, 0.12],
+          sweepB: [0.12, 0.12],
+          exitB: [0.12, 1],
           hold: [1, 1],
         };
         const bp = BEAT[p.k] || [1, 1];
@@ -785,9 +1058,13 @@
         if (beat > 0.5) {
           const amp = (beat - 0.5) * 2;
           pose = {
-            p: vAdd(pose.p, [0.05 * wob(tt, 3) * amp, 0.10 * wob(tt, 1) * amp, 0.05 * wob(tt, 2) * amp]),
+            p: vAdd(pose.p, [
+              0.05 * wob(tt, 3) * amp,
+              0.1 * wob(tt, 1) * amp,
+              0.05 * wob(tt, 2) * amp,
+            ]),
             f: pose.f,
-            u: vUnit(vRot(pose.u, pose.f, 0.20 * wob(tt, 4) * amp)),
+            u: vUnit(vRot(pose.u, pose.f, 0.2 * wob(tt, 4) * amp)),
           };
         }
         return { pose, loaded, sweep, beat, phase: p, u };
@@ -804,7 +1081,8 @@
               ? [-SPREAD + 1.2, -0.15, 0]
               : [SPREAD - 1.2, -0.15, 0];
         camTarget = lerp3(camTarget, want, 0.07);
-        const wantD = st.phase.k === "cross" || st.phase.k === "approach" ? 10.8 : 7.4;
+        const wantD =
+          st.phase.k === "cross" || st.phase.k === "approach" ? 10.8 : 7.4;
         camDist = lerp(camDist, wantD, 0.07);
 
         /* A flat fill reads as a void and flattens everything in front of it.
@@ -816,8 +1094,12 @@
         ctx.fillStyle = bg;
         ctx.fillRect(0, 0, cv.width, cv.height);
         const vig = ctx.createRadialGradient(
-          cv.width / 2, cv.height * 0.46, cv.height * 0.22,
-          cv.width / 2, cv.height * 0.46, cv.width * 0.62,
+          cv.width / 2,
+          cv.height * 0.46,
+          cv.height * 0.22,
+          cv.width / 2,
+          cv.height * 0.46,
+          cv.width * 0.62,
         );
         vig.addColorStop(0, "rgba(0,0,0,0)");
         vig.addColorStop(1, "rgba(0,0,0,0.55)");
@@ -829,17 +1111,25 @@
         drawFlower(flowerA, baseA, "FLOWER A");
         drawFlower(flowerB, baseB, "FLOWER B");
 
-        const carried = loadHits.slice(0, Math.round(loadHits.length * st.loaded));
+        const carried = loadHits.slice(
+          0,
+          Math.round(loadHits.length * st.loaded),
+        );
         drawBee(st.pose, carried, { beat: st.beat, t: clock });
 
         // the stigma's reach, drawn on the body where it actually sweeps
         if (st.sweep > 0 && distB && distB.hits.length) {
           const sub2 = distB.hits.filter((_, i) => i % 5 === 0).slice(0, 40);
           for (const h of sub2) {
-            grain(bodyPoint(st.pose, h.s, h.phi), 0.05, "rgba(204,102,153,0.9)", {
-              ring: "rgba(255,180,215,0.9)",
-              alpha: st.sweep,
-            });
+            grain(
+              bodyPoint(st.pose, h.s, h.phi),
+              0.05,
+              "rgba(204,102,153,0.9)",
+              {
+                ring: "rgba(255,180,215,0.9)",
+                alpha: st.sweep,
+              },
+            );
           }
         }
 
@@ -861,7 +1151,11 @@
         const loadSite = P.dominantSite(distA),
           sweepSite = P.dominantSite(distB);
 
-        if (st.phase.k === "sweepB" || st.phase.k === "exitB" || st.phase.k === "hold") {
+        if (
+          st.phase.k === "sweepB" ||
+          st.phase.k === "exitB" ||
+          st.phase.k === "hold"
+        ) {
           if (transferred) {
             n.textContent =
               "Flower B's stigma reaches the same patch the pollen is sitting on. It is collected.";
@@ -890,7 +1184,10 @@
       cv.addEventListener("pointermove", (e) => {
         if (!drag) return;
         yaw += (e.clientX - drag.x) * 0.006;
-        pitch = Math.max(-0.5, Math.min(1.0, pitch + (e.clientY - drag.y) * 0.004));
+        pitch = Math.max(
+          -0.5,
+          Math.min(1.0, pitch + (e.clientY - drag.y) * 0.004),
+        );
         drag = { x: e.clientX, y: e.clientY };
       });
       const endDrag = () => (drag = null);
@@ -906,10 +1203,15 @@
         const deg = +th.value;
         flowerB.antherTheta = (deg * Math.PI) / 180;
         flowerB.stigmaTheta = flowerB.antherTheta;
-        thOut.textContent = deg > 135 ? "ventral" : deg < 45 ? "dorsal" : deg + "°";
+        thOut.textContent =
+          deg > 135 ? "ventral" : deg < 45 ? "dorsal" : deg + "°";
         flowerB.polarity = +pol.value / 100;
         polOut.textContent =
-          flowerB.polarity > 0.6 ? "bilateral" : flowerB.polarity < 0.25 ? "radial" : "intermediate";
+          flowerB.polarity > 0.6
+            ? "bilateral"
+            : flowerB.polarity < 0.25
+              ? "radial"
+              : "intermediate";
         recompute();
       }
       th.addEventListener("input", sync);
@@ -943,12 +1245,17 @@
         max-width: 760px;
         padding: 14px 20px 0;
         border-top: 1px solid rgba(128, 128, 128, 0.35);
-        font: 13px/1.7 ui-sans-serif, system-ui, sans-serif;
+        font:
+          13px/1.7 ui-sans-serif,
+          system-ui,
+          sans-serif;
         opacity: 0.75;
         text-align: center;
       "
     >
-      <a href="https://musharna.github.io/pollination-morphology/" style="color: inherit"
+      <a
+        href="https://musharna.github.io/pollination-morphology/"
+        style="color: inherit"
         >pollination-morphology</a
       >
       &middot;
@@ -958,10 +1265,13 @@
         >findings</a
       >
       &middot;
-      <a href="https://github.com/musharna/pollination-morphology" style="color: inherit"
+      <a
+        href="https://github.com/musharna/pollination-morphology"
+        style="color: inherit"
         >source</a
       ><br />
-      Code MIT &middot; text and figures CC-BY-4.0 &middot; &copy; 2026 Jaret Arnold
+      Code MIT &middot; text and figures CC-BY-4.0 &middot; &copy; 2026 Jaret
+      Arnold
     </footer>
   </body>
 </html>

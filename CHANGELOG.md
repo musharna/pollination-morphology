@@ -3,6 +3,20 @@
 All notable changes to this project are recorded here. This file starts at the first
 public release; the full research history is in `docs/ROADMAP.md`, which is canonical.
 
+## [Unreleased]
+
+### Fixed
+
+- `visit.html` and `population.html` had no `<meta name="viewport">`, so phones rendered them
+  desktop-scaled; only `greybox.html` had one. Both now carry it. (Independent review panel,
+  2026-09-15.)
+
+### Changed
+
+- The Pages deploy is now gated on the simulation suite: `node --test tests/` runs in the build
+  job before `site/` is assembled. Previously the workflow only asserted that files existed, so a
+  broken simulation still shipped green.
+
 ## [1.0.1] — 2026-09-11
 
 A documentation-only release, closing the punch list from a ten-judge review panel convened after

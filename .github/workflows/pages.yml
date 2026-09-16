@@ -28,6 +28,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # A page whose simulation is broken still assembles and deploys; only the
+      # suite can tell. Deploy is gated on it. (~4 min, 363 tests.)
+      - name: Run the simulation suite
+        run: node --test tests/
+
       - name: Assemble site/
         run: |
           chmod +x tools/build-site.sh
