@@ -85,12 +85,7 @@ test("2-D placement sustains more species than a 1-D gene", () => {
 
 test("CARRYOVER · NEGATIVE CONTROL: no placement still collapses to one species", () => {
   const { state } = E.run(
-    base({
-      arm: E.ARMS.L0,
-      evaluate: E.CARRYOVER,
-      visits: 1500,
-      generations: 150,
-    }),
+    base({ arm: E.ARMS.L0, evaluate: E.CARRYOVER, visits: 1500, generations: 150 }),
   );
   const alive = state.species.filter((s) => s.alive).length;
   assert.strictEqual(alive, 1, `expected collapse, got ${alive}`);
@@ -98,18 +93,10 @@ test("CARRYOVER · NEGATIVE CONTROL: no placement still collapses to one species
 
 test("CARRYOVER · POSITIVE CONTROL: with placement it does not collapse", () => {
   const { state } = E.run(
-    base({
-      arm: E.ARMS.L2,
-      evaluate: E.CARRYOVER,
-      visits: 1500,
-      generations: 150,
-    }),
+    base({ arm: E.ARMS.L2, evaluate: E.CARRYOVER, visits: 1500, generations: 150 }),
   );
   const alive = state.species.filter((s) => s.alive).length;
-  assert.ok(
-    alive > 1,
-    `placement should permit coexistence; collapsed to ${alive}`,
-  );
+  assert.ok(alive > 1, `placement should permit coexistence; collapsed to ${alive}`);
 });
 
 // --------------------------------------------------------------------------
