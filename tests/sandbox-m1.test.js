@@ -309,3 +309,37 @@ test("the page's own script still parses and the loop is not inline", () => {
       "population.html still drives step() inline — the loop belongs in population-run.js",
     );
 });
+
+/* -------------------------------------------- "never touches the bee" */
+
+/* ⚠️ A STATE WITH NO DOT IS NOT A BROKEN PAGE. `placementDistribution` with no
+ * hits is the model saying the flower never touches the animal
+ * (sim/evolve.js:165). The page must say so rather than quietly drawing
+ * nothing, and the realised separation must go to "not measured" rather than
+ * to a number computed from one lineage. Configuration found by search, then
+ * driven through the page's own sliders. */
+test("a flower that never touches the bee says so, and the separation is not measured", () => {
+  const { document: doc } = load();
+  const set = (id, v) => setSlider(doc, id, v);
+  set("reach", 0.4);
+  set("g2_antherT", 0.35);
+  set("g2_throatR", 0.16);
+  set("g2_mouthR", 1.0);
+
+  assert.equal(
+    doc.getElementById("touch2").textContent,
+    "this flower never touches the bee",
+    "the panel does not report a flower that misses the animal entirely",
+  );
+  assert.equal(
+    antherOf(doc, 2),
+    null,
+    "an anther dot was drawn for a flower with no hits",
+  );
+  assert.equal(
+    doc.getElementById("sReal").textContent,
+    "—",
+    "a realised separation was printed with only one lineage on the bee",
+  );
+  assert.equal(doc.getElementById("sRealBand").textContent, "not measured");
+});
