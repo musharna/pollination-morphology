@@ -198,8 +198,16 @@ test("coherence is a real advantage at matched removal, and adhesion adds to it"
    * must match, or the comparison credits non-harvestability to coherence. */
   let best = null;
   for (const v of [12, 8, 5, 3, 2]) {
-    const g = avg({ presentRate: 0.05, visitsPerFlower: v, groom: 0.3, harvest: 0 });
-    if (!best || Math.abs(g.removal - pol.removal) < Math.abs(best.removal - pol.removal))
+    const g = avg({
+      presentRate: 0.05,
+      visitsPerFlower: v,
+      groom: 0.3,
+      harvest: 0,
+    });
+    if (
+      !best ||
+      Math.abs(g.removal - pol.removal) < Math.abs(best.removal - pol.removal)
+    )
       best = { ...g, v };
   }
   assert.ok(

@@ -119,8 +119,12 @@
       E = global.Evolve;
     let pop = found;
     const out = [];
+    let extinct = false;
     for (let g = 0; g < gens; g++) {
-      if (pop.length < 2) break;
+      if (pop.length < 2) {
+        extinct = true;
+        break;
+      }
       const anc = pop.map((ind) => (ind.anc === undefined ? 0 : ind.anc));
       const res = I.step(
         pop,
@@ -135,6 +139,10 @@
         flowers: pop.map((ind) => E.toFlower(I.shapeOf(ind))),
         sites: I.sitesOf(pop, opts, g),
         places: res.places,
+        /* per-parent siring received: the hybrid-fraction and receipt-ratio
+         * tiles are M2's, but the quantity is the loop's and the fidelity
+         * test asserts it against the null tables now. */
+        received: res.received,
         sep: res.cluster ? res.cluster.separation : 0,
         ancVar: res.ancVar,
         recruits: res.recruits,
@@ -144,7 +152,10 @@
       });
       pop = res.pop;
     }
-    return out;
+    /* `frames` are the PARENTS of each generation, which is what the field
+     * draws. `final` is the last generation's OFFSPRING, which the frames drop
+     * and which every fate in docs/ is read off (tools/northstar-null-tables.js:130). */
+    return { frames: out, final: pop, extinct };
   }
 
   global.SandboxRun = {

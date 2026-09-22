@@ -145,63 +145,121 @@ test("population.html's inline script parses", () => {
   }
 });
 
-/* ------------------------------- the page drives step() — prove it IS run() */
+/* ------------------- the page's OWN loop, executed, against the null tables */
 
-/* ⚠️ population.html cannot use run(): it needs every generation's GENOMES to
- * draw the flowers, and run() returns only summary history. So it drives step()
- * in its own loop — which means the picture could quietly diverge from every
- * published number in docs/. This asserts the two loops are the same loop.
+/* ⚠️ THE OLD VERSION OF THIS TEST COULD NOT FAIL ON THE PAGE. The page's loop
+ * lived inline in population.html, so the test hand-copied it ("verbatim in
+ * structure") and compared the copy to run(). That proves the copy matches
+ * run(); it proves nothing whatever about the page, and a copy drifting from
+ * the page is the exact defect the test exists to catch.
  *
- * The renderer's claim is that you are watching the model the experiments
- * measured. That claim is only worth what this test is worth. */
-test("the page's own generation loop reproduces run() exactly", () => {
+ * The loop now lives in population-run.js, which the page loads by <script src>.
+ * This test loads THAT FILE into the same fake-browser context as the bundle and
+ * EXECUTES it. It also drives the PAGE'S protocol: rng and srng made once,
+ * shared with the founding, then every generation stepped with the same two —
+ * which is why the numbers below are the null tables' numbers and not run()'s.
+ * `IBM.run({found})` makes fresh streams (sim/ibm.js:2373-2376) and is a
+ * different run at the same seed.
+ *
+ * Rows: docs/2026-09-13-northstar-null-tables.md:93 and :157, produced by
+ * `node tools/northstar-null-tables.js card14 page 1 15` / `16 30`. */
+
+function loadPageScripts() {
   const win = loadInFakeBrowser();
-  const I = win.IBM;
-  const E = win.Evolve;
-
-  const n = 20;
-  const seed = 5;
-  const gens = 10;
-  const opts = { ...I.DEFAULTS };
-
-  const built = I.foundTwoLineages(
-    n,
-    E.makeRng(seed),
-    I.signalRng(seed),
-    8,
-    opts,
+  const ctx = vm.createContext({ window: win, console, Math, JSON, Date });
+  vm.runInContext(
+    fs.readFileSync(path.join(__dirname, "..", "population-run.js"), "utf8"),
+    ctx,
+    { filename: "population-run.js" },
   );
-  assert.ok(built, "fixture failed");
+  return win;
+}
 
-  /* the page's loop, verbatim in structure */
-  const rng = E.makeRng(seed);
-  const srng = I.signalRng(seed);
-  let pop = built.pop;
-  const mine = [];
-  for (let g = 0; g < gens; g++) {
-    if (pop.length < 2) break;
-    const res = I.step(pop, opts, rng, g, srng);
-    mine.push({
-      sep: res.cluster ? res.cluster.separation : null,
-      ancVar: res.ancVar,
-      spread: res.spread,
-    });
-    pop = res.pop;
-  }
+const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+/* hybrid = ancestry strictly in (0.15, 0.85); experiments/hybrids-or-balance.js:87 */
+const isHybrid = (a) => a > 0.15 && a < 0.85;
 
-  /* the published path */
-  const out = I.run({ n, generations: gens, seed, found: built.pop });
+const NULL_TABLE_ROWS = [
+  { seed: 1, d: 8, realised: 8.124, fate: "one lost", hybGens: 0, ratio: null },
+  {
+    seed: 16,
+    d: 4,
+    realised: 3.849,
+    fate: "one lost",
+    hybGens: 1,
+    ratio: 0.111,
+  },
+];
 
-  assert.equal(mine.length, out.history.length, "generation counts differ");
-  out.history.forEach((h, i) => {
-    assert.equal(mine[i].ancVar, h.ancVar, `ancVar differs at generation ${i}`);
-    assert.equal(mine[i].spread, h.spread, `spread differs at generation ${i}`);
+for (const row of NULL_TABLE_ROWS) {
+  test(`population-run.js reproduces the null table: target ${row.d}, seed ${row.seed}`, () => {
+    const win = loadPageScripts();
+    const I = win.IBM;
+    const E = win.Evolve;
     assert.equal(
-      mine[i].sep,
-      h.separation,
-      `separation differs at generation ${i} — the picture has drifted from the numbers`,
+      typeof win.SandboxRun.runGenerations,
+      "function",
+      "population-run.js did not expose window.SandboxRun.runGenerations",
     );
+
+    /* the page configuration: population.html's n, generations and siteN */
+    const n = 18,
+      gens = 24;
+    const opts = { ...I.DEFAULTS, siteN: 90 };
+
+    /* the page protocol: BOTH streams made once, founding first, then stepped */
+    const rng = E.makeRng(row.seed);
+    const srng = I.signalRng(row.seed);
+    const built = I.foundTwoLineages(n, rng, srng, row.d, opts);
+    assert.ok(built, "fixture failed: nothing founded at that target");
+    const v0 = I.ancestryVar(built.pop);
+
+    const out = win.SandboxRun.runGenerations(built.pop, opts, rng, srng, gens);
+
+    assert.equal(
+      +built.realised.toFixed(3),
+      row.realised,
+      "realised separation differs from the null table",
+    );
+    assert.equal(out.frames.length, gens, "generation count differs");
+    assert.equal(
+      I.fateOf(out.final, v0, out.extinct),
+      row.fate,
+      "fate differs from the null table — the page has drifted from the numbers",
+    );
+
+    let hybGens = 0;
+    let ratio = null;
+    for (const f of out.frames) {
+      const hyb = [],
+        rest = [];
+      f.anc.forEach((a, i) => (isHybrid(a) ? hyb : rest).push(f.received[i]));
+      if (hyb.length) hybGens++;
+      if (hyb.length && rest.length) ratio = mean(hyb) / mean(rest);
+    }
+    assert.equal(hybGens, row.hybGens, "hybrid generations differ");
+    if (row.ratio === null)
+      assert.equal(ratio, null, "a receipt ratio appeared where there is none");
+    else
+      assert.equal(
+        +ratio.toFixed(3),
+        row.ratio,
+        "receipt ratio differs from the null table",
+      );
   });
+}
+
+/* ⚠️ THE CHECK THAT KEEPS THIS TEST HONEST. A loop written into the test file
+ * is the defect the test exists to catch, so the file may not call step() at
+ * all: the only loop here is the page's own. */
+test("this test file drives no loop of its own", () => {
+  const src = fs.readFileSync(__filename, "utf8");
+  const calls = [...src.matchAll(/\bI\.step\s*\(/g)];
+  assert.equal(
+    calls.length,
+    0,
+    "browser-bundle.test.js calls I.step — it is asserting against a copy of the page's loop again",
+  );
 });
 
 /* --------------------- the flowers the page draws are the model's own flowers */
