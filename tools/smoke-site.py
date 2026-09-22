@@ -18,6 +18,7 @@ Every page also asserts HTTP 200, zero console errors, zero uncaught exceptions.
 Exits non-zero on any failure, naming it.
 """
 
+import re
 import signal
 import sys
 import threading
@@ -159,6 +160,51 @@ with sync_playwright() as p:
             pass
             if changed:
                 failures.append(f"{name}: animated BEFORE #run was clicked ({changed})")
+
+            # M1 acceptance, asserted in a REAL browser before anything is clicked:
+            # eight sliders per lineage whose min/max come from Evolve.GENE_BOUNDS
+            # (never retyped - antherTheta has no GENE_BOUNDS row and wraps to
+            # [-pi, pi]), and the realised separation with level 1's target beside
+            # it. tests/sandbox-m1.test.js asserts the same things in a fake DOM;
+            # this is the real-execution control on that fixture.
+            m1 = page.evaluate(
+                """() => {
+                  const B = window.Evolve.GENE_BOUNDS;
+                  const keys = Object.keys(B).concat(["antherTheta"]);
+                  const bad = [];
+                  let n = 0;
+                  for (const li of [1, 2]) for (const k of keys) {
+                    const el = document.getElementById(`g${li}_${k}`);
+                    if (!el) { bad.push(`missing g${li}_${k}`); continue; }
+                    n++;
+                    const lo = k === "antherTheta" ? -Math.PI : B[k][0];
+                    const hi = k === "antherTheta" ?  Math.PI : B[k][1];
+                    if (+el.min !== lo || +el.max !== hi)
+                      bad.push(`g${li}_${k} range ${el.min}..${el.max}`);
+                  }
+                  const sep = document.getElementById("sReal");
+                  const tgt = document.getElementById("sTarget");
+                  return {
+                    n, bad,
+                    sep: sep ? sep.textContent : null,
+                    target: tgt ? tgt.textContent : null,
+                  };
+                }"""
+            )
+            if m1["n"] != 16 or m1["bad"]:
+                failures.append(
+                    f"{name}: M1 sliders - {m1['n']}/16 present, problems {m1['bad'][:4]}"
+                )
+            if not m1["sep"] or not re.match(r"^\d+\.\d+$", m1["sep"]):
+                failures.append(
+                    f"{name}: no realised separation at load (read {m1['sep']!r})"
+                )
+            if not m1["target"] or "reach 8" not in m1["target"]:
+                failures.append(
+                    f"{name}: level 1's target does not read beside the separation "
+                    f"at load (read {m1['target']!r})"
+                )
+
             pre = page.evaluate(SHOT)
             page.click("#run")
             try:

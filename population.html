@@ -189,6 +189,49 @@
           grid-template-columns: 1fr;
         }
       }
+      .genes {
+        display: grid;
+        grid-template-columns: 1fr 1.25fr 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+      @media (max-width: 1000px) {
+        .genes {
+          grid-template-columns: 1fr;
+        }
+      }
+      .genes h2 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin: 0 0 8px;
+        letter-spacing: 0.02em;
+      }
+      .gene {
+        margin-bottom: 7px;
+      }
+      .gene label {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .gene input[type="range"] {
+        width: 100%;
+      }
+      .gene .val {
+        font-variant-numeric: tabular-nums;
+        color: var(--ink);
+      }
+      .beeCol .stats {
+        gap: 18px;
+        margin-top: 10px;
+      }
+      .tile-target b {
+        color: var(--gold);
+      }
+      .band {
+        font-size: 12px;
+        color: var(--ink-2);
+      }
     </style>
   </head>
   <body>
@@ -214,8 +257,12 @@
             ><input type="number" id="seed" value="3" />
           </div>
           <div class="ctl">
+            <label for="useD">found at target d</label
+            ><input type="checkbox" id="useD" />
+          </div>
+          <div class="ctl">
             <label for="d">separation d</label
-            ><input type="number" id="d" value="8" step="1" />
+            ><input type="number" id="d" value="8" step="1" disabled />
           </div>
           <div class="ctl">
             <label for="n">flowers</label
@@ -243,6 +290,77 @@
           <button id="play" disabled>Play</button>
           <span id="status" class="note" aria-live="polite"></span>
         </div>
+      </section>
+
+      <section class="panel" aria-label="Lineage shapes">
+        <div class="genes">
+          <div>
+            <h2 id="h-lin1">lineage 1</h2>
+            <div id="genes1" role="group" aria-labelledby="h-lin1"></div>
+            <p class="note warn" id="touch1"></p>
+          </div>
+
+          <div class="beeCol">
+            <canvas
+              id="bodyMap"
+              width="620"
+              height="240"
+              role="img"
+              aria-label="The animal's body: position along the body left to right, around the body top to bottom, with the named regions shaded. Both lineages' anther and stigma sites are drawn live from the shapes on either side."
+            ></canvas>
+            <p id="bodyLive" class="visually-hidden" aria-live="polite"></p>
+            <p class="note" style="margin-top: 6px">
+              computed from the shapes above, not settable
+            </p>
+            <div class="row">
+              <div class="ctl">
+                <label for="reach">reach — bee, fixed for the run</label
+                ><input
+                  type="range"
+                  id="reach"
+                  min="0.4"
+                  max="1.2"
+                  step="0.01"
+                />
+              </div>
+              <div class="ctl">
+                <label for="bodyLen">body length — bee, fixed for the run</label
+                ><input
+                  type="range"
+                  id="bodyLen"
+                  min="1"
+                  max="2.6"
+                  step="0.01"
+                />
+              </div>
+            </div>
+            <div class="stats">
+              <div class="stat">
+                <b id="sReal">—</b><span>realised separation</span>
+                <span class="band" id="sRealBand"></span>
+              </div>
+              <div class="stat tile-target">
+                <b id="sTarget">reach 8</b><span>level 1 target</span>
+                <span class="band">the goal, not a measurement</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h2 id="h-lin2">lineage 2</h2>
+            <div id="genes2" role="group" aria-labelledby="h-lin2"></div>
+            <p class="note warn" id="touch2"></p>
+          </div>
+        </div>
+        <p class="note" id="herkNote">
+          There is no stigma control: the model derives it from the anther.
+          <code>toFlower</code> sets <code>stigmaT</code> to
+          <code>Math.min(0.92, antherT + HERKOGAMY)</code> with
+          <code>HERKOGAMY</code> 0.05 (<code>sim/evolve.js:139</code>) — the
+          clamp at 0.92 included — and <code>stigmaTheta</code> to
+          <code>antherTheta</code>. There is no placement control of any kind:
+          placement is an outcome of two geometries meeting, never a setting.
+        </p>
       </section>
 
       <canvas
@@ -316,6 +434,7 @@
     </main>
 
     <script src="sim/browser-bundle.js"></script>
+    <script src="population-run.js"></script>
     <script>
       const I = window.IBM,
         P = window.Placement,
@@ -324,7 +443,11 @@
       const cv = $("field"),
         ctx = cv.getContext("2d");
       const mapC = $("map").getContext("2d");
-      const bee = P.DEFAULT_BEE;
+      const bodyC = $("bodyMap").getContext("2d");
+      /* ⚠️ A COPY, not DEFAULT_BEE itself. The two bee sliders set the run's
+       * parameter object; writing through to the module's own object would
+       * change the bee for every other consumer of the bundle in the page. */
+      const bee = { ...P.DEFAULT_BEE };
       const TAU = Math.PI * 2;
 
       /* ---------------------------------------------------------- vector ops */
@@ -765,98 +888,312 @@
         }
       }
 
+      /* ============================================================ M1: the
+       * sandbox's two hand-set genomes, their sliders, and the body map.
+       *
+       * ⚠️ THE BOUNDS ARE READ FROM THE MODEL, NEVER RETYPED. A number typed
+       * into this page is a number that can silently disagree with
+       * Evolve.GENE_BOUNDS after an engine change, and a slider whose range is
+       * wrong is a control that looks right and lies. `antherTheta` is the one
+       * gene with no row in GENE_BOUNDS: it WRAPS, to [-pi, pi]
+       * (`wrapPi`, sim/evolve.js:105-110), and both endpoints are kept. */
+      const ANGLE_BOUNDS = [-Math.PI, Math.PI];
+      const boundsOf = (k) =>
+        k === "antherTheta" ? ANGLE_BOUNDS : E.GENE_BOUNDS[k];
+      /* ALL_KEYS is GENE_KEYS + antherTheta + signal (sim/ibm.js:73); `signal`
+       * is the advertisement and is not a shape, so it gets no slider. */
+      const GENE_ORDER = I.ALL_KEYS.filter((k) => k !== I.SIGNAL_GENE);
+      const GENE_LABEL = {
+        axisLen: "tube length",
+        mouthR: "mouth radius",
+        throatR: "throat radius",
+        curve: "tube curvature",
+        polarity: "symmetry (radial to bilateral)",
+        antherT: "anther depth",
+        antherProject: "anther projection",
+        antherTheta: "anther angle around the tube",
+      };
+
+      /* Level 1's start genome, fixed: the one randomGenome(makeRng(1)) draws,
+       * with `signal` 0.5, for BOTH lineages. Two identical lineages is a
+       * realised separation of zero, which is the point — the gradient is
+       * there from load and the player moves one away from the other. */
+      const START_GENOME = { ...E.randomGenome(E.makeRng(1)), signal: 0.5 };
+      const LINEAGE = [{ ...START_GENOME }, { ...START_GENOME }];
+
+      /* §6 band for the realised separation. Each entry carries the
+       * configuration it came from, so a correction to a document lands here.
+       * Source: docs/2026-08-04-secondary-contact.md:36-40,47-50 (fates) and
+       * the page-config probe (realised values of those same foundings);
+       * N = 30, 35 generations, siteN 160, 5 seeds per cell. */
+      const SEPARATION_BANDS = [
+        { lo: 3.898, hi: 4.027, word: "fused 5 of 5" },
+        { lo: 7.663, hi: 8.163, word: "one lost 5 of 5" },
+      ];
+      const separationBand = (d) => {
+        if (d === null || !Number.isFinite(d)) return "not measured";
+        for (const b of SEPARATION_BANDS)
+          if (d >= b.lo && d <= b.hi) return b.word;
+        return "not measured";
+      };
+
+      /* Level 1's target, printed beside the realised value from load. It is a
+       * GOAL, not a measurement, and it is not the cluster-separation tile:
+       * that is res.cluster.separation, a ratio with an unbounded denominator
+       * (sim/ibm.js:920). The two never share a band. */
+      const LEVEL1_TARGET = 8;
+
+      /* The founding placement recipe, exactly as foundTwoLineages uses it
+       * (sim/ibm.js:563-564): sitesOf on a homozygote, then placementOf. */
+      const placeOf = (g, opts) =>
+        I.sitesOf([{ h1: g, h2: g }], opts, 0).map(I.placementOf)[0];
+
+      function sandboxOpts(extra) {
+        return { ...I.DEFAULTS, bee, ...(extra || {}) };
+      }
+
+      /* The realised separation between the two hand-set genomes, computed as
+       * foundTwoLineages computes `realised` — dist(p0, p), sim/ibm.js:575. */
+      function realisedSeparation() {
+        const opts = sandboxOpts();
+        const a = placeOf(LINEAGE[0], opts);
+        const b = placeOf(LINEAGE[1], opts);
+        if (!a || !b) return null;
+        return I.dist(a, b);
+      }
+
+      /* -------------------------------------------------- the gene sliders */
+      function buildGenePanel(li) {
+        const host = $("genes" + (li + 1));
+        host.innerHTML = "";
+        for (const k of GENE_ORDER) {
+          const [lo, hi] = boundsOf(k);
+          const id = "g" + (li + 1) + "_" + k;
+          const wrap = document.createElement("div");
+          wrap.className = "ctl gene";
+          const lab = document.createElement("label");
+          lab.setAttribute("for", id);
+          const name = document.createElement("span");
+          name.textContent = GENE_LABEL[k];
+          const val = document.createElement("span");
+          val.className = "val";
+          val.id = id + "_val";
+          lab.appendChild(name);
+          lab.appendChild(val);
+          /* ⚠️ A SLIDER THAT MOVES NOTHING MUST SAY SO. `curve` sweeps its whole
+           * range without shifting the anther dot by a thousandth of a body
+           * distance at this bee — measured, at three base genomes. A control
+           * that silently does nothing reads as a broken page; a control
+           * labelled "no effect at this bee" is a finding. The label is
+           * computed from the CURRENT genome and the CURRENT bee, never typed. */
+          const eff = document.createElement("span");
+          eff.className = "band";
+          eff.id = id + "_eff";
+          const inp = document.createElement("input");
+          inp.setAttribute("type", "range");
+          inp.setAttribute("id", id);
+          inp.setAttribute("min", String(lo));
+          inp.setAttribute("max", String(hi));
+          inp.setAttribute("step", String((hi - lo) / 200));
+          inp.setAttribute("value", String(LINEAGE[li][k]));
+          inp.setAttribute("data-gene", k);
+          inp.setAttribute("data-lineage", String(li));
+          inp.value = String(LINEAGE[li][k]);
+          inp.oninput = (e) => {
+            LINEAGE[li][k] = +e.target.value;
+            /* only this lineage's labels are re-swept: a sweep is 16 placement
+             * computations and the other panel cannot have changed */
+            refreshSandbox(li);
+          };
+          wrap.appendChild(lab);
+          wrap.appendChild(inp);
+          wrap.appendChild(eff);
+          host.appendChild(wrap);
+        }
+      }
+
+      /* ------------------------------------------------------ the body map */
+      const BODY_X = (s, W) => 46 + ((s + 0.08) / 1.16) * (W - 46 - 12);
+      const BODY_Y = (phi, H) => 12 + ((phi + Math.PI) / TAU) * (H - 12 - 26);
+      const LINEAGE_COL = ["#e8b23a", "#cc6699"];
+
+      function drawBodyMap() {
+        const W = 620,
+          H = 240;
+        bodyC.clearRect(0, 0, W, H);
+        bodyC.font = "10px system-ui";
+        bee.regions.forEach((r, i) => {
+          bodyC.fillStyle =
+            i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.014)";
+          bodyC.fillRect(
+            BODY_X(r.s0, W),
+            12,
+            BODY_X(r.s1, W) - BODY_X(r.s0, W),
+            H - 12 - 26,
+          );
+          bodyC.fillStyle = "#6a7078";
+          bodyC.fillText(r.name, BODY_X(r.s0, W) + 4, H - 26 + 13);
+        });
+
+        const opts = sandboxOpts();
+        const lines = [];
+        for (let li = 0; li < 2; li++) {
+          const f = E.toFlower(LINEAGE[li]);
+          /* The same call sim/evolve.js:155-165 already makes. A distribution
+           * with no hits is the model saying "never touches the animal"
+           * (sim/evolve.js:165) — no dot is drawn and the panel says so. */
+          const a = P.placementDistribution(f, bee, {
+            n: opts.siteN,
+            seed: 1000,
+            part: "anther",
+          });
+          const s = P.placementDistribution(f, bee, {
+            n: opts.siteN,
+            seed: 1001,
+            part: "stigma",
+          });
+          const touches = a.hits.length > 0 && s.hits.length > 0;
+          $("touch" + (li + 1)).textContent = touches
+            ? ""
+            : "this flower never touches the bee";
+          if (!touches) {
+            lines.push(`lineage ${li + 1} never touches the bee`);
+            continue;
+          }
+          const col = LINEAGE_COL[li];
+          for (const [hits, r, fill] of [
+            [a.hits, 2.0, col],
+            [s.hits, 1.6, "#8fd694"],
+          ]) {
+            bodyC.fillStyle = fill;
+            bodyC.globalAlpha = 0.35;
+            for (const h of hits) {
+              bodyC.beginPath();
+              bodyC.arc(BODY_X(h.s, W), BODY_Y(h.phi, H), r, 0, TAU);
+              bodyC.fill();
+            }
+            bodyC.globalAlpha = 1;
+          }
+          /* the mean anther site — the point the realised separation measures */
+          const p = placeOf(LINEAGE[li], opts);
+          if (p) {
+            bodyC.fillStyle = col;
+            bodyC.beginPath();
+            bodyC.arc(BODY_X(p.s, W), BODY_Y(p.phi, H), 6, 0, TAU);
+            bodyC.fill();
+            lines.push(
+              `lineage ${li + 1} anther at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it`,
+            );
+          }
+        }
+        $("bodyLive").textContent = lines.join(". ");
+      }
+
+      /* ⚠️ MEASURED, NOT ASSERTED. For each gene, the anther dot at the gene's
+       * two bounds (antherTheta: 0 and pi, since it wraps and the two ends of
+       * [-pi, pi] are the SAME point), everything else held at the lineage's
+       * current genome, at the current bee — the founding placement recipe,
+       * sim/ibm.js:563-564. The distance between those two dots is what the
+       * slider is worth. A gene whose bounds put the flower off the animal
+       * entirely (antherT at 0.85 on some genomes) has no distance at all and
+       * is labelled for that instead. */
+      const SWEEP_EPS = 1e-3;
+      function sweepMagnitude(li, k, opts) {
+        const [lo, hi] = k === "antherTheta" ? [0, Math.PI] : boundsOf(k);
+        const a = placeOf({ ...LINEAGE[li], [k]: lo }, opts);
+        const b = placeOf({ ...LINEAGE[li], [k]: hi }, opts);
+        if (!a || !b) return null;
+        return I.dist(a, b);
+      }
+      function sweepLabels(li) {
+        const opts = sandboxOpts();
+        for (const k of GENE_ORDER) {
+          const el = $("g" + (li + 1) + "_" + k + "_eff");
+          if (!el) continue;
+          const d = sweepMagnitude(li, k, opts);
+          el.textContent =
+            d === null
+              ? "a bound puts this flower off the bee"
+              : d < SWEEP_EPS
+                ? "no effect at this bee"
+                : "";
+        }
+      }
+
+      function refreshSandbox(only) {
+        for (let li = 0; li < 2; li++)
+          for (const k of GENE_ORDER) {
+            const el = $("g" + (li + 1) + "_" + k + "_val");
+            if (el) el.textContent = LINEAGE[li][k].toFixed(3);
+          }
+        const d = realisedSeparation();
+        $("sReal").textContent = d === null ? "—" : d.toFixed(3);
+        $("sRealBand").textContent = separationBand(d);
+        if (only === undefined || only === 0) sweepLabels(0);
+        if (only === undefined || only === 1) sweepLabels(1);
+        drawBodyMap();
+      }
+
+      function initSandbox() {
+        buildGenePanel(0);
+        buildGenePanel(1);
+        $("reach").value = String(bee.reach);
+        $("reach").setAttribute("value", String(bee.reach));
+        $("bodyLen").value = String(bee.bodyLen);
+        $("bodyLen").setAttribute("value", String(bee.bodyLen));
+        $("reach").oninput = (e) => {
+          bee.reach = +e.target.value;
+          refreshSandbox();
+        };
+        $("bodyLen").oninput = (e) => {
+          bee.bodyLen = +e.target.value;
+          refreshSandbox();
+        };
+        $("sTarget").textContent = "reach " + LEVEL1_TARGET;
+        $("useD").onchange = (e) => {
+          $("d").disabled = !e.target.checked;
+        };
+        refreshSandbox();
+      }
+
+      /* DOM reads, the founding, and the call. The loop itself lives in
+       * population-run.js so tests/browser-bundle.test.js can EXECUTE it
+       * rather than assert against a copy written into the test. */
       function buildRun() {
         const n = Math.max(4, +$("n").value | 0);
         const seed = +$("seed").value | 0;
         const gens = Math.max(2, +$("gens").value | 0);
-        const targetD = +$("d").value;
         const randomMating = $("mode").value === "random";
+        const useD = $("useD").checked;
 
-        const opts = { ...I.DEFAULTS, randomMating };
+        const opts = sandboxOpts({ randomMating });
+        /* ONE rng protocol, the page's: both streams made once, the founding
+         * consumes its draws, every generation is driven with the same two. */
         const rng = E.makeRng(seed);
         const srng = I.signalRng(seed);
-        const built = I.foundTwoLineages(n, rng, srng, targetD, opts);
-        if (!built)
-          throw new Error(
-            "could not found two lineages at that separation — try a smaller d or another seed",
-          );
 
-        /* ⚠️ The generation loop is driven HERE rather than through run(), because
-         * run() returns only summary history and this page needs every generation's
-         * GENOMES to draw the flowers. It is the same loop — same step(), same rng
-         * order — and tests/browser-bundle.test.js asserts it reproduces run()
-         * exactly, so the picture cannot drift from the published numbers. */
-        let pop = built.pop;
-        const out = [];
-        for (let g = 0; g < gens; g++) {
-          if (pop.length < 2) break;
-          const anc = pop.map((ind) => (ind.anc === undefined ? 0 : ind.anc));
-          /* ⚠️ THE BOUT ITSELF, which is the thing this page exists to show and
-           * the thing it could not previously show. `logBout` records a WINDOW
-           * of real visits — which plant, where on the body the stigma swept,
-           * which grains it took and from whom. It draws no random numbers, so
-           * the generation is identical with it on; asserted by
-           * tests/bout-log.test.js, which was seen to fail against a version
-           * that did draw one.
-           *
-           * The window starts well into the bout on purpose: at visit 0 the
-           * animal is empty by construction, so a window at the start would
-           * honestly show a bee that delivers nothing. */
-          const res = I.step(
-            pop,
-            { ...opts, logBout: { from: BOUT_FROM, count: BOUT_N } },
-            rng,
-            g,
-            srng,
-          );
-          out.push({
-            pop,
-            anc,
-            flowers: pop.map((ind) => E.toFlower(I.shapeOf(ind))),
-            sites: I.sitesOf(pop, opts, g),
-            places: res.places,
-            sep: res.cluster ? res.cluster.separation : 0,
-            ancVar: res.ancVar,
-            log: res.visitLog || [],
-            carried: replayLoad(res.visitLog || []),
-            visits: opts.visits,
-          });
-          pop = res.pop;
-        }
-        return { gens: out, realised: built.realised, n };
-      }
-
-      /* Which slice of the bout gets logged. See the note in buildRun. */
-      const BOUT_FROM = 600,
-        BOUT_N = 60;
-
-      /*
-       * Replay the logged window to get what the animal is CARRYING after each
-       * visit — the pollen on its body, which is what the renderer draws.
-       *
-       * ⚠️ THIS IS A PARTIAL LOAD AND THE PAGE SAYS SO. The log truncates the
-       * per-visit grain detail (see LOG_GRAINS in sim/carryover.js) and the
-       * window opens mid-bout, so grains picked up before it started are not in
-       * here — a stigma taking one of those finds nothing to remove and the
-       * removal is skipped. The COUNTS drawn beside the animal come from the
-       * log's exact tallies rather than from this reconstruction, so the
-       * numbers are the model's even though the specks are a sample.
-       */
-      function replayLoad(log) {
-        let load = [];
-        const out = [];
-        for (const rec of log) {
-          for (const g of rec.took) {
-            const i = load.findIndex(
-              (x) => x.sp === g.sp && x.s === g.s && x.phi === g.phi,
+        let found, realised;
+        if (useD) {
+          const built = I.foundTwoLineages(n, rng, srng, +$("d").value, opts);
+          if (!built)
+            throw new Error(
+              "could not found two lineages at that separation — try a smaller d or another seed",
             );
-            if (i >= 0) load.splice(i, 1);
-          }
-          for (const g of rec.gave)
-            load.push({ s: g.s, phi: g.phi, sp: rec.j, ok: g.ok });
-          out.push(load.slice(-90));
+          found = built.pop;
+          realised = built.realised;
+        } else {
+          found = window.SandboxRun.foundFromGenomes(LINEAGE, n, rng, srng);
+          realised = realisedSeparation();
         }
-        return out;
+
+        const out = window.SandboxRun.runGenerations(
+          found,
+          opts,
+          rng,
+          srng,
+          gens,
+        );
+        return { gens: out.frames, final: out.final, realised, n };
       }
 
       // ----------------------------------------------------------- rendering
@@ -1036,7 +1373,7 @@
         );
         ctx.fillStyle = "#6d737b";
         ctx.fillText(
-          `a ${LOG.length}-visit window from visit ${BOUT_FROM} — the model's own visit order, not a tour`,
+          `a ${LOG.length}-visit window from visit ${window.SandboxRun.BOUT_FROM} — the model's own visit order, not a tour`,
           14,
           cv.height - 13,
         );
@@ -1141,7 +1478,7 @@
             $("scrub").disabled = false;
             $("play").disabled = false;
             $("status").textContent =
-              `realised separation ${R.realised.toFixed(2)}` +
+              `realised separation ${R.realised === null ? "never touches the bee" : R.realised.toFixed(2)}` +
               ($("mode").value === "random" ? " · random-mating null" : "");
             const drawn = GENS.map((G) => G.places.filter(Boolean).length);
             const mis = GENS.filter(
@@ -1215,6 +1552,7 @@
       };
       cv.onpointerup = () => (drag = null);
 
+      initSandbox();
       $("status").textContent = "press Run";
     </script>
     <footer

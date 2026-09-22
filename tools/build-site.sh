@@ -21,8 +21,11 @@ OUT="site"
 #   visit.html      -> sim/placement.js
 #   greybox.html    -> sim/placement.js
 #   population.html -> sim/browser-bundle.js
+#   population.html -> population-run.js (its own generation loop, M1)
 PLAYABLES=(visit.html population.html greybox.html)
 SIM_MODULES=(sim/placement.js sim/browser-bundle.js)
+# Page scripts that are not sim modules: shipped beside the page that loads them.
+PAGE_SCRIPTS=(population-run.js)
 
 rm -rf "$OUT"
 mkdir -p "$OUT/sim"
@@ -33,6 +36,14 @@ cp tools/site-index.html "$OUT/index.html"
 for f in "${PLAYABLES[@]}"; do
 	[ -f "$f" ] || {
 		echo "build-site: missing playable $f" >&2
+		exit 1
+	}
+	cp "$f" "$OUT/$f"
+done
+
+for f in "${PAGE_SCRIPTS[@]}"; do
+	[ -f "$f" ] || {
+		echo "build-site: missing page script $f" >&2
 		exit 1
 	}
 	cp "$f" "$OUT/$f"
