@@ -212,14 +212,19 @@ test("step() surfaces the bout log without disturbing the generation", () => {
  * renderer would honestly show a bee touring the patch and delivering nothing,
  * which is indistinguishable by eye from a broken replay. Hard-coding the same
  * numbers here would test this file's opinion of the page rather than the page.
+ *
+ * M1 moved the page's generation loop, and with it these constants, out of
+ * population.html's inline script into population-run.js, which the page loads
+ * by <script src>. The file the constants are read from moved; the rule that
+ * they are read rather than retyped did not.
  */
 test("the page's own bout window contains a real transfer", () => {
-  const html = fs.readFileSync(
-    path.join(__dirname, "..", "population.html"),
+  const src = fs.readFileSync(
+    path.join(__dirname, "..", "population-run.js"),
     "utf8",
   );
-  const from = html.match(/BOUT_FROM\s*=\s*(\d+)/);
-  const count = html.match(/BOUT_N\s*=\s*(\d+)/);
+  const from = src.match(/BOUT_FROM\s*=\s*(\d+)/);
+  const count = src.match(/BOUT_N\s*=\s*(\d+)/);
   assert.ok(from && count, "could not find the page's bout window constants");
 
   const pop = fixture(24, 3);
