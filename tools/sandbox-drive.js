@@ -62,7 +62,9 @@ function runPage(settings) {
   }
   for (const k of ["seed", "d", "n", "gens", "siteN"])
     if (settings[k] !== undefined) set(k, settings[k]);
-  doc.getElementById("useD").checked = !!settings.useD;
+  /* the box is left as the level loaded it unless a setting names it */
+  if (settings.useD !== undefined)
+    doc.getElementById("useD").checked = !!settings.useD;
   set("mode", settings.random ? "random" : "real");
   /* M3b: the second level-5 run loads the width-locus object by the page's own
    * button, then any option control is set by id (a checkbox by boolean). */
@@ -125,6 +127,8 @@ function runPage(settings) {
     hybOf: hyb ? +hyb[2] : null,
     ratio: !ratio ? null : ratio[1] === "no" ? null : ratio[1],
     realised: realised ? realised[1] : null,
+    useD: doc.getElementById("useD").checked,
+    d: doc.getElementById("d").value,
     cards,
     controls,
     level: doc.getElementById("level")
