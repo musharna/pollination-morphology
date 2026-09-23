@@ -85,6 +85,9 @@ class FakeElement {
   getAttribute(k) {
     return k in this.attrs ? this.attrs[k] : null;
   }
+  removeAttribute(k) {
+    delete this.attrs[k];
+  }
   hasAttribute(k) {
     return k in this.attrs;
   }

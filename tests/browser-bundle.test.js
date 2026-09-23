@@ -223,7 +223,12 @@ for (const row of NULL_TABLE_ROWS) {
     );
     assert.equal(out.frames.length, gens, "generation count differs");
     assert.equal(
-      I.fateOf(out.final, v0, out.extinct),
+      out.stalledGens,
+      0,
+      "population-run.js counts stalled generations the tool does not",
+    );
+    assert.equal(
+      I.fateOf(out.final, v0, out.extinct, out.stalledGens > 0),
       row.fate,
       "fate differs from the null table — the page has drifted from the numbers",
     );

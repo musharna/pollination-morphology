@@ -232,6 +232,26 @@
         font-size: 12px;
         color: var(--ink-2);
       }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .card {
+        border: 1px solid rgba(128, 128, 128, 0.35);
+        border-radius: 6px;
+        padding: 8px 10px;
+      }
+      .card p {
+        margin: 4px 0 0;
+      }
+      .card[data-state="open"] {
+        border-color: var(--bad);
+      }
+      .card[data-state="grey"] {
+        opacity: 0.55;
+      }
     </style>
   </head>
   <body>
@@ -271,6 +291,10 @@
           <div class="ctl">
             <label for="gens">generations</label
             ><input type="number" id="gens" value="24" />
+          </div>
+          <div class="ctl">
+            <label for="siteN">contact sites per flower (siteN)</label
+            ><input type="number" id="siteN" value="90" />
           </div>
           <div class="ctl">
             <label for="mode">mating</label>
@@ -403,8 +427,47 @@
           <div class="stat">
             <b id="sAnc">—</b><span>ancestry variance</span>
           </div>
-          <div class="stat"><b id="sFate">—</b><span>fate</span></div>
+          <div class="stat">
+            <b id="sHyb">—</b><span>hybrid fraction</span>
+            <span class="band" id="sHybBand"></span>
+          </div>
+          <div class="stat">
+            <b id="sGap">—</b><span>gap occupancy</span>
+            <span class="band" id="sGapBand"></span>
+          </div>
+          <div class="stat">
+            <b id="sFate">—</b><span>fate (the run's last offspring)</span>
+            <span class="band" id="sFateBand"></span>
+          </div>
         </div>
+        <p class="band" id="sAncBand"></p>
+        <section aria-label="Why you failed" id="cards" class="cards">
+          <h2 class="visually-hidden">Why you failed</h2>
+          <div class="card" id="card1" data-state="grey" role="status" aria-label="card 1, hybrids pay from geometry">
+            <b>1. hybrids pay from geometry</b> <span id="card1State">grey</span>
+            <p id="card1Text" class="band">run to read this card</p>
+          </div>
+          <div class="card" id="card4" data-state="grey" role="status" aria-label="card 4, secondary contact excludes">
+            <b>4. secondary contact excludes</b> <span id="card4State">grey</span>
+            <p id="card4Text" class="band">run to read this card</p>
+          </div>
+          <div class="card" id="card2" data-state="grey" role="status" aria-label="card 2, the shared pollinator is the bridge (built in M3)">
+            <b>2. the shared pollinator is the bridge</b> <span id="card2State">grey</span>
+            <p id="card2Text" class="band">built in M3</p>
+          </div>
+          <div class="card" id="card3" data-state="grey" role="status" aria-label="card 3, preferring the rare defeats itself (built in M3)">
+            <b>3. preferring the rare defeats itself</b> <span id="card3State">grey</span>
+            <p id="card3Text" class="band">built in M3</p>
+          </div>
+          <div class="card" id="card5" data-state="grey" role="status" aria-label="card 5, a floor spread thin is worse than a flat one (built in M3)">
+            <b>5. a floor spread thin is worse than a flat one</b> <span id="card5State">grey</span>
+            <p id="card5Text" class="band">built in M3</p>
+          </div>
+          <div class="card" id="card6" data-state="grey" role="status" aria-label="card 6, flowering width evolves wide (built in M3)">
+            <b>6. flowering width evolves wide</b> <span id="card6State">grey</span>
+            <p id="card6Text" class="band">built in M3</p>
+          </div>
+        </section>
       </section>
 
       <div class="side">
@@ -823,6 +886,7 @@
       }
 
       // ------------------------------------------------------------ the model
+      let RESULT = null; // the run's result: fate on the final offspring, quantities, cards
       let GENS = []; // per generation: {pop, flowers, bases, sites, anc, places, sep, ancVar}
       let frame = 0,
         playing = false,
@@ -1163,16 +1227,17 @@
         const n = Math.max(4, +$("n").value | 0);
         const seed = +$("seed").value | 0;
         const gens = Math.max(2, +$("gens").value | 0);
+        const siteN = Math.max(4, +$("siteN").value | 0);
         const randomMating = $("mode").value === "random";
         const useD = $("useD").checked;
 
-        const opts = sandboxOpts({ randomMating });
+        const opts = sandboxOpts({ randomMating, siteN });
         /* ONE rng protocol, the page's: both streams made once, the founding
          * consumes its draws, every generation is driven with the same two. */
         const rng = E.makeRng(seed);
         const srng = I.signalRng(seed);
 
-        let found, realised;
+        let found, realised, p1, p2;
         if (useD) {
           const built = I.foundTwoLineages(n, rng, srng, +$("d").value, opts);
           if (!built)
@@ -1181,10 +1246,23 @@
             );
           found = built.pop;
           realised = built.realised;
+          p1 = placeOf(built.gA, opts);
+          p2 = placeOf(built.gB, opts);
         } else {
+          /* ⚠️ A FOUNDER THAT NEVER TOUCHES THE BEE BLOCKS THE RUN (spec §3
+           * item 5): its placement is null, gapOccupancy with a null reference
+           * throws, and the run would be scored on a pair the bee never
+           * served. The page declines to found. */
+          p1 = placeOf(LINEAGE[0], opts);
+          p2 = placeOf(LINEAGE[1], opts);
+          if (!p1 || !p2)
+            throw new Error(
+              `this flower never touches the bee (lineage ${!p1 ? 1 : 2}) — nothing founded`,
+            );
           found = window.SandboxRun.foundFromGenomes(LINEAGE, n, rng, srng);
-          realised = realisedSeparation();
+          realised = I.dist(p1, p2);
         }
+        const v0 = I.ancestryVar(found);
 
         const out = window.SandboxRun.runGenerations(
           found,
@@ -1193,7 +1271,46 @@
           srng,
           gens,
         );
-        return { gens: out.frames, final: out.final, realised, n };
+        /* The fate is read off the FINAL offspring — the population the last
+         * step returned, which the frames (parents) drop — with the engine's
+         * own predicate and its strings verbatim, as the null tables read it
+         * (tools/northstar-null-tables.js run()). */
+        const fate = I.fateOf(
+          out.final,
+          v0,
+          out.extinct,
+          out.stalledGens > 0,
+        );
+        const q = window.SandboxRun.quantities(out.frames);
+        const optionKeys = Object.keys(opts).filter(
+          (k) =>
+            !["bee", "siteN", "randomMating"].includes(k) &&
+            opts[k] !== I.DEFAULTS[k],
+        );
+        const sig = {
+          n,
+          gens,
+          siteN,
+          randomMating,
+          options: optionKeys,
+          defaultBee:
+            bee.reach === P.DEFAULT_BEE.reach &&
+            bee.bodyLen === P.DEFAULT_BEE.bodyLen,
+        };
+        const cards = window.SandboxRun.cardStates(sig, fate, q);
+        return {
+          gens: out.frames,
+          final: out.final,
+          realised,
+          n,
+          v0,
+          fate,
+          stalledGens: out.stalledGens,
+          q,
+          cards,
+          p1,
+          p2,
+        };
       }
 
       // ----------------------------------------------------------- rendering
@@ -1426,13 +1543,42 @@
         });
       }
 
-      function fateOf(g) {
-        const G = GENS[g],
-          v0 = GENS[0].ancVar;
-        const m = G.anc.reduce((a, b) => a + b, 0) / G.anc.length;
-        if (G.ancVar > 0.4 * v0) return ["HELD", "var(--ok)"];
-        if (m < 0.15 || m > 0.85) return ["one lineage lost", "var(--bad)"];
-        return ["FUSED", "var(--bad)"];
+      /* The run's result: set once per run, not per scrubbed frame. The fate
+       * is the engine's (IBM.fateOf, five strings verbatim) on the FINAL
+       * offspring; the page has no fate rule of its own. */
+      function showResult(R) {
+        const fin = R.final.map((i) => (i.anc === undefined ? 0 : i.anc));
+        const lo = fin.filter((a) => a <= 0.15).length,
+          hi = fin.filter((a) => a >= 0.85).length,
+          mid = fin.length - lo - hi;
+        $("sFate").textContent = R.fate;
+        $("sFate").style.color = R.fate === "HELD" ? "var(--ok)" : "var(--bad)";
+        $("sFateBand").textContent =
+          `${R.stalledGens} of ${GENS.length} generations recruited nothing` +
+          ` · labels: ${lo} lineage 1, ${hi} lineage 2, ${mid} mixed` +
+          ` · HELD needs ancestry variance above 0.4 x founding (sim/ibm.js fateOf)`;
+        $("sAncBand").textContent =
+          `ancestry variance: founding ${R.v0.toFixed(4)}; HELD line ${(0.4 * R.v0).toFixed(4)} (0.4 x founding, the engine's predicate); "fused or lost" at 0.000`;
+        const cfgLine = (c) =>
+          `N ${c.n}, ${c.gens} generations, siteN ${c.siteN}`;
+        const C = window.SandboxRun.CONFIGS;
+        const ratio =
+          R.q.ratio === null ? "no generation held both" : R.q.ratio.toFixed(3);
+        $("sHybBand").textContent =
+          `hybrids among the parents in ${R.q.hybGens} of ${GENS.length} generations · receipt ratio ${ratio}` +
+          ` · "hybrids received less than the rest" below ${window.SandboxRun.CARD1_EDGE} (null edge, ${cfgLine(C.page)}, placement-mediated; grey at any other)` +
+          ` · the experiment's 0.809 [0.706, 0.912] is a different statistic (both sex roles, docs/2026-08-02-hybrid-placement.md)`;
+        $("sGapBand").textContent =
+          R.p1 && R.p2
+            ? `a = 1 null edges: peak 0.434, mean 0.170; random-mating lead edge 1 (null tables, d = 8, ${cfgLine(C.level)}); document arm means: peak 0.129, mean 0.024 no bias`
+            : "unavailable: a founder never touches the bee";
+        for (const k of Object.keys(R.cards)) {
+          const el = $(k);
+          if (!el) continue;
+          el.setAttribute("data-state", R.cards[k].state);
+          $(k + "State").textContent = R.cards[k].state;
+          $(k + "Text").textContent = R.cards[k].text;
+        }
       }
 
       function show(g) {
@@ -1442,9 +1588,13 @@
         $("sGen").textContent = `${g} / ${GENS.length - 1}`;
         $("sSep").textContent = G.sep.toFixed(2);
         $("sAnc").textContent = G.ancVar.toFixed(4);
-        const [w, c] = fateOf(g);
-        $("sFate").textContent = w;
-        $("sFate").style.color = c;
+        const w = RESULT ? RESULT.fate : "—";
+        const hyb = G.anc.filter(window.SandboxRun.isHybrid).length / G.anc.length;
+        $("sHyb").textContent = hyb.toFixed(3) + (hyb > 0 ? " hybrids present" : "");
+        $("sGap").textContent =
+          RESULT && RESULT.p1 && RESULT.p2
+            ? I.gapOccupancy(G.places, RESULT.p1, RESULT.p2).gap.toFixed(3)
+            : "unavailable";
         $("scrub").value = g;
         /* Text mirror of the field for assistive tech — the same readouts as
          * the stat tiles, nothing computed here. Updated per generation, not
@@ -1466,19 +1616,38 @@
         raf = null;
       }
 
+      /* A new run clears the last one's result first, so a run that fails to
+       * found never leaves the previous fate and cards standing beside it. */
+      function clearResult() {
+        RESULT = null;
+        $("sFate").textContent = "—";
+        $("sFate").style.color = "";
+        for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])
+          $(id).textContent = "";
+        for (const k of ["card1", "card2", "card3", "card4", "card5", "card6"]) {
+          $(k).setAttribute("data-state", "grey");
+          $(k + "State").textContent = "grey";
+          $(k + "Text").textContent = "run to read this card";
+        }
+      }
+
       $("run").onclick = () => {
+        clearResult();
         $("status").textContent = "running…";
+        $("status").removeAttribute("data-error");
         $("run").disabled = true;
         stopPlay();
         setTimeout(() => {
           try {
             const R = buildRun();
             GENS = R.gens;
+            RESULT = R;
+            showResult(R);
             $("scrub").max = GENS.length - 1;
             $("scrub").disabled = false;
             $("play").disabled = false;
             $("status").textContent =
-              `realised separation ${R.realised === null ? "never touches the bee" : R.realised.toFixed(2)}` +
+              `realised separation ${R.realised === null ? "never touches the bee" : R.realised.toFixed(3)}` +
               ($("mode").value === "random" ? " · random-mating null" : "");
             const drawn = GENS.map((G) => G.places.filter(Boolean).length);
             const mis = GENS.filter(
@@ -1494,7 +1663,9 @@
             show(0);
           } catch (err) {
             $("status").innerHTML = `<span class="warn">${err.message}</span>`;
+            $("status").setAttribute("data-error", err.message);
             GENS = [];
+            RESULT = null;
           } finally {
             $("run").disabled = false;
           }
@@ -1551,6 +1722,22 @@
         if (!playing) draw(performance.now());
       };
       cv.onpointerup = () => (drag = null);
+
+      /* Set a lineage's whole genome at once, sliders and all. A range input
+       * snaps a typed value to its step, so a genome with arbitrary floats (the
+       * stall fixture, spec §3) cannot be entered slider by slider without
+       * moving it; the tests and the smoke use this, a visitor never needs to. */
+      window.Sandbox = {
+        setLineage(li, genome) {
+          for (const k of GENE_ORDER)
+            if (k in genome) {
+              LINEAGE[li][k] = +genome[k];
+              const el = $("g" + (li + 1) + "_" + k);
+              if (el) el.value = String(genome[k]);
+            }
+          refreshSandbox();
+        },
+      };
 
       initSandbox();
       $("status").textContent = "press Run";

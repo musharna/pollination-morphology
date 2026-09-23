@@ -120,6 +120,7 @@
     let pop = found;
     const out = [];
     let extinct = false;
+    let stalledGens = 0;
     for (let g = 0; g < gens; g++) {
       if (pop.length < 2) {
         extinct = true;
@@ -150,17 +151,151 @@
         carried: replayLoad(res.visitLog || []),
         visits: opts.visits,
       });
+      /* ⚠️ A GENERATION THAT RECRUITS NOTHING HANDS THE PARENTS BACK
+       * (sim/ibm.js step: `next.length ? next : pop`), so its ancestry
+       * variance is the founders' and fate would read HELD. Counted here and
+       * passed to fateOf as `stalled` (northstar spec §3). */
+      if (res.recruits === 0) stalledGens++;
       pop = res.pop;
     }
     /* `frames` are the PARENTS of each generation, which is what the field
      * draws. `final` is the last generation's OFFSPRING, which the frames drop
      * and which every fate in docs/ is read off (tools/northstar-null-tables.js:130). */
-    return { frames: out, final: pop, extinct };
+    return { frames: out, final: pop, extinct, stalledGens };
+  }
+
+  /* hybrid = ancestry strictly in (0.15, 0.85), experiments/hybrids-or-balance.js:87 */
+  const isHybrid = (a) => a > 0.15 && a < 0.85;
+  const meanOf = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+  /*
+   * Card 1 and card 4's quantities, read off the frames exactly as
+   * tools/northstar-null-tables.js run() reads them: on the PARENTS of each
+   * generation (the `anc` array is taken before step), a hybrid generation is
+   * one whose parents held a plant with anc strictly in (0.15, 0.85), and the
+   * receipt ratio is mean `received` of hybrids over the rest in the LAST
+   * generation where both sets were non-empty (null if never).
+   */
+  function quantities(frames) {
+    let hybGens = 0;
+    let ratio = null;
+    for (const f of frames) {
+      const hyb = [],
+        rest = [];
+      f.anc.forEach((a, i) => (isHybrid(a) ? hyb : rest).push(f.received[i]));
+      if (hyb.length) hybGens++;
+      if (hyb.length && rest.length) ratio = meanOf(hyb) / meanOf(rest);
+    }
+    return { hybGens, ratio };
+  }
+
+  /*
+   * The configurations cards 1 and 4 were tabulated at (null tables,
+   * docs/2026-09-13-northstar-null-tables.md; tools/northstar-null-tables.js
+   * CONFIGS): the page's and the level's (N, generations, siteN).
+   */
+  const CONFIGS = {
+    page: { n: 18, gens: 24, siteN: 90 },
+    level: { n: 30, gens: 35, siteN: 160 },
+  };
+  /* card 1's edge: the lowest receipt ratio any of the 58 null runs reached at
+   * the page configuration, target 8 seed 22 at 0.60324, rounded DOWN (null
+   * tables, `edges`). At the level configuration a null run reaches 0, so no
+   * edge exists there and card 1 is grey (spec §4, card 1). */
+  const CARD1_EDGE = 0.603;
+
+  function configOf(sig) {
+    for (const [name, c] of Object.entries(CONFIGS))
+      if (sig.n === c.n && sig.gens === c.gens && sig.siteN === c.siteN)
+        return name;
+    return null;
+  }
+  const describe = (sig) =>
+    `N ${sig.n}, ${sig.gens} generations, siteN ${sig.siteN}, ` +
+    `${sig.randomMating ? "random mating" : "placement-mediated"}, ` +
+    `${sig.options.length ? "options " + sig.options.join(", ") : "no option set"}, ` +
+    `${sig.defaultBee ? "the default bee" : "a changed bee"}`;
+
+  /*
+   * The cards' states, by the spec's precedence (§4, round 6): GREY WINS. A run
+   * outside a card's signature is grey whatever its fate and quantities; open
+   * and closed are decided only inside it. STALLED opens no card (§3).
+   *
+   * `sig` = { n, gens, siteN, randomMating, options: [option keys set],
+   * defaultBee }; `fate` the engine's string; `q` = quantities(frames).
+   * Returns { card1..card6: { state, text } }.
+   */
+  function cardStates(sig, fate, q) {
+    const cfg = configOf(sig);
+    const clean = !sig.randomMating && sig.options.length === 0 && sig.defaultBee;
+    const grey = (at) => ({
+      state: "grey",
+      text: `measured at ${at}; this run ${describe(sig)}`,
+    });
+    const at = (names) =>
+      names
+        .map((k) => {
+          const c = CONFIGS[k];
+          return `N ${c.n}, ${c.gens} generations, siteN ${c.siteN}`;
+        })
+        .join(" or ") + ", placement-mediated, no option set, the default bee";
+
+    let card1;
+    if (!(clean && cfg === "page")) card1 = grey(at(["page"]));
+    else if (
+      (fate === "one lost" || fate === "FUSED") &&
+      q.ratio !== null &&
+      q.ratio < CARD1_EDGE
+    )
+      card1 = {
+        state: "open",
+        text: `hybrids received less than the rest of the field: receipt ratio ${q.ratio.toFixed(3)}, below the null edge ${CARD1_EDGE}; hybrids among the parents in ${q.hybGens} generations`,
+      };
+    else
+      card1 = {
+        state: "closed",
+        text:
+          q.ratio === null
+            ? "closed: hybrids and the rest never shared a generation"
+            : `closed: receipt ratio ${q.ratio.toFixed(3)}, not below the null edge ${CARD1_EDGE}` +
+              (fate === "one lost" || fate === "FUSED" ? "" : `; fate ${fate}`),
+      };
+
+    let card4;
+    if (!(clean && cfg !== null)) card4 = grey(at(["page", "level"]));
+    else if (fate === "one lost" && q.hybGens === 0)
+      card4 = {
+        state: "open",
+        text: "secondary contact excludes: one lineage was lost and the parents held no hybrid in any generation",
+      };
+    else
+      card4 = {
+        state: "closed",
+        text: `closed: fate ${fate}, hybrids among the parents in ${q.hybGens} generations`,
+      };
+
+    const later = (n) => ({
+      state: "grey",
+      text: `card ${n} is built in M3; this run ${describe(sig)}`,
+    });
+    return {
+      card1,
+      card4,
+      card2: later(2),
+      card3: later(3),
+      card5: later(5),
+      card6: later(6),
+    };
   }
 
   global.SandboxRun = {
     runGenerations,
     foundFromGenomes,
+    quantities,
+    cardStates,
+    isHybrid,
+    CONFIGS,
+    CARD1_EDGE,
     replayLoad,
     BOUT_FROM,
     BOUT_N,
