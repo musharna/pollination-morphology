@@ -31,7 +31,7 @@ signal.signal(
     signal.SIGALRM,
     lambda *_: (sys.stderr.write("aborting: walltime guard\n"), sys.exit(2)),
 )
-signal.alarm(1200)
+signal.alarm(3600)
 
 ROOT = (
     sys.argv[1] if len(sys.argv) > 1 else "site"
@@ -262,6 +262,129 @@ def m3a_checks(browser, name):
     return notes
 
 
+# ---------------------------------------------------------------- M3b (northstar)
+# One assertion per M3b acceptance line (spec section 9, M3b row; brief
+# docs/superpowers/briefs/2026-09-23-m3b-options-cards.md), every card state read
+# off data-state, founded at target d = 8 (the null tables' protocol). Plus the
+# null blocks (seeds 1-5): cards 2 and 3 under a = 1 and under randomMating
+# (quantity on the null side AND grey), card 5's flat arm (never open). Every
+# run is timed; the slowest is reported against the 60 s budget.
+M3B_RUN = """async (s) => {
+  const $ = (id) => document.getElementById(id);
+  const sel = $("level");
+  sel.value = String(s.level);
+  sel.dispatchEvent(new Event("change"));
+  if (s.loadWidth) $("loadWidthObj").click();
+  for (const [id, v] of Object.entries(s.options || {})) {
+    if (typeof v === "boolean") $(id).checked = v; else $(id).value = String(v);
+  }
+  $("seed").value = String(s.seed);
+  $("useD").checked = true; $("d").disabled = false; $("d").value = "8";
+  $("mode").value = s.random ? "random" : "real";
+  $("status").textContent = "running…";
+  $("status").removeAttribute("data-error");
+  const t0 = performance.now();
+  $("run").click();
+  while ($("status").textContent === "running…" && performance.now() - t0 < 180000)
+    await new Promise((r) => setTimeout(r, 100));
+  const cards = {}, text = {};
+  for (const c of ["card1", "card2", "card3", "card4", "card5", "card6"]) {
+    cards[c] = $(c).getAttribute("data-state");
+    text[c] = $(c + "Text").textContent;
+  }
+  const st = /(\d+) of (\d+) generations recruited nothing/.exec($("sFateBand").textContent);
+  return {
+    ms: performance.now() - t0, error: $("status").getAttribute("data-error"),
+    fate: $("sFate").textContent, stalled: st ? +st[1] : null, cards, text,
+    caption: $("fieldCaption").textContent,
+  };
+}"""
+
+
+def _gap(t):
+    m = re.search(r"peak gap (\S+), mean gap (\S+), lead (-?\d+|none)", t or "")
+    return (m.group(1), m.group(2), m.group(3)) if m else None
+
+
+def _pair(t):
+    m = re.search(r"this run (.+?); its flat arm \(q = 0, same rate\) (HELD|one lost|FUSED|BOTH LOST|STALLED)", t or "")
+    return (m.group(1), m.group(2)) if m else None
+
+
+def _diff(t):
+    m = re.search(r"treatment minus shuffled (-?\d+\.\d+)", t or "")
+    return m.group(1) if m else None
+
+
+def m3b_checks(browser, name):
+    notes = []
+    page = browser.new_page()
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    slowest = [0.0, ""]
+
+    def run(s, tag):
+        r = page.evaluate(M3B_RUN, s)
+        if r["ms"] > slowest[0]:
+            slowest[0], slowest[1] = r["ms"], tag
+        if r["error"]:
+            failures.append(f"{name}: M3b {tag} errored: {r['error']}")
+        return r
+
+    # level 5 seeds 1-5: HELD one lost HELD one lost one lost, no stall, the no-log caption
+    exp5 = {1: "HELD", 2: "one lost", 3: "HELD", 4: "one lost", 5: "one lost"}
+    got5 = []
+    for seed, fate in exp5.items():
+        r = run({"level": 5, "seed": seed}, f"L5 s{seed}")
+        got5.append(r["fate"])
+        if r["fate"] != fate or r["stalled"] != 0 or "bout not drawn" not in r["caption"]:
+            failures.append(f"{name}: M3b level 5 seed {seed} read {r['fate']} stalled {r['stalled']} caption {r['caption']!r}")
+    notes.append("L5 s1-5 " + "/".join(got5))
+    # level 4: q 0.85 seed 8 open; q 1 seed 8 closed; q 0.69 seed 1 closed reversed
+    for q, seed, fate, flat, state in ((0.85, 8, "one lost", "HELD", "open"), (1, 8, "one lost", "HELD", "closed"),
+                                       (0.69, 1, "HELD", "one lost", "closed")):
+        r = run({"level": 4, "seed": seed, "options": {"selfCover": q}}, f"L4 q{q} s{seed}")
+        if (r["fate"], _pair(r["text"]["card5"]), r["cards"]["card5"]) != (fate, (fate, flat), state):
+            failures.append(f"{name}: M3b level 4 q {q} seed {seed} read {r['fate']} {r['cards']['card5']} {r['text']['card5']!r}")
+        notes.append(f"L4 q{q} s{seed} {r['fate']}/{flat} c5 {r['cards']['card5']}")
+    # level 3: seed 6 open/open; seed 1 closed; seed 6 random grey by signature
+    for seed, rm, fate, gap, state in ((6, False, "FUSED", ("0.633", "0.266", "3"), "open"),
+                                       (1, False, "one lost", None, "closed"),
+                                       (6, True, "FUSED", ("0.720", "0.507", "0"), "grey")):
+        r = run({"level": 3, "seed": seed, "random": rm}, f"L3 s{seed}{' rm' if rm else ''}")
+        ok = r["fate"] == fate and r["cards"]["card2"] == state and r["cards"]["card3"] == state
+        if gap is not None:
+            ok = ok and _gap(r["text"]["card2"]) == gap and _gap(r["text"]["card3"]) == gap
+        if not ok:
+            failures.append(f"{name}: M3b level 3 seed {seed} rm {rm} read {r['fate']} {r['cards']} {r['text']['card2']!r}")
+        notes.append(f"L3 s{seed}{' rm' if rm else ''} {r['fate']} c2/c3 {r['cards']['card2']}/{r['cards']['card3']}")
+    # card 6: the width-locus object, seeds 3, 13, 23
+    for seed, d, state in ((3, "0.393", "closed"), (13, "0.768", "open"), (23, "-0.006", "closed")):
+        r = run({"level": 5, "seed": seed, "loadWidth": True}, f"c6 s{seed}")
+        if (_diff(r["text"]["card6"]), r["cards"]["card6"]) != (d, state):
+            failures.append(f"{name}: M3b card 6 seed {seed} read {r['cards']['card6']} {r['text']['card6']!r}")
+        notes.append(f"c6 s{seed} {_diff(r['text']['card6'])} {r['cards']['card6']}")
+    # null blocks, seeds 1-5
+    bad = 0
+    for seed in range(1, 6):
+        r = run({"level": 3, "seed": seed, "options": {"allocExponent": ""}}, f"c23 a=1 s{seed}")
+        g = _gap(r["text"]["card2"])
+        if not g or float(g[0]) >= 0.434 or float(g[1]) >= 0.170 or r["cards"]["card2"] != "grey" or r["cards"]["card3"] != "grey":
+            failures.append(f"{name}: M3b card 2/3 a=1 null seed {seed} read {g} {r['cards']}"); bad += 1
+        r = run({"level": 3, "seed": seed, "random": True}, f"c23 rm s{seed}")
+        g = _gap(r["text"]["card2"])
+        if not g or (g[2] != "none" and int(g[2]) > 1) or r["cards"]["card2"] != "grey" or r["cards"]["card3"] != "grey":
+            failures.append(f"{name}: M3b card 2/3 random-mating null seed {seed} read {g} {r['cards']}"); bad += 1
+        r = run({"level": 4, "seed": seed, "options": {"selfCover": 0}}, f"c5 flat s{seed}")
+        if r["cards"]["card5"] == "open":
+            failures.append(f"{name}: M3b card 5 flat null seed {seed} opened: {r['text']['card5']!r}"); bad += 1
+    notes.append(f"null blocks bad {bad}/15")
+    if slowest[0] >= 60000:
+        failures.append(f"{name}: M3b slowest run {slowest[1]} took {slowest[0]:.0f} ms (budget 60 s)")
+    notes.append(f"slowest run {slowest[1]} {slowest[0] / 1000:.1f} s")
+    page.close()
+    return notes
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch()
     for name, mode in SPEC:
@@ -399,6 +522,7 @@ with sync_playwright() as p:
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)
             note += "; M3a " + ", ".join(m3a_checks(browser, name))
+            note += "; M3b " + ", ".join(m3b_checks(browser, name))
 
         if errors:
             failures.append(f"{name}: {len(errors)} console error(s): {errors[:3]}")
