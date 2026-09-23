@@ -829,3 +829,174 @@ Read against the `foundTwoLineages` rows above: card 4's control (target 8, seed
 ratio 1.167, and does NOT open (edge 0.603). In the random-mating null block, target 8 seed 4 (0.592)
 and target 4 seed 4 (0.590) fall BELOW card 1's 0.603 edge, and 9 of 10 null ratios fall below the
 spec's 1.146; every null block row keeps 23 of 24 hybrid generations. The `d` switch stays.
+
+
+## Card 1's null under hand-set founding, seeds 1-30 (2026-09-22)
+
+The M2 recipe above, extended to seeds 1 to 30 at the page configuration, both targets, both arms
+(seed 18 founds nothing at either target, so 29 seeds per arm). `summarise` and `edges` read the
+`card14hand` rows as their own null (the edge is the lowest null ratio at either target, re-run at
+full precision and rounded down, as for the `foundTwoLineages` rows).
+
+```
+node tools/northstar-null-tables.js card14hand page 1 10; node tools/northstar-null-tables.js card14hand page 11 20; node tools/northstar-null-tables.js card14hand page 21 30
+node tools/northstar-null-tables.js summarise <those rows>; node tools/northstar-null-tables.js edges <those rows>
+```
+
+```
+# card14hand page N=18 gens=24 siteN=90 seeds 1-10 (foundTwoLineages genomes, founded by population-run.js foundFromGenomes)
+card14hand page d=8 seed 1 placed realised 8.124 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 1 null realised 8.124 fate FUSED hybGens 23/24 ratio 0.843 stalledGens 0
+card14hand page d=4 seed 1 placed realised 4.025 fate FUSED hybGens 23/24 ratio 0.850 stalledGens 0
+card14hand page d=4 seed 1 null realised 4.025 fate FUSED hybGens 23/24 ratio 0.794 stalledGens 0
+card14hand page d=8 seed 2 placed realised 8.058 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 2 null realised 8.058 fate FUSED hybGens 23/24 ratio 124.472 stalledGens 0
+card14hand page d=4 seed 2 placed realised 3.940 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=4 seed 2 null realised 3.940 fate FUSED hybGens 23/24 ratio 0.710 stalledGens 0
+card14hand page d=8 seed 3 placed realised 8.123 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 3 null realised 8.123 fate FUSED hybGens 23/24 ratio 0.772 stalledGens 0
+card14hand page d=4 seed 3 placed realised 4.027 fate one lost hybGens 5/24 ratio 1.059 stalledGens 0
+card14hand page d=4 seed 3 null realised 4.027 fate FUSED hybGens 23/24 ratio 0.746 stalledGens 0
+card14hand page d=8 seed 4 placed realised 7.663 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 4 null realised 7.663 fate FUSED hybGens 23/24 ratio 0.592 stalledGens 0
+card14hand page d=4 seed 4 placed realised 3.953 fate FUSED hybGens 23/24 ratio 3.236 stalledGens 0
+card14hand page d=4 seed 4 null realised 3.953 fate FUSED hybGens 23/24 ratio 0.590 stalledGens 0
+card14hand page d=8 seed 5 placed realised 8.090 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 5 null realised 8.090 fate FUSED hybGens 23/24 ratio 0.887 stalledGens 0
+card14hand page d=4 seed 5 placed realised 3.895 fate FUSED hybGens 23/24 ratio 1.062 stalledGens 0
+card14hand page d=4 seed 5 null realised 3.895 fate FUSED hybGens 23/24 ratio 0.670 stalledGens 0
+card14hand page d=8 seed 6 placed realised 7.995 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 6 null realised 7.995 fate FUSED hybGens 23/24 ratio 2.256 stalledGens 0
+card14hand page d=4 seed 6 placed realised 4.080 fate FUSED hybGens 23/24 ratio 1.837 stalledGens 0
+card14hand page d=4 seed 6 null realised 4.080 fate FUSED hybGens 23/24 ratio 1.510 stalledGens 0
+card14hand page d=8 seed 7 placed realised 8.033 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 7 null realised 8.033 fate FUSED hybGens 23/24 ratio 4.329 stalledGens 0
+card14hand page d=4 seed 7 placed realised 4.025 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=4 seed 7 null realised 4.025 fate FUSED hybGens 23/24 ratio 1.622 stalledGens 0
+card14hand page d=8 seed 8 placed realised 7.965 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 8 null realised 7.965 fate FUSED hybGens 23/24 ratio 2.510 stalledGens 0
+card14hand page d=4 seed 8 placed realised 4.042 fate FUSED hybGens 23/24 ratio 1.380 stalledGens 0
+card14hand page d=4 seed 8 null realised 4.042 fate FUSED hybGens 23/24 ratio 1.973 stalledGens 0
+card14hand page d=8 seed 9 placed realised 8.034 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 9 null realised 8.034 fate FUSED hybGens 23/24 ratio 1.342 stalledGens 0
+card14hand page d=4 seed 9 placed realised 3.963 fate one lost hybGens 9/24 ratio 1.386 stalledGens 0
+card14hand page d=4 seed 9 null realised 3.963 fate FUSED hybGens 23/24 ratio 1.292 stalledGens 0
+card14hand page d=8 seed 10 placed realised 8.145 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 10 null realised 8.145 fate FUSED hybGens 23/24 ratio 1.969 stalledGens 0
+card14hand page d=4 seed 10 placed realised 3.806 fate FUSED hybGens 23/24 ratio 0.784 stalledGens 0
+card14hand page d=4 seed 10 null realised 3.806 fate FUSED hybGens 23/24 ratio 0.907 stalledGens 0
+# card14hand page N=18 gens=24 siteN=90 seeds 11-20 (foundTwoLineages genomes, founded by population-run.js foundFromGenomes)
+card14hand page d=8 seed 11 placed realised 7.856 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 11 null realised 7.856 fate FUSED hybGens 23/24 ratio 0.822 stalledGens 0
+card14hand page d=4 seed 11 placed realised 3.982 fate one lost hybGens 7/24 ratio 0.941 stalledGens 0
+card14hand page d=4 seed 11 null realised 3.982 fate FUSED hybGens 23/24 ratio 0.934 stalledGens 0
+card14hand page d=8 seed 12 placed realised 7.996 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 12 null realised 7.996 fate FUSED hybGens 23/24 ratio 3.115 stalledGens 0
+card14hand page d=4 seed 12 placed realised 4.229 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=4 seed 12 null realised 4.229 fate FUSED hybGens 23/24 ratio 2.200 stalledGens 0
+card14hand page d=8 seed 13 placed realised 8.016 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 13 null realised 8.016 fate FUSED hybGens 23/24 ratio 1.535 stalledGens 0
+card14hand page d=4 seed 13 placed realised 3.966 fate FUSED hybGens 23/24 ratio 5.653 stalledGens 0
+card14hand page d=4 seed 13 null realised 3.966 fate FUSED hybGens 23/24 ratio 0.683 stalledGens 0
+card14hand page d=8 seed 14 placed realised 8.217 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 14 null realised 8.217 fate FUSED hybGens 23/24 ratio 0.865 stalledGens 0
+card14hand page d=4 seed 14 placed realised 4.291 fate one lost hybGens 6/24 ratio 0.892 stalledGens 0
+card14hand page d=4 seed 14 null realised 4.291 fate FUSED hybGens 23/24 ratio 0.876 stalledGens 0
+card14hand page d=8 seed 15 placed realised 7.987 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 15 null realised 7.987 fate FUSED hybGens 23/24 ratio Infinity stalledGens 0
+card14hand page d=4 seed 15 placed realised 3.961 fate one lost hybGens 4/24 ratio 1.448 stalledGens 0
+card14hand page d=4 seed 15 null realised 3.961 fate FUSED hybGens 23/24 ratio 17.066 stalledGens 0
+card14hand page d=8 seed 16 placed realised 8.076 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 16 null realised 8.076 fate FUSED hybGens 23/24 ratio 1.584 stalledGens 0
+card14hand page d=4 seed 16 placed realised 3.849 fate one lost hybGens 2/24 ratio 1.167 stalledGens 0
+card14hand page d=4 seed 16 null realised 3.849 fate FUSED hybGens 23/24 ratio 1.939 stalledGens 0
+card14hand page d=8 seed 17 placed realised 8.086 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 17 null realised 8.086 fate FUSED hybGens 23/24 ratio 0.543 stalledGens 0
+card14hand page d=4 seed 17 placed realised 3.818 fate FUSED hybGens 23/24 ratio 3.719 stalledGens 0
+card14hand page d=4 seed 17 null realised 3.818 fate FUSED hybGens 23/24 ratio 1.098 stalledGens 0
+card14hand page d=8 seed 18 nobuild
+card14hand page d=8 seed 18 nobuild
+card14hand page d=4 seed 18 nobuild
+card14hand page d=4 seed 18 nobuild
+card14hand page d=8 seed 19 placed realised 8.075 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 19 null realised 8.075 fate FUSED hybGens 23/24 ratio 1.238 stalledGens 0
+card14hand page d=4 seed 19 placed realised 3.739 fate one lost hybGens 2/24 ratio 0.875 stalledGens 0
+card14hand page d=4 seed 19 null realised 3.739 fate FUSED hybGens 23/24 ratio 1.402 stalledGens 0
+card14hand page d=8 seed 20 placed realised 8.062 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 20 null realised 8.062 fate FUSED hybGens 23/24 ratio 0.557 stalledGens 0
+card14hand page d=4 seed 20 placed realised 4.049 fate FUSED hybGens 23/24 ratio 0.620 stalledGens 0
+card14hand page d=4 seed 20 null realised 4.049 fate FUSED hybGens 23/24 ratio 0.344 stalledGens 0
+# card14hand page N=18 gens=24 siteN=90 seeds 21-30 (foundTwoLineages genomes, founded by population-run.js foundFromGenomes)
+card14hand page d=8 seed 21 placed realised 7.952 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 21 null realised 7.952 fate FUSED hybGens 23/24 ratio 0.436 stalledGens 0
+card14hand page d=4 seed 21 placed realised 3.935 fate FUSED hybGens 23/24 ratio 0.928 stalledGens 0
+card14hand page d=4 seed 21 null realised 3.935 fate FUSED hybGens 23/24 ratio 0.937 stalledGens 0
+card14hand page d=8 seed 22 placed realised 7.976 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 22 null realised 7.976 fate FUSED hybGens 23/24 ratio 3.029 stalledGens 0
+card14hand page d=4 seed 22 placed realised 4.013 fate FUSED hybGens 23/24 ratio 0.630 stalledGens 0
+card14hand page d=4 seed 22 null realised 4.013 fate FUSED hybGens 23/24 ratio 1.076 stalledGens 0
+card14hand page d=8 seed 23 placed realised 8.138 fate one lost hybGens 2/24 ratio 1.175 stalledGens 0
+card14hand page d=8 seed 23 null realised 8.138 fate FUSED hybGens 23/24 ratio 0.867 stalledGens 0
+card14hand page d=4 seed 23 placed realised 3.952 fate FUSED hybGens 23/24 ratio 1.077 stalledGens 0
+card14hand page d=4 seed 23 null realised 3.952 fate FUSED hybGens 23/24 ratio 0.799 stalledGens 0
+card14hand page d=8 seed 24 placed realised 8.400 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 24 null realised 8.400 fate FUSED hybGens 23/24 ratio 1.597 stalledGens 0
+card14hand page d=4 seed 24 placed realised 3.719 fate FUSED hybGens 23/24 ratio 1.384 stalledGens 0
+card14hand page d=4 seed 24 null realised 3.719 fate FUSED hybGens 23/24 ratio 0.723 stalledGens 0
+card14hand page d=8 seed 25 placed realised 7.680 fate one lost hybGens 6/24 ratio 0.577 stalledGens 0
+card14hand page d=8 seed 25 null realised 7.680 fate FUSED hybGens 23/24 ratio 0.829 stalledGens 0
+card14hand page d=4 seed 25 placed realised 4.003 fate FUSED hybGens 23/24 ratio 2.103 stalledGens 0
+card14hand page d=4 seed 25 null realised 4.003 fate FUSED hybGens 23/24 ratio 0.865 stalledGens 0
+card14hand page d=8 seed 26 placed realised 8.089 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 26 null realised 8.089 fate FUSED hybGens 23/24 ratio 0.744 stalledGens 0
+card14hand page d=4 seed 26 placed realised 4.085 fate FUSED hybGens 23/24 ratio 1.268 stalledGens 0
+card14hand page d=4 seed 26 null realised 4.085 fate FUSED hybGens 23/24 ratio 2.423 stalledGens 0
+card14hand page d=8 seed 27 placed realised 7.711 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 27 null realised 7.711 fate FUSED hybGens 23/24 ratio 1.518 stalledGens 0
+card14hand page d=4 seed 27 placed realised 4.009 fate FUSED hybGens 23/24 ratio 1.171 stalledGens 0
+card14hand page d=4 seed 27 null realised 4.009 fate FUSED hybGens 23/24 ratio 0.880 stalledGens 0
+card14hand page d=8 seed 28 placed realised 7.832 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 28 null realised 7.832 fate FUSED hybGens 23/24 ratio Infinity stalledGens 0
+card14hand page d=4 seed 28 placed realised 4.117 fate FUSED hybGens 23/24 ratio 0.762 stalledGens 0
+card14hand page d=4 seed 28 null realised 4.117 fate FUSED hybGens 23/24 ratio 0.660 stalledGens 0
+card14hand page d=8 seed 29 placed realised 7.997 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 29 null realised 7.997 fate FUSED hybGens 23/24 ratio Infinity stalledGens 0
+card14hand page d=4 seed 29 placed realised 3.940 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=4 seed 29 null realised 3.940 fate FUSED hybGens 23/24 ratio 0.787 stalledGens 0
+card14hand page d=8 seed 30 placed realised 7.814 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 30 null realised 7.814 fate FUSED hybGens 23/24 ratio 2.331 stalledGens 0
+card14hand page d=4 seed 30 placed realised 3.637 fate FUSED hybGens 23/24 ratio 0.988 stalledGens 0
+card14hand page d=4 seed 30 null realised 3.637 fate FUSED hybGens 23/24 ratio 0.877 stalledGens 0
+```
+
+```
+== card 1 at page under hand-set founding: hybrid/rest receipt ratio (finite values only; Infinity = rest received nothing, counted separately)
+  d=8 null: min 0.436 max 124.472 n 26 Infinity 3 undefined 0 -> edge 0.436 (a card-1 ratio must be BELOW this)
+  d=8 placed, not HELD, ratio below the edge: 0 of 29 seeds
+  d=8 placed finite ratios at or above the edge (reached by the null): 2 of 2; clean positive controls (below the edge, own null FUSED): 0
+  d=4 null: min 0.344 max 17.066 n 29 Infinity 0 undefined 0 -> edge 0.344 (a card-1 ratio must be BELOW this)
+  d=4 placed, not HELD, ratio below the edge: 0 of 29 seeds
+  d=4 placed finite ratios at or above the edge (reached by the null): 25 of 25; clean positive controls (below the edge, own null FUSED): 0
+
+== card 4 at page under hand-set founding: hybrid generations
+  d=8 null hybGens: min 23.000 max 23.000 n 29 -> edge 23 (card 4 opens at 0, which must be BELOW this)
+  d=8 placed, `one lost` with 0 hybrid generations: 27 of 29 seeds
+  d=8 null at the max 23 hybrid generations: 29 of 29; placed seeds at 0: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 24, 26, 27, 28, 29, 30
+  d=4 null hybGens: min 23.000 max 23.000 n 29 -> edge 23 (card 4 opens at 0, which must be BELOW this)
+  d=4 placed, `one lost` with 0 hybrid generations: 4 of 29 seeds
+  d=4 null at the max 23 hybrid generations: 29 of 29; placed seeds at 0: 2, 7, 12, 29
+```
+
+```
+# edges: the defining seed of each null edge re-run at full precision; committed edge = outward rounding (card 1 DOWN, cards 2, 3, 6 UP)
+card1hand page d=8 defining seed 21 null ratio 0.43586511998765404 (row 0.436) -> edge 0.435 (ratio must be BELOW this; the seed is not)
+card1hand page d=4 defining seed 20 null ratio 0.344154762085107 (row 0.344) -> edge 0.344 (ratio must be BELOW this; the seed is not)
+```
+
+Read against the cards: the hand-set null's floor is **0.344** (target 4, seed 20, 0.34415, rounded
+down; target 8's floor is 0.435, seed 21). The lowest placement-mediated ratio at either target is
+0.577 (target 8 seed 25, `one lost`, 6 of 24), above that floor, so every placement-mediated ratio
+lies inside the null's range: 0 of 58 placement-mediated runs clear the edge and no clean positive
+control exists. **Card 1 has no edge under hand-set founding.** Card 4 holds: the null reads 23 of 24
+hybrid generations in 29 of 29 seeds at each target; placement-mediated seeds at 0 are target 8:
+27 of 29 (all but 23 and 25, all `one lost`) and target 4: seeds 2, 7, 12, 29.
