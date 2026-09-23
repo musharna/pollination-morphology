@@ -254,6 +254,47 @@ for (const row of NULL_TABLE_ROWS) {
   });
 }
 
+/* M3b: the three other streams (spec §9, "The three other streams"). `run()`
+ * makes `brng` when phenology is set, `wrng` when widthLocus is set and `crng`
+ * when selfing.cover is set; the page builds them from the seed the same way
+ * (SandboxRun.streamsFor) and passes them to step as its sixth to eighth
+ * arguments. One case per stream, against the null tables' card-5 and card-6
+ * rows (docs/2026-09-13-northstar-null-tables.md: `card5 seed 8`, `card6 seed
+ * 13`), under the page protocol at the level configuration, founded at d = 8. */
+function streamRun(win, seed, extra) {
+  const I = win.IBM,
+    E = win.Evolve,
+    SR = win.SandboxRun;
+  const opts = { ...I.DEFAULTS, siteN: 160, ...extra };
+  const rng = E.makeRng(seed);
+  const srng = I.signalRng(seed);
+  const built = I.foundTwoLineages(30, rng, srng, 8, opts);
+  assert.ok(built, "fixture failed: nothing founded");
+  const v0 = I.ancestryVar(built.pop);
+  const out = SR.runGenerations(built.pop, opts, rng, srng, 35, SR.streamsFor(seed, opts));
+  return { out, fate: I.fateOf(out.final, v0, out.extinct, out.stalledGens > 0) };
+}
+const REG5 = { phenology: { slices: 8, width: 0.12 }, visitsPerPlant: 800 };
+
+test("streams: brng + crng reproduce card 5 seed 8 (q = 0.85 one lost; flat q = 0 HELD)", () => {
+  const win = loadPageScripts();
+  assert.equal(typeof win.SandboxRun.streamsFor, "function", "no SandboxRun.streamsFor");
+  const s = win.SandboxRun.streamsFor(8, { ...REG5, selfing: { rate: 2, cost: 0, cover: 0.85 } });
+  assert.ok(s.brng && s.crng && !s.wrng, "streams built for the wrong options");
+  assert.equal(streamRun(win, 8, { ...REG5, selfing: { rate: 2, cost: 0, cover: 0.85 } }).fate, "one lost");
+  assert.equal(streamRun(win, 8, { ...REG5, selfing: { rate: 2, cost: 0, cover: 0 } }).fate, "HELD");
+});
+
+test("streams: brng + wrng reproduce card 6 seed 13 (treatment 0.878, shuffled 0.110)", () => {
+  const win = loadPageScripts();
+  const phen = { slices: 8, widthLocus: true, widthMut: 0.03, conserveDisplay: true };
+  const t = streamRun(win, 13, { phenology: phen });
+  const sh = streamRun(win, 13, { phenology: { ...phen, shuffleWidth: true } });
+  const w = (r) => win.SandboxRun.widthStat(r.out.frames);
+  assert.equal(w(t).toFixed(3), "0.878");
+  assert.equal(w(sh).toFixed(3), "0.110");
+});
+
 /* ⚠️ THE CHECK THAT KEEPS THIS TEST HONEST. A loop written into the test file
  * is the defect the test exists to catch, so the file may not call step() at
  * all: the only loop here is the page's own. */

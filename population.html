@@ -342,6 +342,75 @@
         </p>
       </section>
 
+      <section class="panel" aria-label="Options">
+        <p class="note" style="margin-top: 0">
+          <strong>Options</strong>, the engine's own, set for the run. A blank
+          field leaves the option unset (<code>IBM.DEFAULTS</code>). A level
+          loads its object here; every control stays live.
+        </p>
+        <div class="row">
+          <div class="ctl">
+            <label for="allocExponent">rare bias a (allocExponent; blank = none)</label
+            ><input type="number" id="allocExponent" step="0.05" />
+          </div>
+          <div class="ctl">
+            <label for="visitsPerPlant">visits per plant (blank = default)</label
+            ><input type="number" id="visitsPerPlant" step="50" />
+          </div>
+        </div>
+        <div class="row" role="group" aria-label="selfing floor">
+          <div class="ctl">
+            <label for="selfRate">selfing rate (blank = no floor)</label
+            ><input type="number" id="selfRate" step="0.1" />
+          </div>
+          <div class="ctl">
+            <label for="selfCost">selfing cost</label
+            ><input type="number" id="selfCost" step="0.05" />
+          </div>
+          <div class="ctl">
+            <label for="selfCover">cover q (blank = flat floor)</label
+            ><input type="number" id="selfCover" step="0.01" />
+          </div>
+        </div>
+        <div class="row" role="group" aria-label="phenology">
+          <div class="ctl">
+            <label for="phenOn">phenology (sliced season)</label
+            ><input type="checkbox" id="phenOn" />
+          </div>
+          <div class="ctl">
+            <label for="phenSlices">slices</label
+            ><input type="number" id="phenSlices" step="1" />
+          </div>
+          <div class="ctl">
+            <label for="phenWidth">fixed width (blank = none)</label
+            ><input type="number" id="phenWidth" step="0.01" />
+          </div>
+          <div class="ctl">
+            <label for="phenWidthLocus">width locus (heritable width)</label
+            ><input type="checkbox" id="phenWidthLocus" />
+          </div>
+          <div class="ctl">
+            <label for="phenWidthMut">width mutation (blank = mutRate)</label
+            ><input type="number" id="phenWidthMut" step="0.01" />
+          </div>
+          <div class="ctl">
+            <label for="phenConserve">conserve display</label
+            ><input type="checkbox" id="phenConserve" />
+          </div>
+          <div class="ctl">
+            <label for="phenPropVisits">visits proportional to display (off = the registered rule)</label
+            ><input type="checkbox" id="phenPropVisits" />
+            <span class="band" id="phenPropBand"
+              >HELD 0.289 under the registered rule against 0.026 proportional
+              (docs/FINDINGS.md:97-98; N 30, 35 generations, siteN 160)</span
+            >
+          </div>
+          <button id="loadWidthObj" type="button">
+            load the width-locus object
+          </button>
+        </div>
+      </section>
+
       <section class="panel" aria-label="Lineage shapes">
         <div class="genes">
           <div>
@@ -420,6 +489,7 @@
         role="img"
         aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold A, magenta B, white mixed), with the bee carrying pollen between them. Drag to orbit."
       ></canvas>
+      <p id="fieldCaption" class="note"></p>
       <p id="fieldLive" class="visually-hidden" aria-live="polite">
         No run yet. Set the inputs and press Run.
       </p>
@@ -496,44 +566,44 @@
             id="card2"
             data-state="grey"
             role="status"
-            aria-label="card 2, the shared pollinator is the bridge (built in M3)"
+            aria-label="card 2, the shared pollinator is the bridge"
           >
             <b>2. the shared pollinator is the bridge</b>
             <span id="card2State">grey</span>
-            <p id="card2Text" class="band">built in M3</p>
+            <p id="card2Text" class="band">run to read this card</p>
           </div>
           <div
             class="card"
             id="card3"
             data-state="grey"
             role="status"
-            aria-label="card 3, preferring the rare defeats itself (built in M3)"
+            aria-label="card 3, preferring the rare defeats itself"
           >
             <b>3. preferring the rare defeats itself</b>
             <span id="card3State">grey</span>
-            <p id="card3Text" class="band">built in M3</p>
+            <p id="card3Text" class="band">run to read this card</p>
           </div>
           <div
             class="card"
             id="card5"
             data-state="grey"
             role="status"
-            aria-label="card 5, a floor spread thin is worse than a flat one (built in M3)"
+            aria-label="card 5, a floor spread thin is worse than a flat one"
           >
             <b>5. a floor spread thin is worse than a flat one</b>
             <span id="card5State">grey</span>
-            <p id="card5Text" class="band">built in M3</p>
+            <p id="card5Text" class="band">run to read this card</p>
           </div>
           <div
             class="card"
             id="card6"
             data-state="grey"
             role="status"
-            aria-label="card 6, flowering width evolves wide (built in M3)"
+            aria-label="card 6, flowering width evolves wide"
           >
             <b>6. flowering width evolves wide</b>
             <span id="card6State">grey</span>
-            <p id="card6Text" class="band">built in M3</p>
+            <p id="card6Text" class="band">run to read this card</p>
           </div>
         </section>
       </section>
@@ -1305,6 +1375,65 @@
             `, ${$("mode").value === "random" ? "random mating" : "placement-mediated"}.`;
         $("levelNote").textContent = note;
       }
+      /* ============================================================ M3b: the
+       * option controls. The option object is READ from the controls at Run
+       * and WRITTEN to them by a level, never held anywhere else, so what the
+       * visitor sees is what the engine gets. A blank number leaves its key
+       * unset; a key is never written as NaN or 0 by default. */
+      const num = (id) => {
+        const v = $(id).value;
+        if (v === "" || v === null || v === undefined) return undefined;
+        const x = +v;
+        if (!Number.isFinite(x)) throw new Error(`option ${id}: "${v}" is not a number`);
+        return x;
+      };
+      function readOptions() {
+        const o = {};
+        const a = num("allocExponent");
+        if (a !== undefined) o.allocExponent = a;
+        const vpp = num("visitsPerPlant");
+        if (vpp !== undefined) o.visitsPerPlant = vpp;
+        const rate = num("selfRate");
+        if (rate !== undefined) {
+          o.selfing = { rate, cost: num("selfCost") ?? 0 };
+          const cover = num("selfCover");
+          if (cover !== undefined) o.selfing.cover = cover;
+        } else if (num("selfCover") !== undefined || num("selfCost") !== undefined)
+          throw new Error("selfing cost or cover set without a rate: the floor runs only inside rate > 0 (sim/ibm.js:1844)");
+        if ($("phenOn").checked) {
+          const ph = {};
+          const sl = num("phenSlices");
+          if (sl !== undefined) ph.slices = sl;
+          const w = num("phenWidth");
+          if (w !== undefined) ph.width = w;
+          if ($("phenWidthLocus").checked) ph.widthLocus = true;
+          const wm = num("phenWidthMut");
+          if (wm !== undefined) ph.widthMut = wm;
+          if ($("phenConserve").checked) ph.conserveDisplay = true;
+          if ($("phenPropVisits").checked) ph.displayProportionalVisits = true;
+          o.phenology = ph;
+        }
+        return o;
+      }
+      function writeOptions(o) {
+        o = o || {};
+        const put = (id, v) => ($(id).value = v === undefined ? "" : String(v));
+        put("allocExponent", o.allocExponent);
+        put("visitsPerPlant", o.visitsPerPlant);
+        const sf = o.selfing || {};
+        put("selfRate", sf.rate);
+        put("selfCost", sf.cost);
+        put("selfCover", sf.cover);
+        const ph = o.phenology;
+        $("phenOn").checked = !!ph;
+        put("phenSlices", ph ? ph.slices : undefined);
+        put("phenWidth", ph ? ph.width : undefined);
+        $("phenWidthLocus").checked = !!(ph && ph.widthLocus);
+        put("phenWidthMut", ph ? ph.widthMut : undefined);
+        $("phenConserve").checked = !!(ph && ph.conserveDisplay);
+        $("phenPropVisits").checked = !!(ph && ph.displayProportionalVisits);
+      }
+
       function loadLevel(id) {
         const L = window.SandboxRun.levelOf(id);
         if (!L) throw new Error(`no level ${id}`);
@@ -1328,8 +1457,10 @@
         }
         $("run").disabled = !!L.noRun;
         $("levelBrief").textContent = L.brief;
+        /* M3b: the level's option object is applied, into the controls */
+        writeOptions(L.opts);
         $("levelOpts").textContent = L.options
-          ? `This level's option: ${L.options}. Option controls arrive with M3b; until then a run here uses the level's N, generations and siteN without it.`
+          ? `This level's option: ${L.options}. Loaded into the option controls below.`
           : "";
         refreshSandbox();
       }
@@ -1354,6 +1485,10 @@
           $("d").disabled = !e.target.checked;
         };
         $("level").onchange = (e) => loadLevel(e.target.value);
+        $("loadWidthObj").onclick = () => {
+          clearResult();
+          writeOptions(window.SandboxRun.WIDTH_OBJECT);
+        };
         $("level").value = "free";
         loadLevel("free");
       }
@@ -1368,16 +1503,80 @@
         const siteN = Math.max(4, +$("siteN").value | 0);
         const randomMating = $("mode").value === "random";
         const useD = $("useD").checked;
+        const d = +$("d").value;
+        const options = readOptions();
 
-        const opts = sandboxOpts({ randomMating, siteN });
-        /* ONE rng protocol, the page's: both streams made once, the founding
-         * consumes its draws, every generation is driven with the same two. */
+        const opts = sandboxOpts({ randomMating, siteN, ...options });
+        const main = foundAndRun(opts, seed, n, gens, useD, d);
+        const out = main.out;
+        const fate = main.fate;
+        const q = window.SandboxRun.quantities(out.frames);
+        const optionKeys = Object.keys(opts).filter(
+          (k) =>
+            !["bee", "siteN", "randomMating"].includes(k) &&
+            opts[k] !== I.DEFAULTS[k],
+        );
+        const sig = {
+          n,
+          gens,
+          siteN,
+          randomMating,
+          options: optionKeys,
+          opts: options,
+          realised: main.realised,
+          defaultBee:
+            bee.reach === P.DEFAULT_BEE.reach &&
+            bee.bodyLen === P.DEFAULT_BEE.bodyLen,
+        };
+        /* M3b: cards 2 and 3 read gap occupancy against the founding
+         * placements; cards 5 and 6 read an in-page paired arm, the same seed,
+         * founding and configuration with ONE option changed (q = 0 at the
+         * same rate; shuffleWidth), run only inside the card's signature. */
+        const m3 = {
+          gap: window.SandboxRun.gapQuantities(out.frames, main.p1, main.p2, main.v0),
+        };
+        const arm = window.SandboxRun.pairedArm(sig);
+        let pair = null;
+        if (arm) {
+          pair = foundAndRun({ ...opts, ...arm.opts }, seed, n, gens, useD, d);
+          if (arm.card === "card5") m3.pair5 = { fate: pair.fate };
+          else
+            m3.width = {
+              treat: window.SandboxRun.widthStat(out.frames),
+              shuffled: window.SandboxRun.widthStat(pair.out.frames),
+            };
+        }
+        const cards = window.SandboxRun.cardStates(sig, fate, q, m3);
+        return {
+          gens: out.frames,
+          final: out.final,
+          realised: main.realised,
+          n,
+          v0: main.v0,
+          fate,
+          stalledGens: out.stalledGens,
+          q,
+          m3,
+          pairFate: pair ? pair.fate : null,
+          cards,
+          p1: main.p1,
+          p2: main.p2,
+          phenology: !!options.phenology,
+        };
+      }
+
+      /* The founding and the loop for one arm. ONE rng protocol, the page's:
+       * both streams made once from the seed, the founding consumes its draws,
+       * every generation is driven with the same two; the three other streams
+       * (M3b) are built from the seed as run() builds them. A paired arm calls
+       * this again with fresh streams, so it founds the identical pair. */
+      function foundAndRun(opts, seed, n, gens, useD, d) {
         const rng = E.makeRng(seed);
         const srng = I.signalRng(seed);
 
         let found, realised, p1, p2;
         if (useD) {
-          const built = I.foundTwoLineages(n, rng, srng, +$("d").value, opts);
+          const built = I.foundTwoLineages(n, rng, srng, d, opts);
           if (!built)
             throw new Error(
               "could not found two lineages at that separation — try a smaller d or another seed",
@@ -1408,42 +1607,49 @@
           rng,
           srng,
           gens,
+          window.SandboxRun.streamsFor(seed, opts),
         );
         /* The fate is read off the FINAL offspring — the population the last
          * step returned, which the frames (parents) drop — with the engine's
          * own predicate and its strings verbatim, as the null tables read it
          * (tools/northstar-null-tables.js run()). */
         const fate = I.fateOf(out.final, v0, out.extinct, out.stalledGens > 0);
-        const q = window.SandboxRun.quantities(out.frames);
-        const optionKeys = Object.keys(opts).filter(
-          (k) =>
-            !["bee", "siteN", "randomMating"].includes(k) &&
-            opts[k] !== I.DEFAULTS[k],
-        );
-        const sig = {
-          n,
-          gens,
-          siteN,
-          randomMating,
-          options: optionKeys,
-          defaultBee:
-            bee.reach === P.DEFAULT_BEE.reach &&
-            bee.bodyLen === P.DEFAULT_BEE.bodyLen,
-        };
-        const cards = window.SandboxRun.cardStates(sig, fate, q);
-        return {
-          gens: out.frames,
-          final: out.final,
-          realised,
-          n,
-          v0,
-          fate,
-          stalledGens: out.stalledGens,
-          q,
-          cards,
-          p1,
-          p2,
-        };
+        return { out, fate, v0, realised, p1, p2 };
+      }
+
+      /* The ground and the flowers of one generation, shared by the bout
+       * view and the no-log view (M3b). */
+      function drawPatch(G) {
+          /* ⚠️ GROUND IS PINNED BEHIND EVERYTHING. Painter's algorithm FAILS on it:
+           * a triangle running from the centre to the far rim spans enormous
+           * depth, so its average z lands NEARER than the flowers standing on it
+           * and it paints over the whole scene. Measured — the first attempt
+           * rendered a dark ellipse and nothing else. */
+          for (let i = 0; i < 44; i++) {
+            const a0 = (i / 44) * TAU,
+              a1 = ((i + 1) / 44) * TAU;
+            const rr = PATCH_R * 1.5;
+            poly(
+              [
+                [0, 0, 0],
+                [Math.cos(a0) * rr, 0, Math.sin(a0) * rr],
+                [Math.cos(a1) * rr, 0, Math.sin(a1) * rr],
+              ],
+              "#20281c",
+              { z: 1e9 },
+            );
+          }
+
+          const n = G.flowers.length;
+          for (let i = 0; i < n; i++) {
+            const f = G.flowers[i];
+            const b = baseFor(i, n, f);
+            const q = project(b.origin);
+            if (!q || q.z < FOLLOW.near) continue; // nearer than the subject
+            stemUnder(b.origin, Math.max(0.4, b.origin[1] - f.axisLen * 0.92));
+            drawFlower(f, b, ancHex(G.anc[i]));
+          }
+
       }
 
       // ----------------------------------------------------------- rendering
@@ -1463,7 +1669,28 @@
          * scenes in one frame. Everything the camera depends on is settled here.
          */
         const LOG = G.log;
-        if (!LOG.length) return;
+        /* ⚠️ M3b: THE ENGINE LOGS NO BOUT UNDER PHENOLOGY (sim/ibm.js:1432-1438),
+         * so returning on an empty log drew an empty field for every level 4
+         * and 5 run. With no log the field draws the flowers and their organs
+         * (both lineages' sites) from G.flowers and G.sites, with no flight,
+         * and the caption under the field says why. */
+        if (!LOG.length) {
+          camTarget[0] = 0;
+          camTarget[1] = 3.0;
+          camTarget[2] = 0;
+          FOLLOW.near = -Infinity;
+          drawPatch(G);
+          flush();
+          ctx.fillStyle = "#9aa0a8";
+          ctx.font = "12px system-ui";
+          ctx.fillText(
+            `generation ${frame} · ${G.flowers.length} flowers, each with its own contact sites (${G.sites.length} site sets) · bout not drawn: the sliced season does not log one`,
+            14,
+            cv.height - 13,
+          );
+          if (playing) raf = nextFrame(draw);
+          return;
+        }
         const period = 1.05;
         const k = Math.floor(t / period) % LOG.length;
         const frac = (t % period) / period;
@@ -1498,35 +1725,8 @@
           FOLLOW.near = -Infinity;
         }
 
-        /* ⚠️ GROUND IS PINNED BEHIND EVERYTHING. Painter's algorithm FAILS on it:
-         * a triangle running from the centre to the far rim spans enormous
-         * depth, so its average z lands NEARER than the flowers standing on it
-         * and it paints over the whole scene. Measured — the first attempt
-         * rendered a dark ellipse and nothing else. */
-        for (let i = 0; i < 44; i++) {
-          const a0 = (i / 44) * TAU,
-            a1 = ((i + 1) / 44) * TAU;
-          const rr = PATCH_R * 1.5;
-          poly(
-            [
-              [0, 0, 0],
-              [Math.cos(a0) * rr, 0, Math.sin(a0) * rr],
-              [Math.cos(a1) * rr, 0, Math.sin(a1) * rr],
-            ],
-            "#20281c",
-            { z: 1e9 },
-          );
-        }
-
+        drawPatch(G);
         const n = G.flowers.length;
-        for (let i = 0; i < n; i++) {
-          const f = G.flowers[i];
-          const b = baseFor(i, n, f);
-          const q = project(b.origin);
-          if (!q || q.z < FOLLOW.near) continue; // nearer than the subject
-          stemUnder(b.origin, Math.max(0.4, b.origin[1] - f.axisLen * 0.92));
-          drawFlower(f, b, ancHex(G.anc[i]));
-        }
 
         /*
          * ⚠️ THE BEE FOLLOWS THE MODEL'S OWN VISIT ORDER. Everything before this
@@ -1684,6 +1884,9 @@
         const lo = fin.filter((a) => a <= 0.15).length,
           hi = fin.filter((a) => a >= 0.85).length,
           mid = fin.length - lo - hi;
+        $("fieldCaption").textContent = R.phenology
+          ? "bout not drawn: the sliced season does not log one (sim/ibm.js:1432-1438)"
+          : "";
         $("sFate").textContent = R.fate;
         $("sFate").style.color = R.fate === "HELD" ? "var(--ok)" : "var(--bad)";
         $("sFateBand").textContent =
@@ -1755,6 +1958,7 @@
        * found never leaves the previous fate and cards standing beside it. */
       function clearResult() {
         RESULT = null;
+        $("fieldCaption").textContent = "";
         $("sFate").textContent = "—";
         $("sFate").style.color = "";
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])

@@ -1,0 +1,35 @@
+[
+  {
+    "card": "CYCLOIDEA knockout",
+    "input": "polarity",
+    "badge": "DEMONSTRATED",
+    "anchor": "CYC-like genes control symmetry, orientation and nectar guides together (docs/2026-07-31-pollination-mechanism-enumeration.md:577-580, Yang et al. 2023); knockdown measured as 3D shape (:592-593, Berger et al. 2017). Verify before citing outside the enumeration.",
+    "note": "Caveat: the three traits are pleiotropically coupled (enumeration.md:581-584), and the slider moves one of them."
+  },
+  {
+    "card": "spur-length genes",
+    "input": "axisLen",
+    "badge": "DECLARED",
+    "anchor": "Aquilegia spur genetics: zero hits in the repo. UNGROUNDED, needs a source."
+  },
+  {
+    "card": "scent by structural genes",
+    "input": "signal",
+    "badge": "DEMONSTRATED",
+    "anchor": "Gain and loss of scent via structural genes in Petunia (docs/2026-07-31-pollination-mechanism-enumeration.md:452-453, Amrad et al. 2016). A signal genome, never a shape gene: shapeOf keeps it out of the geometry (sim/ibm.js:70-71,301).",
+    "note": "not a slider: the founding signal draw"
+  },
+  {
+    "card": "MYB colour factors",
+    "input": "signal",
+    "badge": "DECLARED",
+    "anchor": "MYB: zero hits in the repo. UNGROUNDED, needs a source.",
+    "note": "not a slider: the founding signal draw"
+  },
+  {
+    "card": "architecture is simple",
+    "input": ["axisLen", "mouthR", "throatR", "antherT", "antherProject", "curve", "polarity", "antherTheta"],
+    "badge": "DEMONSTRATED",
+    "anchor": "Major QTL under syndrome divergence in Penstemon; hummingbird syndrome evolved more than 100 times (docs/2026-07-31-pollination-mechanism-enumeration.md:445-448); \"simple genetic architecture and low constraint\" in Jaltomata (:449-451)."
+  }
+]

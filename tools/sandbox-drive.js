@@ -18,6 +18,21 @@ const PAGE_ROOT = process.env.SANDBOX_PAGE
   : ROOT;
 
 const CARDS = ["card1", "card2", "card3", "card4", "card5", "card6"];
+/* M3b's option controls, by id (population.html, "Options" panel). */
+const OPTION_IDS = [
+  "allocExponent",
+  "selfRate",
+  "selfCost",
+  "selfCover",
+  "phenOn",
+  "phenSlices",
+  "phenWidth",
+  "phenWidthLocus",
+  "phenWidthMut",
+  "phenConserve",
+  "phenPropVisits",
+  "visitsPerPlant",
+];
 
 /*
  * settings: { seed, useD, d, n, gens, siteN, random, lineages: [g1, g2] }
@@ -49,6 +64,20 @@ function runPage(settings) {
     if (settings[k] !== undefined) set(k, settings[k]);
   doc.getElementById("useD").checked = !!settings.useD;
   set("mode", settings.random ? "random" : "real");
+  /* M3b: the second level-5 run loads the width-locus object by the page's own
+   * button, then any option control is set by id (a checkbox by boolean). */
+  if (settings.loadWidth) {
+    const b = doc.getElementById("loadWidthObj");
+    if (!b || !b.onclick) throw new Error("no #loadWidthObj button on the page");
+    b.onclick();
+  }
+  if (settings.options)
+    for (const [id, v] of Object.entries(settings.options)) {
+      const el = doc.getElementById(id);
+      if (!el) throw new Error(`no option control #${id} on the page`);
+      if (typeof v === "boolean") el.checked = v;
+      else el.value = String(v);
+    }
   if (settings.slide)
     for (const [li, k, v] of settings.slide) {
       const el = doc.getElementById(`g${li + 1}_${k}`);
@@ -109,6 +138,13 @@ function runPage(settings) {
     note: text("levelNote"),
     separation: text("sReal"),
     cardText: Object.fromEntries(CARDS.map((c) => [c, text(c + "Text")])),
+    options: Object.fromEntries(
+      OPTION_IDS.map((id) => {
+        const el = doc.getElementById(id);
+        return [id, !el ? null : el.type === "checkbox" ? el.checked : el.value];
+      }),
+    ),
+    fieldCaption: text("fieldCaption"),
     page: P.win,
   };
 }
@@ -147,4 +183,4 @@ function toolRows(cfg, from, to) {
     });
 }
 
-module.exports = { runPage, toolRows, CARDS };
+module.exports = { runPage, toolRows, CARDS, OPTION_IDS };
