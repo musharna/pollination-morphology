@@ -30,6 +30,16 @@ function runPage(settings) {
     if (!el) throw new Error(`no #${id} on the page`);
     el.value = String(v);
   };
+  /* M3a: a level is chosen FIRST, as a visitor would, so the controls it
+   * loads can then be overridden by the settings below (every slider stays live). */
+  const pickLevel = (lv) => {
+    const sel = doc.getElementById("level");
+    if (!sel) throw new Error("no #level select on the page");
+    sel.value = String(lv);
+    if (!sel.onchange) throw new Error("#level has no onchange handler");
+    sel.onchange({ target: sel });
+  };
+  if (settings.level !== undefined) pickLevel(settings.level);
   if (settings.lineages) {
     if (!P.win.Sandbox || !P.win.Sandbox.setLineage)
       throw new Error("the page exposes no Sandbox.setLineage");
@@ -39,9 +49,26 @@ function runPage(settings) {
     if (settings[k] !== undefined) set(k, settings[k]);
   doc.getElementById("useD").checked = !!settings.useD;
   set("mode", settings.random ? "random" : "real");
-  P.timers.length = 0;
-  doc.getElementById("run").onclick();
-  while (P.timers.length) P.timers.shift()();
+  if (settings.slide)
+    for (const [li, k, v] of settings.slide) {
+      const el = doc.getElementById(`g${li + 1}_${k}`);
+      if (!el) throw new Error(`no slider g${li + 1}_${k}`);
+      el.value = String(v);
+      el.oninput({ target: el });
+    }
+  const controls = {
+    n: doc.getElementById("n").value,
+    gens: doc.getElementById("gens").value,
+    siteN: doc.getElementById("siteN").value,
+    mode: doc.getElementById("mode").value,
+    runDisabled: !!doc.getElementById("run").disabled,
+  };
+  if (!settings.noRun) {
+    P.timers.length = 0;
+    doc.getElementById("run").onclick();
+    while (P.timers.length) P.timers.shift()();
+  }
+  if (settings.thenLevel !== undefined) pickLevel(settings.thenLevel);
   const text = (id) => {
     const el = doc.getElementById(id);
     return el ? el.textContent || el.innerHTML : null;
@@ -70,8 +97,19 @@ function runPage(settings) {
     ratio: !ratio ? null : ratio[1] === "no" ? null : ratio[1],
     realised: realised ? realised[1] : null,
     cards,
+    controls,
+    level: doc.getElementById("level")
+      ? doc.getElementById("level").value
+      : null,
+    brief: text("levelBrief"),
+    win: doc.getElementById("levelWin")
+      ? doc.getElementById("levelWin").getAttribute("data-state")
+      : null,
+    winText: text("levelWin"),
+    note: text("levelNote"),
+    separation: text("sReal"),
     cardText: Object.fromEntries(CARDS.map((c) => [c, text(c + "Text")])),
-    win: P.win,
+    page: P.win,
   };
 }
 

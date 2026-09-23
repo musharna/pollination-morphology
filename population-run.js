@@ -227,7 +227,8 @@
    */
   function cardStates(sig, fate, q) {
     const cfg = configOf(sig);
-    const clean = !sig.randomMating && sig.options.length === 0 && sig.defaultBee;
+    const clean =
+      !sig.randomMating && sig.options.length === 0 && sig.defaultBee;
     const grey = (at) => ({
       state: "grey",
       text: `measured at ${at}; this run ${describe(sig)}`,
@@ -288,7 +289,101 @@
     };
   }
 
+  /*
+   * The levels (northstar spec §5). Each loads (N, generations, siteN) and the
+   * mating mode into the live controls, and prints its brief. Every string is
+   * the spec's, authored, never generated. `options` is the §5 start column's
+   * option object, printed with the brief: the page has no option controls
+   * until M3b, so it is listed, not applied, and a run on levels 3 to 5 today
+   * is the level's configuration WITHOUT its option (which the page says).
+   *
+   * Win (§5): level 1, realised separation at or above 8, before any run;
+   * levels 2 to 6, the fate tile reading HELD and nothing else. STALLED,
+   * `one lost`, FUSED and BOTH LOST all lose, on every level.
+   */
+  const LEVEL_CFG = { n: 30, gens: 35, siteN: 160 };
+  const LEVELS = [
+    {
+      id: "free",
+      name: "free sandbox",
+      cfg: CONFIGS.page,
+      brief:
+        "The free sandbox: the page defaults, where no HELD rate is measured.",
+    },
+    {
+      id: "1",
+      name: "level 1, placement",
+      cfg: null,
+      noRun: true,
+      target: 8,
+      brief:
+        "Move one lineage's pollen to a different part of the bee. Win: realised separation at or above 8 before any run; the target is on screen at load.",
+    },
+    {
+      id: "2",
+      name: "level 2, secondary contact",
+      cfg: LEVEL_CFG,
+      brief: "Now make them stay two kinds. Win: HELD.",
+      noKnownWin:
+        "No win from placement alone (the sliders, no option) is known here: HELD 0 of 5 at every target d from 0.5 to 8 (docs/2026-08-04-secondary-contact.md:36-40; N 30, 35 generations, siteN 160). If you find one, note the seed and settings.",
+    },
+    {
+      id: "3",
+      name: "level 3, rare-bias self-defeat",
+      cfg: LEVEL_CFG,
+      options: "allocExponent = 0.25",
+      brief:
+        "The bee now prefers the rarer flower. Win: HELD; measured 4 of 12 at this setting.",
+    },
+    {
+      id: "4",
+      name: "level 4, selfing budget",
+      cfg: LEVEL_CFG,
+      options:
+        "selfing = {rate: 2.0, cost: 0, cover: q}, q = 0.69 then 0.85; phenology 8 slices, width 0.12; visitsPerPlant 800",
+      brief:
+        "A floor under the rare lineage, spread over some plants. Win: HELD; measured 0.183 at q = 0.69 and 0.055 at q = 0.85, against 0.404 flat.",
+    },
+    {
+      id: "5",
+      name: "level 5, phenology",
+      cfg: LEVEL_CFG,
+      options:
+        "phenology = {slices: 8, width: 0.12}; then {slices: 8, widthLocus: true, widthMut: 0.03, conserveDisplay: true}",
+      brief:
+        "Give them different seasons. Win: HELD; measured 11 of 38 at this setting, replicated 5 of 12. Then load the width-locus object and run again.",
+    },
+    {
+      id: "6",
+      name: "level 6, the open northstar",
+      cfg: LEVEL_CFG,
+      options: "every option exposed",
+      brief:
+        "Find a way for the rare lineage to gain from being rare. Win: HELD by a route the page does not list.",
+      noKnownWin:
+        "No known win from a pollination-derived minority advantage. Already known, and so not the northstar: level 4's selfing floor (HELD 0.404 flat, 0.183 at q = 0.69, 0.055 at q = 0.85) and level 5's seasons (HELD 11 of 38 at 8 slices; seeds 1 and 3 read HELD at this configuration). A HELD that reuses them is not the northstar. If you find another route, note the seed and settings.",
+    },
+  ];
+  const levelOf = (id) => LEVELS.find((l) => l.id === String(id)) || null;
+
+  /* The win, read off what the page already shows; no rule beyond §5's.
+   * Returns "won" | "lost" | "pending" | "none". */
+  function levelWin(level, { fate, separation }) {
+    if (!level || level.id === "free") return "none";
+    if (level.noRun)
+      return separation !== null &&
+        Number.isFinite(separation) &&
+        separation >= level.target
+        ? "won"
+        : "pending";
+    if (!fate) return "pending";
+    return fate === "HELD" ? "won" : "lost";
+  }
+
   global.SandboxRun = {
+    LEVELS,
+    levelOf,
+    levelWin,
     runGenerations,
     foundFromGenomes,
     quantities,

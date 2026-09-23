@@ -177,6 +177,91 @@ def m2_checks(browser, name):
     return notes
 
 
+# ---------------------------------------------------------------- M3a (northstar)
+# One assertion per M3a acceptance line (spec section 9, M3a row; brief
+# docs/superpowers/briefs/2026-09-22-m3a-levels.md), read off the real DOM:
+# level 3's controls before any run; level 1's separation 8 by a slider alone
+# (a real `input` event on the range element, not setLineage); level 2 at seed 1,
+# target 8: `one lost`, lost, the no-known-win copy; loading each level opens no
+# card; and a 35-generation, siteN 160 run TIMED inside 60 s.
+M3A_LEVEL = """(lv) => {
+  const $ = (id) => document.getElementById(id);
+  const sel = $("level");
+  sel.value = String(lv);
+  sel.dispatchEvent(new Event("change"));
+  const cards = {};
+  for (const c of ["card1", "card2", "card3", "card4", "card5", "card6"])
+    cards[c] = $(c).getAttribute("data-state");
+  return {
+    n: $("n").value, gens: $("gens").value, siteN: $("siteN").value,
+    run: $("run").disabled, win: $("levelWin").getAttribute("data-state"),
+    sep: $("sReal").textContent, note: $("levelNote").textContent, cards,
+  };
+}"""
+M3A_SLIDE = """([id, v]) => {
+  const $ = (x) => document.getElementById(x);
+  const el = $(id);
+  el.value = String(v);
+  el.dispatchEvent(new Event("input"));
+  return { sep: $("sReal").textContent, win: $("levelWin").getAttribute("data-state") };
+}"""
+
+
+def m3a_checks(browser, name):
+    notes = []
+    page = browser.new_page()
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    lv = lambda x: page.evaluate(M3A_LEVEL, x)  # noqa: E731
+    # line 1: level 3 reads N 30, 35, 160 before running
+    r = lv(3)
+    if (r["n"], r["gens"], r["siteN"]) != ("30", "35", "160"):
+        failures.append(f"{name}: M3a level 3 controls read {r}")
+    notes.append(f"L3 {r['n']}/{r['gens']}/{r['siteN']}")
+    # line 2: level 1, separation 8 by sliders alone; not won at load
+    r = lv(1)
+    if r["win"] != "pending" or r["sep"] != "0.000" or not r["run"]:
+        failures.append(f"{name}: M3a level 1 at load read {r}")
+    hi = page.evaluate("() => window.Evolve.GENE_BOUNDS.antherT[1]")
+    s = page.evaluate(M3A_SLIDE, ["g2_antherT", hi - 0.02])
+    if not (float(s["sep"]) >= 8 and s["win"] == "won"):
+        failures.append(f"{name}: M3a level 1 slider reached {s}")
+    notes.append(f"L1 sep {s['sep']} {s['win']}")
+    # line 3 and the timed run: level 2 at seed 1, target 8, 35 generations, siteN 160
+    lv(2)
+    t = page.evaluate(
+        """async () => {
+          const $ = (id) => document.getElementById(id);
+          $("seed").value = "1"; $("useD").checked = true; $("d").disabled = false;
+          $("d").value = "8";
+          const t0 = performance.now();
+          $("run").click();
+          while ($("status").textContent === "running…" || $("status").textContent === "press Run")
+            await new Promise((r) => setTimeout(r, 50));
+          return {
+            ms: performance.now() - t0, fate: $("sFate").textContent,
+            gens: $("gens").value, siteN: $("siteN").value,
+            win: $("levelWin").getAttribute("data-state"), note: $("levelNote").textContent,
+            error: $("status").getAttribute("data-error"),
+            card4: $("card4").getAttribute("data-state"),
+          };
+        }"""
+    )
+    if (t["fate"], t["win"]) != ("one lost", "lost") or "No win from placement alone" not in t["note"]:
+        failures.append(f"{name}: M3a level 2 seed 1 target 8 read {t}")
+    if (t["gens"], t["siteN"]) != ("35", "160") or t["error"] or t["ms"] >= 60000:
+        failures.append(f"{name}: M3a timed run {t['ms']:.0f} ms at {t['gens']}/{t['siteN']} ({t['error']})")
+    notes.append(f"L2 s1 t8 {t['fate']} {t['win']}; 35-gen siteN-160 run {t['ms'] / 1000:.1f} s")
+    # loading any level opens no card; control: the level-2 run itself opened card 4
+    if t["card4"] != "open":
+        failures.append(f"{name}: M3a control: level 2 seed 1 target 8 did not open card 4 ({t['card4']})")
+    for x in (1, 2, 3, 4, 5, 6):
+        r = lv(x)
+        if "open" in r["cards"].values():
+            failures.append(f"{name}: M3a loading level {x} left a card open {r['cards']}")
+    page.close()
+    return notes
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch()
     for name, mode in SPEC:
@@ -313,6 +398,7 @@ with sync_playwright() as p:
                     f"#play animating {changed3}/{n3}")
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)
+            note += "; M3a " + ", ".join(m3a_checks(browser, name))
 
         if errors:
             failures.append(f"{name}: {len(errors)} console error(s): {errors[:3]}")
