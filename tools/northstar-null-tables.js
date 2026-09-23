@@ -18,6 +18,8 @@
  * Usage (from the repository root; each call is bounded to run under 10 min):
  *   node tools/northstar-null-tables.js card14 page  <seedFrom> <seedTo>
  *   node tools/northstar-null-tables.js card14 level <seedFrom> <seedTo>
+ *   node tools/northstar-null-tables.js card14hand page|level <seedFrom> <seedTo>   (M2: the
+ *       same genomes founded by the page's hand-set recipe; a re-measurement, no edge moves)
  *   node tools/northstar-null-tables.js card23 d8    <seedFrom> <seedTo>
  *   node tools/northstar-null-tables.js card23 d4    <seedFrom> <seedTo>
  *   node tools/northstar-null-tables.js card5  -     <seedFrom> <seedTo>
@@ -87,12 +89,36 @@ const CONFIGS = {
  * founded by foundTwoLineages at target d (population.html:727). Also the
  * gap-occupancy quantities cards 2 and 3 read, against the founding
  * placements held fixed (docs/ROADMAP.md:252-253). */
-function run({ n, gens, siteN, seed, d, randomMating = false, extra = {} }) {
+function run({
+  n,
+  gens,
+  siteN,
+  seed,
+  d,
+  randomMating = false,
+  extra = {},
+  hand = false,
+}) {
   const opts = { ...I.DEFAULTS, siteN, randomMating, ...extra };
-  const rng = E.makeRng(seed);
-  const srng = I.signalRng(seed);
+  let rng = E.makeRng(seed);
+  let srng = I.signalRng(seed);
   const built = I.foundTwoLineages(n, rng, srng, d, opts);
   if (!built) return null;
+  if (hand) {
+    /* M2 re-measurement (spec §9, M2 row, last sentence): the SAME two genomes
+     * foundTwoLineages picked, founded instead by the page's hand-set recipe
+     * (population-run.js foundFromGenomes, executed here, not retyped) on
+     * fresh streams at the same seed, then stepped with those streams — the
+     * page protocol when the "found at target d" switch is off. */
+    rng = E.makeRng(seed);
+    srng = I.signalRng(seed);
+    built.pop = sandboxRun().foundFromGenomes(
+      [built.gA, built.gB],
+      n,
+      rng,
+      srng,
+    );
+  }
   const placeOf = (g) =>
     I.sitesOf([{ h1: g, h2: g }], opts, 0).map(I.placementOf)[0];
   const pA = placeOf(built.gA);
@@ -100,6 +126,7 @@ function run({ n, gens, siteN, seed, d, randomMating = false, extra = {} }) {
   const v0 = I.ancestryVar(built.pop);
   let pop = built.pop;
   let extinct = false;
+  let stalledGens = 0;
   let hybGens = 0;
   let ratio = null;
   const gaps = [];
@@ -118,6 +145,7 @@ function run({ n, gens, siteN, seed, d, randomMating = false, extra = {} }) {
     if (h.length && r.length) ratio = mean(h) / mean(r);
     gaps.push(I.gapOccupancy(res.places, pA, pB).gap);
     vars.push(res.ancVar);
+    if (res.recruits === 0) stalledGens++;
     pop = res.pop;
   }
   /* card 2's ordering: the generation the gap first held 10% of plants
@@ -127,7 +155,11 @@ function run({ n, gens, siteN, seed, d, randomMating = false, extra = {} }) {
   const tAnc = vars.findIndex((v) => v <= 0.5 * v0);
   return {
     realised: built.realised,
-    fate: I.fateOf(pop, v0, extinct),
+    /* M2: a generation that recruits nothing hands the parents back
+     * unchanged (sim/ibm.js step), so such a run is scored STALLED, never
+     * HELD (northstar spec §3). */
+    fate: I.fateOf(pop, v0, extinct, stalledGens > 0),
+    stalledGens,
     hybGens,
     gens: gaps.length,
     ratio,
@@ -206,6 +238,19 @@ function widthRun(seed, phen, wseed = seed) {
   };
 }
 
+/* population-run.js is a browser script (one IIFE on the global object that
+ * reads window.IBM / window.Evolve); loaded once here so the hand-set recipe is
+ * the page's own function. */
+let SANDBOX_RUN = null;
+function sandboxRun() {
+  if (SANDBOX_RUN) return SANDBOX_RUN;
+  globalThis.IBM = I;
+  globalThis.Evolve = E;
+  require(R + "population-run.js");
+  SANDBOX_RUN = globalThis.SandboxRun;
+  return SANDBOX_RUN;
+}
+
 function seeds(a, b) {
   const out = [];
   for (let s = Number(a); s <= Number(b); s++) out.push(s);
@@ -230,6 +275,26 @@ function main(argv) {
           }
           console.log(
             `card14 ${sub} d=${d} seed ${seed} ${rm ? "null" : "placed"} realised ${f(x.realised)} fate ${x.fate} hybGens ${x.hybGens}/${x.gens} ratio ${f(x.ratio)}`,
+          );
+        }
+  } else if (mode === "card14hand") {
+    /* M2 re-measurement: card14's rows with the pair founded by the page's
+     * hand-set recipe (see run(), `hand`). Nothing is recalibrated from it. */
+    const c = CONFIGS[sub];
+    if (!c) throw new Error("card14hand needs page|level");
+    console.log(
+      `# card14hand ${sub} N=${c.n} gens=${c.gens} siteN=${c.siteN} seeds ${from}-${to} (foundTwoLineages genomes, founded by population-run.js foundFromGenomes)`,
+    );
+    for (const seed of seeds(from, to))
+      for (const d of [8, 4])
+        for (const rm of [false, true]) {
+          const x = run({ ...c, seed, d, randomMating: rm, hand: true });
+          if (!x) {
+            console.log(`card14hand ${sub} d=${d} seed ${seed} nobuild`);
+            continue;
+          }
+          console.log(
+            `card14hand ${sub} d=${d} seed ${seed} ${rm ? "null" : "placed"} realised ${f(x.realised)} fate ${x.fate} hybGens ${x.hybGens}/${x.gens} ratio ${f(x.ratio)} stalledGens ${x.stalledGens}`,
           );
         }
   } else if (mode === "card23") {
@@ -319,7 +384,7 @@ function main(argv) {
     edges(argv.slice(1));
   } else {
     throw new Error(
-      "mode: card14 | card23 | card5 | card6 | card6null | summarise | edges",
+      "mode: card14 | card14hand | card23 | card5 | card6 | card6null | summarise | edges",
     );
   }
 }
