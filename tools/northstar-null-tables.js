@@ -19,7 +19,8 @@
  *   node tools/northstar-null-tables.js card14 page  <seedFrom> <seedTo>
  *   node tools/northstar-null-tables.js card14 level <seedFrom> <seedTo>
  *   node tools/northstar-null-tables.js card14hand page|level <seedFrom> <seedTo>   (M2: the
- *       same genomes founded by the page's hand-set recipe; a re-measurement, no edge moves)
+ *       same genomes founded by the page's hand-set recipe; a re-measurement, no edge moves;
+ *       2026-09-22: seeds 1-30, and `summarise`/`edges` read card14hand rows as a hand-set null)
  *   node tools/northstar-null-tables.js card23 d8    <seedFrom> <seedTo>
  *   node tools/northstar-null-tables.js card23 d4    <seedFrom> <seedTo>
  *   node tools/northstar-null-tables.js card5  -     <seedFrom> <seedTo>
@@ -391,6 +392,8 @@ function main(argv) {
 
 /* Read row files back and print the edge of each null distribution, the
  * value a card's threshold must clear, and how many positive-arm seeds clear it. */
+/* 2026-09-22: arms are matched on the token after the seed ("seed N null"); a
+ * bare / null / also matched "ratio null stalledGens" on card14hand placed rows. */
 function summarise(files) {
   const fs = require("fs");
   const rows = files.flatMap((p) =>
@@ -412,52 +415,93 @@ function summarise(files) {
   const minmax = (xs) =>
     `min ${f(Math.min(...xs))} max ${f(Math.max(...xs))} n ${xs.length}`;
 
-  for (const cfg of ["page", "level"]) {
-    const c14 = rows.filter(
-      (l) => l.startsWith(`card14 ${cfg} `) && !/nobuild/.test(l),
-    );
-    if (!c14.length) continue;
-    console.log(
-      `\n== card 1 at ${cfg}: hybrid/rest receipt ratio (finite values only; Infinity = rest received nothing, counted separately)`,
-    );
-    for (const d of [8, 4]) {
-      const nul = c14.filter((l) => l.includes(`d=${d} `) && / null /.test(l));
-      const pl = c14.filter((l) => l.includes(`d=${d} `) && / placed /.test(l));
-      const nr = nul.map((l) => num(l, "ratio"));
-      const finite = nr.filter((x) => x != null && Number.isFinite(x));
-      const inf = nr.filter((x) => x === Infinity).length;
-      const undef = nr.filter((x) => x == null).length;
-      const nullMin = Math.min(...finite);
+  /* card14hand (card-1 hand-set null, 2026-09-22): the same statistics over
+   * the hand-set-founded rows, plus the clean-positive-control count (a placed
+   * seed below the edge whose OWN null row is FUSED). */
+  for (const [pre, tag] of [
+    ["card14", ""],
+    ["card14hand", " under hand-set founding"],
+  ])
+    for (const cfg of ["page", "level"]) {
+      const c14 = rows.filter(
+        (l) => l.startsWith(`${pre} ${cfg} `) && !/nobuild/.test(l),
+      );
+      if (!c14.length) continue;
       console.log(
-        `  d=${d} null: ${minmax(finite)} Infinity ${inf} undefined ${undef} -> edge ${f(nullMin)} (a card-1 ratio must be BELOW this)`,
+        `\n== card 1 at ${cfg}${tag}: hybrid/rest receipt ratio (finite values only; Infinity = rest received nothing, counted separately)`,
       );
-      const pr = pl.map((l) => [num(l, "seed"), num(l, "ratio"), fateOf(l)]);
-      const clear = pr.filter(
-        ([, x, ft]) =>
-          x != null && Number.isFinite(x) && x < nullMin && ft !== "HELD",
-      );
-      console.log(
-        `  d=${d} placed, not HELD, ratio below the edge: ${clear.length} of ${pr.length} seeds` +
-          (clear.length
-            ? ` -> seeds ${clear.map(([s, x]) => `${s} (${f(x)})`).join(", ")}`
-            : ""),
-      );
+      for (const d of [8, 4]) {
+        const nul = c14.filter(
+          (l) => l.includes(`d=${d} `) && / seed \d+ null /.test(l),
+        );
+        const pl = c14.filter(
+          (l) => l.includes(`d=${d} `) && / seed \d+ placed /.test(l),
+        );
+        const nr = nul.map((l) => num(l, "ratio"));
+        const finite = nr.filter((x) => x != null && Number.isFinite(x));
+        const inf = nr.filter((x) => x === Infinity).length;
+        const undef = nr.filter((x) => x == null).length;
+        const nullMin = Math.min(...finite);
+        console.log(
+          `  d=${d} null: ${minmax(finite)} Infinity ${inf} undefined ${undef} -> edge ${f(nullMin)} (a card-1 ratio must be BELOW this)`,
+        );
+        const pr = pl.map((l) => [num(l, "seed"), num(l, "ratio"), fateOf(l)]);
+        const clear = pr.filter(
+          ([, x, ft]) =>
+            x != null && Number.isFinite(x) && x < nullMin && ft !== "HELD",
+        );
+        console.log(
+          `  d=${d} placed, not HELD, ratio below the edge: ${clear.length} of ${pr.length} seeds` +
+            (clear.length
+              ? ` -> seeds ${clear.map(([s, x]) => `${s} (${f(x)})`).join(", ")}`
+              : ""),
+        );
+        if (pre === "card14hand") {
+          const nullFused = new Set(
+            nul.filter((l) => fateOf(l) === "FUSED").map((l) => num(l, "seed")),
+          );
+          const clean = clear.filter(([s]) => nullFused.has(s));
+          const reach = pr.filter(
+            ([, x]) => x != null && Number.isFinite(x) && x >= nullMin,
+          ).length;
+          const finiteP = pr.filter(
+            ([, x]) => x != null && Number.isFinite(x),
+          ).length;
+          console.log(
+            `  d=${d} placed finite ratios at or above the edge (reached by the null): ${reach} of ${finiteP}; clean positive controls (below the edge, own null FUSED): ${clean.length}` +
+              (clean.length
+                ? ` -> seeds ${clean.map(([s]) => s).join(", ")}`
+                : ""),
+          );
+        }
+      }
+      console.log(`\n== card 4 at ${cfg}${tag}: hybrid generations`);
+      for (const d of [8, 4]) {
+        const nul = c14.filter(
+          (l) => l.includes(`d=${d} `) && / seed \d+ null /.test(l),
+        );
+        const pl = c14.filter(
+          (l) => l.includes(`d=${d} `) && / seed \d+ placed /.test(l),
+        );
+        const hg = (l) => Number(str(l, "hybGens").split("/")[0]);
+        const nh = nul.map(hg);
+        console.log(
+          `  d=${d} null hybGens: ${minmax(nh)} -> edge ${Math.min(...nh)} (card 4 opens at 0, which must be BELOW this)`,
+        );
+        const opens = pl.filter((l) => hg(l) === 0 && fateOf(l) === "one lost");
+        console.log(
+          `  d=${d} placed, \`one lost\` with 0 hybrid generations: ${opens.length} of ${pl.length} seeds`,
+        );
+        const full = nh.filter((x) => x === Math.max(...nh)).length;
+        if (pre === "card14hand")
+          console.log(
+            `  d=${d} null at the max ${Math.max(...nh)} hybrid generations: ${full} of ${nh.length}; placed seeds at 0: ${pl
+              .filter((l) => hg(l) === 0)
+              .map((l) => num(l, "seed"))
+              .join(", ")}`,
+          );
+      }
     }
-    console.log(`\n== card 4 at ${cfg}: hybrid generations`);
-    for (const d of [8, 4]) {
-      const nul = c14.filter((l) => l.includes(`d=${d} `) && / null /.test(l));
-      const pl = c14.filter((l) => l.includes(`d=${d} `) && / placed /.test(l));
-      const hg = (l) => Number(str(l, "hybGens").split("/")[0]);
-      const nh = nul.map(hg);
-      console.log(
-        `  d=${d} null hybGens: ${minmax(nh)} -> edge ${Math.min(...nh)} (card 4 opens at 0, which must be BELOW this)`,
-      );
-      const opens = pl.filter((l) => hg(l) === 0 && fateOf(l) === "one lost");
-      console.log(
-        `  d=${d} placed, \`one lost\` with 0 hybrid generations: ${opens.length} of ${pl.length} seeds`,
-      );
-    }
-  }
 
   for (const d of [8, 4]) {
     const c23 = rows.filter(
@@ -638,26 +682,29 @@ function edges(files) {
   console.log(
     "# edges: the defining seed of each null edge re-run at full precision; committed edge = outward rounding (card 1 DOWN, cards 2, 3, 6 UP)",
   );
-  for (const cfg of ["page", "level"])
-    for (const d of [8, 4]) {
-      const nul = rows.filter(
-        (l) =>
-          l.startsWith(`card14 ${cfg} d=${d} `) &&
-          / null /.test(l) &&
-          !/nobuild/.test(l),
-      );
-      const b = argmin(nul, "ratio");
-      if (!b) continue;
-      const seed = num(b.l, "seed");
-      const x = run({ ...CONFIGS[cfg], seed, d, randomMating: true });
-      /* round 5: a ratio is a non-negative quotient, so a null that reaches 0
-       * leaves NO edge below it; printing -0.001 was an impossible edge. */
-      console.log(
-        x.ratio <= 0
-          ? `card1 ${cfg} d=${d} defining seed ${seed} null ratio ${F(x.ratio)} (row ${b.v.toFixed(3)}) -> no edge (null reaches 0; the card is grey here)`
-          : `card1 ${cfg} d=${d} defining seed ${seed} null ratio ${F(x.ratio)} (row ${b.v.toFixed(3)}) -> edge ${outDown(x.ratio).toFixed(3)} (ratio must be BELOW this; the seed is not)`,
-      );
-    }
+  for (const hand of [false, true])
+    for (const cfg of ["page", "level"])
+      for (const d of [8, 4]) {
+        const pre = hand ? "card14hand" : "card14";
+        const nul = rows.filter(
+          (l) =>
+            l.startsWith(`${pre} ${cfg} d=${d} `) &&
+            / seed \d+ null /.test(l) &&
+            !/nobuild/.test(l),
+        );
+        const b = argmin(nul, "ratio");
+        if (!b) continue;
+        const seed = num(b.l, "seed");
+        const x = run({ ...CONFIGS[cfg], seed, d, randomMating: true, hand });
+        const lab = hand ? "card1hand" : "card1";
+        /* round 5: a ratio is a non-negative quotient, so a null that reaches 0
+         * leaves NO edge below it; printing -0.001 was an impossible edge. */
+        console.log(
+          x.ratio <= 0
+            ? `${lab} ${cfg} d=${d} defining seed ${seed} null ratio ${F(x.ratio)} (row ${b.v.toFixed(3)}) -> no edge (null reaches 0; the card is grey here)`
+            : `${lab} ${cfg} d=${d} defining seed ${seed} null ratio ${F(x.ratio)} (row ${b.v.toFixed(3)}) -> edge ${outDown(x.ratio).toFixed(3)} (ratio must be BELOW this; the seed is not)`,
+        );
+      }
   for (const d of [8, 4]) {
     const nul = rows.filter(
       (l) =>
