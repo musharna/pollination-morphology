@@ -31,7 +31,7 @@ signal.signal(
     signal.SIGALRM,
     lambda *_: (sys.stderr.write("aborting: walltime guard\n"), sys.exit(2)),
 )
-signal.alarm(400)
+signal.alarm(1200)
 
 ROOT = (
     sys.argv[1] if len(sys.argv) > 1 else "site"
@@ -89,6 +89,92 @@ def sample(page, settle, gap):
     # <=1 distinct colour means nothing a viewer could see was drawn
     uniform = sum(1 for x in a if x.startswith("ERR") or int(x.rsplit(":", 1)[1]) <= 1)
     return n, changed, uniform
+
+
+# ---------------------------------------------------------------- M2 (northstar)
+# One assertion per M2 acceptance line (docs/superpowers/specs/2026-09-12-northstar-
+# design.md section 9), every card state read from the DOM's data-state:
+# the two positive seeds, the random-mating null block (seeds 1-5 x targets 4, 8;
+# quantity on the null side AND grey on cards 1 and 4 - grey wins), and the
+# STALLED fixture with its 0.80 / 0.85 controls. tests/sandbox-m2-*.test.js
+# assert the same in the fake DOM; this is the real-browser control on them.
+M2_RUN = """async (s) => {
+  const $ = (id) => document.getElementById(id);
+  if (s.lineages) {
+    const E = window.Evolve;
+    const g = { ...E.randomGenome(E.makeRng(4)), antherT: s.lineages };
+    window.Sandbox.setLineage(0, g);
+    window.Sandbox.setLineage(1, { ...g });
+  }
+  for (const k of ["seed", "d", "n", "gens", "siteN"]) if (k in s) $(k).value = String(s[k]);
+  $("useD").checked = !!s.useD;
+  $("d").disabled = !s.useD;
+  $("mode").value = s.random ? "random" : "real";
+  $("status").textContent = "running…";
+  $("status").removeAttribute("data-error");
+  $("run").click();
+  const t0 = performance.now();
+  while ($("status").textContent === "running…" && performance.now() - t0 < 90000)
+    await new Promise((r) => setTimeout(r, 100));
+  const band = $("sFateBand").textContent, hb = $("sHybBand").textContent;
+  const st = /(\d+) of (\d+) generations recruited nothing/.exec(band);
+  const hy = /hybrids among the parents in (\d+) of (\d+) generations/.exec(hb);
+  const ra = /receipt ratio (\S+)/.exec(hb);
+  const cards = {};
+  for (const c of ["card1", "card2", "card3", "card4", "card5", "card6"])
+    cards[c] = $(c) ? $(c).getAttribute("data-state") : null;
+  return {
+    status: $("status").textContent,
+    error: $("status").getAttribute("data-error"),
+    fate: $("sFate").textContent,
+    stalled: st ? +st[1] : null,
+    hyb: hy ? +hy[1] : null,
+    ratio: ra ? ra[1] : null,
+    cards,
+  };
+}"""
+
+
+def m2_checks(browser, name):
+    notes = []
+    page = browser.new_page()
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    run = lambda s: page.evaluate(M2_RUN, s)  # noqa: E731
+    PAGE_CFG = {"n": 18, "gens": 24, "siteN": 90}
+    # card 4: target 8 seed 1; card 1: target 4 seed 16 (spec M2 row)
+    for seed, d, hyb, ratio, card in ((1, 8, 0, "no", "card4"), (16, 4, 1, "0.111", "card1")):
+        r = run({**PAGE_CFG, "seed": seed, "d": d, "useD": True})
+        if (r["fate"], r["hyb"], r["ratio"], r["cards"][card]) != ("one lost", hyb, ratio, "open"):
+            failures.append(f"{name}: M2 positive target {d} seed {seed} read {r}")
+        notes.append(f"t{d}s{seed} {r['fate']} {card} {r['cards'][card]}")
+    # the null block: quantity on the null side AND grey on cards 1 and 4
+    grey = 0
+    for seed in range(1, 6):
+        for d in (4, 8):
+            r = run({**PAGE_CFG, "seed": seed, "d": d, "useD": True, "random": True})
+            ok_q = r["hyb"] == 23 and r["ratio"] is not None and (
+                r["ratio"] == "Infinity" or float(r["ratio"]) >= 1.146)
+            ok_s = r["cards"]["card1"] == "grey" and r["cards"]["card4"] == "grey"
+            if not (ok_q and ok_s):
+                failures.append(f"{name}: M2 null target {d} seed {seed} read {r}")
+            grey += ok_s
+    notes.append(f"null block grey {grey}/10")
+    # the STALLED fixture (level configuration, hand-set pair) and its controls
+    LEVEL = {"n": 30, "gens": 35, "siteN": 160, "seed": 1, "useD": False}
+    r = run({**LEVEL, "lineages": 0.825})
+    exp = {"card1": "grey", "card2": "grey", "card3": "grey", "card4": "closed",
+           "card5": "grey", "card6": "grey"}
+    if r["fate"] != "STALLED" or r["stalled"] != 35 or r["cards"] != exp:
+        failures.append(f"{name}: M2 stall fixture read {r}")
+    notes.append(f"stall {r['fate']} {r['stalled']}/35")
+    r = run({**LEVEL, "lineages": 0.80})
+    if r["fate"] != "FUSED" or r["stalled"] != 0:
+        failures.append(f"{name}: M2 stall control antherT 0.80 read {r}")
+    r = run({**LEVEL, "lineages": 0.85})
+    if not r["error"] or "never touches the bee" not in r["error"]:
+        failures.append(f"{name}: M2 antherT 0.85 was founded: {r}")
+    page.close()
+    return notes
 
 
 with sync_playwright() as p:
@@ -225,6 +311,8 @@ with sync_playwright() as p:
                     failures.append(f"{name}: clicked #play and NOTHING animated - playback does not run")
             note = (f"idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
                     f"#play animating {changed3}/{n3}")
+            m2_notes = m2_checks(browser, name)
+            note += "; M2 " + ", ".join(m2_notes)
 
         if errors:
             failures.append(f"{name}: {len(errors)} console error(s): {errors[:3]}")

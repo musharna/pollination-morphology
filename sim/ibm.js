@@ -535,9 +535,16 @@ function ancNeighbour(pop, positions) {
  *         value — two lineages, still distinct.
  * one lost  the tracer has gone to one end: a lineage was excluded.
  * FUSED   variance collapsed with the mean in the middle: they merged.
+ * STALLED (only when the fourth argument is true) a generation recruited
+ *         nothing; the run is a loss, not a hold.
  */
-function fateOf(finalPop, ancVar0, extinct) {
+function fateOf(finalPop, ancVar0, extinct, stalled = false) {
   if (extinct || !finalPop || finalPop.length < 2) return "BOTH LOST";
+  /* STALLED: some generation recruited nothing, and step() hands the parents
+   * back unchanged when it does, so the variance below would be the founders'
+   * and a run that never reproduced would read HELD. Callers pass the flag;
+   * every three-argument caller is unchanged. (northstar spec §3, §8) */
+  if (stalled) return "STALLED";
   const v = ancestryVar(finalPop);
   const m = mean(finalPop.map((i) => (i.anc === undefined ? 0 : i.anc)));
   if (v > 0.4 * ancVar0) return "HELD";

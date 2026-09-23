@@ -784,3 +784,48 @@ card 3's 0.170 already sat above seed 13's 0.16952; at target 4 no card-2 or car
 exists (`edges` 0.901 / 0.597, and 0 of 10 a = 0.25 seeds above); the random-mating lead edge is
 **1** for both; card 6's edge is **0.403** (seed 23's 0.40277 rounded up), cleared by 9 of 29
 treatment-minus-shuffled seeds.
+
+## M2 re-measurement under the hand-set recipe (2026-09-22)
+
+The same two genomes `foundTwoLineages` picks, founded by the page's hand-set recipe
+(`population-run.js` `foundFromGenomes`, executed by the tool) on fresh streams at the same seed,
+then stepped with those streams. Page configuration. No edge is recalibrated from these rows.
+
+```
+node tools/northstar-null-tables.js card14hand page 1 5;  node tools/northstar-null-tables.js card14hand page 16 16
+```
+
+```
+# card14hand page N=18 gens=24 siteN=90 seeds 1-5 (foundTwoLineages genomes, founded by population-run.js foundFromGenomes)
+card14hand page d=8 seed 1 placed realised 8.124 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 1 null realised 8.124 fate FUSED hybGens 23/24 ratio 0.843 stalledGens 0
+card14hand page d=4 seed 1 placed realised 4.025 fate FUSED hybGens 23/24 ratio 0.850 stalledGens 0
+card14hand page d=4 seed 1 null realised 4.025 fate FUSED hybGens 23/24 ratio 0.794 stalledGens 0
+card14hand page d=8 seed 2 placed realised 8.058 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 2 null realised 8.058 fate FUSED hybGens 23/24 ratio 124.472 stalledGens 0
+card14hand page d=4 seed 2 placed realised 3.940 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=4 seed 2 null realised 3.940 fate FUSED hybGens 23/24 ratio 0.710 stalledGens 0
+card14hand page d=8 seed 3 placed realised 8.123 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 3 null realised 8.123 fate FUSED hybGens 23/24 ratio 0.772 stalledGens 0
+card14hand page d=4 seed 3 placed realised 4.027 fate one lost hybGens 5/24 ratio 1.059 stalledGens 0
+card14hand page d=4 seed 3 null realised 4.027 fate FUSED hybGens 23/24 ratio 0.746 stalledGens 0
+card14hand page d=8 seed 4 placed realised 7.663 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 4 null realised 7.663 fate FUSED hybGens 23/24 ratio 0.592 stalledGens 0
+card14hand page d=4 seed 4 placed realised 3.953 fate FUSED hybGens 23/24 ratio 3.236 stalledGens 0
+card14hand page d=4 seed 4 null realised 3.953 fate FUSED hybGens 23/24 ratio 0.590 stalledGens 0
+card14hand page d=8 seed 5 placed realised 8.090 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 5 null realised 8.090 fate FUSED hybGens 23/24 ratio 0.887 stalledGens 0
+card14hand page d=4 seed 5 placed realised 3.895 fate FUSED hybGens 23/24 ratio 1.062 stalledGens 0
+card14hand page d=4 seed 5 null realised 3.895 fate FUSED hybGens 23/24 ratio 0.670 stalledGens 0
+# card14hand page N=18 gens=24 siteN=90 seeds 16-16 (foundTwoLineages genomes, founded by population-run.js foundFromGenomes)
+card14hand page d=8 seed 16 placed realised 8.076 fate one lost hybGens 0/24 ratio null stalledGens 0
+card14hand page d=8 seed 16 null realised 8.076 fate FUSED hybGens 23/24 ratio 1.584 stalledGens 0
+card14hand page d=4 seed 16 placed realised 3.849 fate one lost hybGens 2/24 ratio 1.167 stalledGens 0
+card14hand page d=4 seed 16 null realised 3.849 fate FUSED hybGens 23/24 ratio 1.939 stalledGens 0
+```
+
+Read against the `foundTwoLineages` rows above: card 4's control (target 8, seed 1) still reads
+`one lost`, 0 of 24, and opens. Card 1's control (target 4, seed 16) reads `one lost`, 2 of 24,
+ratio 1.167, and does NOT open (edge 0.603). In the random-mating null block, target 8 seed 4 (0.592)
+and target 4 seed 4 (0.590) fall BELOW card 1's 0.603 edge, and 9 of 10 null ratios fall below the
+spec's 1.146; every null block row keeps 23 of 24 hybrid generations. The `d` switch stays.
