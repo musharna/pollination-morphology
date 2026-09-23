@@ -316,6 +316,32 @@
         </div>
       </section>
 
+      <section class="panel" aria-label="Level">
+        <div class="row">
+          <div class="ctl">
+            <label for="level">level</label>
+            <select id="level" style="width: auto">
+              <option value="free">free sandbox</option>
+              <option value="1">level 1, placement</option>
+              <option value="2">level 2, secondary contact</option>
+              <option value="3">level 3, rare-bias self-defeat</option>
+              <option value="4">level 4, selfing budget</option>
+              <option value="5">level 5, phenology</option>
+              <option value="6">level 6, the open northstar</option>
+            </select>
+          </div>
+          <p id="levelBrief" class="note" style="margin: 0"></p>
+        </div>
+        <p id="levelOpts" class="band"></p>
+        <p id="levelNote" class="note"></p>
+        <p class="note">
+          win:
+          <b id="levelWin" data-state="none" role="status" aria-live="polite"
+            >—</b
+          >
+        </p>
+      </section>
+
       <section class="panel" aria-label="Lineage shapes">
         <div class="genes">
           <div>
@@ -443,28 +469,70 @@
         <p class="band" id="sAncBand"></p>
         <section aria-label="Why you failed" id="cards" class="cards">
           <h2 class="visually-hidden">Why you failed</h2>
-          <div class="card" id="card1" data-state="grey" role="status" aria-label="card 1, hybrids pay from geometry">
-            <b>1. hybrids pay from geometry</b> <span id="card1State">grey</span>
+          <div
+            class="card"
+            id="card1"
+            data-state="grey"
+            role="status"
+            aria-label="card 1, hybrids pay from geometry"
+          >
+            <b>1. hybrids pay from geometry</b>
+            <span id="card1State">grey</span>
             <p id="card1Text" class="band">run to read this card</p>
           </div>
-          <div class="card" id="card4" data-state="grey" role="status" aria-label="card 4, secondary contact excludes">
-            <b>4. secondary contact excludes</b> <span id="card4State">grey</span>
+          <div
+            class="card"
+            id="card4"
+            data-state="grey"
+            role="status"
+            aria-label="card 4, secondary contact excludes"
+          >
+            <b>4. secondary contact excludes</b>
+            <span id="card4State">grey</span>
             <p id="card4Text" class="band">run to read this card</p>
           </div>
-          <div class="card" id="card2" data-state="grey" role="status" aria-label="card 2, the shared pollinator is the bridge (built in M3)">
-            <b>2. the shared pollinator is the bridge</b> <span id="card2State">grey</span>
+          <div
+            class="card"
+            id="card2"
+            data-state="grey"
+            role="status"
+            aria-label="card 2, the shared pollinator is the bridge (built in M3)"
+          >
+            <b>2. the shared pollinator is the bridge</b>
+            <span id="card2State">grey</span>
             <p id="card2Text" class="band">built in M3</p>
           </div>
-          <div class="card" id="card3" data-state="grey" role="status" aria-label="card 3, preferring the rare defeats itself (built in M3)">
-            <b>3. preferring the rare defeats itself</b> <span id="card3State">grey</span>
+          <div
+            class="card"
+            id="card3"
+            data-state="grey"
+            role="status"
+            aria-label="card 3, preferring the rare defeats itself (built in M3)"
+          >
+            <b>3. preferring the rare defeats itself</b>
+            <span id="card3State">grey</span>
             <p id="card3Text" class="band">built in M3</p>
           </div>
-          <div class="card" id="card5" data-state="grey" role="status" aria-label="card 5, a floor spread thin is worse than a flat one (built in M3)">
-            <b>5. a floor spread thin is worse than a flat one</b> <span id="card5State">grey</span>
+          <div
+            class="card"
+            id="card5"
+            data-state="grey"
+            role="status"
+            aria-label="card 5, a floor spread thin is worse than a flat one (built in M3)"
+          >
+            <b>5. a floor spread thin is worse than a flat one</b>
+            <span id="card5State">grey</span>
             <p id="card5Text" class="band">built in M3</p>
           </div>
-          <div class="card" id="card6" data-state="grey" role="status" aria-label="card 6, flowering width evolves wide (built in M3)">
-            <b>6. flowering width evolves wide</b> <span id="card6State">grey</span>
+          <div
+            class="card"
+            id="card6"
+            data-state="grey"
+            role="status"
+            aria-label="card 6, flowering width evolves wide (built in M3)"
+          >
+            <b>6. flowering width evolves wide</b>
+            <span id="card6State">grey</span>
             <p id="card6Text" class="band">built in M3</p>
           </div>
         </section>
@@ -1196,6 +1264,74 @@
         if (only === undefined || only === 0) sweepLabels(0);
         if (only === undefined || only === 1) sweepLabels(1);
         drawBodyMap();
+        showWin();
+      }
+
+      /* ============================================================ M3a: levels
+       * (spec §5). Choosing one loads its (N, generations, siteN) and mating
+       * mode into the live controls and prints its brief; every control stays
+       * live afterwards. The win is read off what the page already shows:
+       * level 1 the realised separation, levels 2 to 6 the fate tile reading
+       * HELD and nothing else (STALLED, one lost, FUSED, BOTH LOST lose).
+       * Loading a level clears the last run, so no card is left open from a
+       * run made under another configuration. */
+      let LEVEL = window.SandboxRun.levelOf("free");
+      function showWin() {
+        const d = realisedSeparation();
+        const st = window.SandboxRun.levelWin(LEVEL, {
+          fate: RESULT ? RESULT.fate : null,
+          separation: d,
+        });
+        const el = $("levelWin");
+        el.setAttribute("data-state", st);
+        el.textContent =
+          st === "none"
+            ? "— (the free sandbox has no win)"
+            : st === "won"
+              ? LEVEL.noRun
+                ? `won: realised separation ${d.toFixed(3)}, at or above ${LEVEL.target}`
+                : "won: HELD"
+              : st === "lost"
+                ? `lost: ${RESULT.fate}; only HELD wins`
+                : LEVEL.noRun
+                  ? `not yet: realised separation ${d === null ? "—" : d.toFixed(3)}, target ${LEVEL.target}`
+                  : "run to play this level; only HELD wins";
+        let note = LEVEL.noKnownWin || "";
+        if (note && st === "lost")
+          note +=
+            ` This run: seed ${$("seed").value}, N ${$("n").value}, ` +
+            `${$("gens").value} generations, siteN ${$("siteN").value}` +
+            ($("useD").checked ? `, found at target d ${$("d").value}` : "") +
+            `, ${$("mode").value === "random" ? "random mating" : "placement-mediated"}.`;
+        $("levelNote").textContent = note;
+      }
+      function loadLevel(id) {
+        const L = window.SandboxRun.levelOf(id);
+        if (!L) throw new Error(`no level ${id}`);
+        LEVEL = L;
+        clearResult();
+        if (L.cfg) {
+          $("n").value = String(L.cfg.n);
+          $("gens").value = String(L.cfg.gens);
+          $("siteN").value = String(L.cfg.siteN);
+          $("mode").value = "real";
+        }
+        if (L.noRun) {
+          /* level 1 starts from two identical lineages: a separation of zero */
+          for (let li = 0; li < 2; li++) {
+            Object.assign(LINEAGE[li], START_GENOME);
+            for (const k of GENE_ORDER) {
+              const el = $("g" + (li + 1) + "_" + k);
+              if (el) el.value = String(LINEAGE[li][k]);
+            }
+          }
+        }
+        $("run").disabled = !!L.noRun;
+        $("levelBrief").textContent = L.brief;
+        $("levelOpts").textContent = L.options
+          ? `This level's option: ${L.options}. Option controls arrive with M3b; until then a run here uses the level's N, generations and siteN without it.`
+          : "";
+        refreshSandbox();
       }
 
       function initSandbox() {
@@ -1217,7 +1353,9 @@
         $("useD").onchange = (e) => {
           $("d").disabled = !e.target.checked;
         };
-        refreshSandbox();
+        $("level").onchange = (e) => loadLevel(e.target.value);
+        $("level").value = "free";
+        loadLevel("free");
       }
 
       /* DOM reads, the founding, and the call. The loop itself lives in
@@ -1275,12 +1413,7 @@
          * step returned, which the frames (parents) drop — with the engine's
          * own predicate and its strings verbatim, as the null tables read it
          * (tools/northstar-null-tables.js run()). */
-        const fate = I.fateOf(
-          out.final,
-          v0,
-          out.extinct,
-          out.stalledGens > 0,
-        );
+        const fate = I.fateOf(out.final, v0, out.extinct, out.stalledGens > 0);
         const q = window.SandboxRun.quantities(out.frames);
         const optionKeys = Object.keys(opts).filter(
           (k) =>
@@ -1589,8 +1722,10 @@
         $("sSep").textContent = G.sep.toFixed(2);
         $("sAnc").textContent = G.ancVar.toFixed(4);
         const w = RESULT ? RESULT.fate : "—";
-        const hyb = G.anc.filter(window.SandboxRun.isHybrid).length / G.anc.length;
-        $("sHyb").textContent = hyb.toFixed(3) + (hyb > 0 ? " hybrids present" : "");
+        const hyb =
+          G.anc.filter(window.SandboxRun.isHybrid).length / G.anc.length;
+        $("sHyb").textContent =
+          hyb.toFixed(3) + (hyb > 0 ? " hybrids present" : "");
         $("sGap").textContent =
           RESULT && RESULT.p1 && RESULT.p2
             ? I.gapOccupancy(G.places, RESULT.p1, RESULT.p2).gap.toFixed(3)
@@ -1624,11 +1759,19 @@
         $("sFate").style.color = "";
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])
           $(id).textContent = "";
-        for (const k of ["card1", "card2", "card3", "card4", "card5", "card6"]) {
+        for (const k of [
+          "card1",
+          "card2",
+          "card3",
+          "card4",
+          "card5",
+          "card6",
+        ]) {
           $(k).setAttribute("data-state", "grey");
           $(k + "State").textContent = "grey";
           $(k + "Text").textContent = "run to read this card";
         }
+        showWin();
       }
 
       $("run").onclick = () => {
@@ -1643,6 +1786,7 @@
             GENS = R.gens;
             RESULT = R;
             showResult(R);
+            showWin();
             $("scrub").max = GENS.length - 1;
             $("scrub").disabled = false;
             $("play").disabled = false;
