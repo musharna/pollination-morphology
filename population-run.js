@@ -284,6 +284,7 @@
     `N ${sig.n}, ${sig.gens} generations, siteN ${sig.siteN}, ` +
     `${sig.randomMating ? "random mating" : "placement-mediated"}, ` +
     `${sig.options.length ? "options " + sig.options.join(", ") : "no option set"}, ` +
+    `${sig.foundD == null ? "hand-set founding" : "founded at target d " + sig.foundD}, ` +
     `${sig.defaultBee ? "the default bee" : "a changed bee"}`;
 
   /*
@@ -312,7 +313,10 @@
         .join(" or ") + ", placement-mediated, no option set, the default bee";
 
     let card1;
-    if (!(clean && cfg === "page")) card1 = grey(at(["page"]));
+    /* card 1's null floor falls to 0.344 under the hand-set founding (null
+     * tables, last section), so its edge holds only founded at target 4 or 8 */
+    if (!(clean && cfg === "page" && (sig.foundD === 4 || sig.foundD === 8)))
+      card1 = grey(at(["page"]) + ", founded at target d 4 or 8");
     else if (
       (fate === "one lost" || fate === "FUSED") &&
       q.ratio !== null &&
@@ -346,7 +350,9 @@
       };
 
     const m = m3 || {};
-    const lvl = cfg === "level" && !sig.randomMating && sig.defaultBee;
+    /* cards 2, 3, 5, 6: every null ran foundTwoLineages at target 8 */
+    const lvl =
+      cfg === "level" && !sig.randomMating && sig.defaultBee && sig.foundD === 8;
     const stalled = fate === "STALLED";
 
     /* ---- cards 2 and 3: level configuration, allocExponent alone and < 1,
@@ -370,7 +376,7 @@
       a < 1;
     const eligible23 =
       in23 && sig.realised != null && sig.realised >= ELIGIBLE_REALISED;
-    const at23 = `N 30, 35 generations, siteN 160, placement-mediated, allocExponent alone and below 1, the default bee`;
+    const at23 = `N 30, 35 generations, siteN 160, placement-mediated, allocExponent alone and below 1, the default bee, founded at target d 8`;
     const card23 = (n, qName, qVal, edge, finding) => {
       if (!in23)
         return {
@@ -428,7 +434,7 @@
     if (!in5)
       card5 = {
         state: "grey",
-        text: `measured at level 4's exact object (selfing rate 2, cost 0, a cover; phenology 8 slices, width 0.12; visitsPerPlant 800; N 30, 35 generations, siteN 160, placement-mediated, the default bee); this run ${describe(sig)}`,
+        text: `measured at level 4's exact object (selfing rate 2, cost 0, a cover; phenology 8 slices, width 0.12; visitsPerPlant 800; N 30, 35 generations, siteN 160, placement-mediated, the default bee, founded at target d 8); this run ${describe(sig)}`,
       };
     else {
       const flat = m.pair5 ? m.pair5.fate : null;
@@ -468,7 +474,7 @@
     if (!in6)
       card6 = {
         state: "grey",
-        text: `measured at phenology {slices: 8, widthLocus: true, widthMut: 0.03, conserveDisplay: true} alone, N 30, 35 generations, siteN 160, placement-mediated, the default bee; this run ${describe(sig)}`,
+        text: `measured at phenology {slices: 8, widthLocus: true, widthMut: 0.03, conserveDisplay: true} alone, N 30, 35 generations, siteN 160, placement-mediated, the default bee, founded at target d 8; this run ${describe(sig)}`,
       };
     else {
       const w = m.width || {};
@@ -539,7 +545,10 @@
    * inside the card's signature, so a run outside it pays for no second run. */
   function pairedArm(sig) {
     const lvl =
-      configOf(sig) === "level" && !sig.randomMating && sig.defaultBee;
+      configOf(sig) === "level" &&
+      !sig.randomMating &&
+      sig.defaultBee &&
+      sig.foundD === 8;
     if (lvl && isLevel4Object(sig.opts, sig.options))
       return {
         card: "card5",
@@ -666,6 +675,7 @@
 
   global.SandboxRun = {
     LEVELS,
+    LEVEL_CFG,
     levelOf,
     levelWin,
     runGenerations,

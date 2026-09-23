@@ -95,7 +95,8 @@ test("level 6 copy lists the known wins of levels 4 and 5", () => {
 
 test("STALLED loses on a level", () => {
   const g = { ...E.randomGenome(E.makeRng(4)), antherT: 0.825 };
-  const p = runPage({ level: 2, seed: 1, lineages: [g, { ...g }] });
+  /* the stalled pair is the hand-set founding; level 2 loads target 8 */
+  const p = runPage({ level: 2, seed: 1, useD: false, lineages: [g, { ...g }] });
   assert.equal(p.fate, "STALLED");
   assert.equal(p.win, "lost", "a run that never reproduced was not a loss");
 });

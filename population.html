@@ -1459,6 +1459,13 @@
         $("levelBrief").textContent = L.brief;
         /* M3b: the level's option object is applied, into the controls */
         writeOptions(L.opts);
+        /* levels 2 to 6: their measured rates were founded by foundTwoLineages
+         * at target 8, so the level loads that founding (the box stays live) */
+        if (L.cfg === window.SandboxRun.LEVEL_CFG) {
+          $("useD").checked = true;
+          $("d").value = "8";
+          $("d").disabled = false;
+        }
         $("levelOpts").textContent = L.options
           ? `This level's option: ${L.options}. Loaded into the option controls below.`
           : "";
@@ -1524,6 +1531,9 @@
           options: optionKeys,
           opts: options,
           realised: main.realised,
+          /* the founding every card edge was measured under: foundTwoLineages
+           * at target d, or null for the hand-set founding (grill 2026-09-23) */
+          foundD: useD ? d : null,
           defaultBee:
             bee.reach === P.DEFAULT_BEE.reach &&
             bee.bodyLen === P.DEFAULT_BEE.bodyLen,
