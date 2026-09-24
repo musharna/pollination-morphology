@@ -67,6 +67,18 @@ for f in "${SIM_MODULES[@]}"; do
 	cp "$f" "$OUT/$f"
 done
 
+# population.html was renamed sandbox.html at northstar M4; old links land on a
+# stub that forwards (query and hash kept) instead of a 404.
+cat >"$OUT/population.html" <<'HTML'
+<!doctype html>
+<meta charset="utf-8">
+<title>Moved to sandbox.html</title>
+<meta http-equiv="refresh" content="0; url=sandbox.html">
+<link rel="canonical" href="sandbox.html">
+<script>location.replace("sandbox.html" + location.search + location.hash);</script>
+<p>This page moved to <a href="sandbox.html">sandbox.html</a>.</p>
+HTML
+
 # Jekyll silently drops paths beginning with an underscore. Pages runs it unless
 # this file exists, so its absence is a class of missing-asset bug that shows up
 # only in production.

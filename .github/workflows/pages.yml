@@ -60,6 +60,7 @@ jobs:
           test -f site/sim/browser-bundle.js
           test -f site/sandbox.html
           test ! -e site/greybox.html
+          grep -q 'location.replace("sandbox.html"' site/population.html
 
       # The browser smoke (northstar M4): every page loads with zero console
       # errors, visit animates, and the sandbox's #run evolves a community in a
