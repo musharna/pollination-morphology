@@ -1,6 +1,6 @@
 # Executor brief: card 1 under the hand-set founding — the 30-seed null, and the stall-fixture sentence.
 
-Repo `/home/mjarnold/pollination-morphology`, master (after `c3ad780`). Context: M2's re-measurement
+Repo `/home/<user>/pollination-morphology`, master (after `c3ad780`). Context: M2's re-measurement
 (`docs/2026-09-13-northstar-null-tables.md`, last section) found that under the hand-set recipe card 1's
 control (t4 s16) reads 2/24, ratio 1.167, and random-mating nulls t8 s4 0.592 / t4 s4 0.590 fall BELOW the
 0.603 edge. Card 4 still works. Spec: §4 trigger/edge rules (edges = most extreme null seed, rounded

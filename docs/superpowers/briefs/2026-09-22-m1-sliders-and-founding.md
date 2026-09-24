@@ -1,6 +1,6 @@
 # Executor brief: M1, the sandbox's eight sliders, hand-set founding, the page loop as a file.
 
-Repo `/home/mjarnold/pollination-morphology`, master `09ffee0`. Authority: the spec
+Repo `/home/<user>/pollination-morphology`, master `09ffee0`. Authority: the spec
 `docs/superpowers/specs/2026-09-12-northstar-design.md` — §3 items 1–4 (:108-165), §9 M1 row (:384)
 and the "ONE rng protocol" paragraphs after the table (:392-420), §6 (bands). Read them fresh
 before writing anything; the spec wins over this brief wherever they differ. Engine `sim/` must
@@ -43,9 +43,9 @@ NOT change in M1 (`git diff master -- sim/` empty at the end).
    otherwise leave a TODO comment naming M2.
 
 ## Reference (read-only)
-Verified recipe + probes: `/home/mjarnold/.claude/jobs/0276dcca/tmp/v6-pollen/probe6.js` (F2b
+Verified recipe + probes: `/home/<user>/.claude/jobs/<job>/tmp/v6-pollen/probe6.js` (F2b
 block = the founding recipe exactly as the spec means it, and the fixed-bee stall fixture for M2);
-`/home/mjarnold/.claude/jobs/0276dcca/tmp/v4-pollen/probe5_gene_sensitivity.out` (slider magnitudes).
+`/home/<user>/.claude/jobs/<job>/tmp/v4-pollen/probe5_gene_sensitivity.out` (slider magnitudes).
 
 ## Rules
 - Branch `m1-sliders` off master; small commits; NO push; no attribution lines.
@@ -58,6 +58,6 @@ block = the founding recipe exactly as the spec means it, and the fixed-bee stal
   sliders exist with the GENE_BOUNDS min/max attributes.
 - The a11y commit `4502d69` added labels/ARIA to population.html — keep every existing a11y
   attribute; `tests/a11y.test.js` must stay green.
-- Stay inside `/home/mjarnold/pollination-morphology`. Touch no other repo, not the memory dir.
+- Stay inside `/home/<user>/pollination-morphology`. Touch no other repo, not the memory dir.
 - Final report: commits, test counts before/after, the measured slider magnitudes vs the spec's,
   and anything that did NOT match (say so plainly; a mismatch is a finding, never a rounding).
