@@ -26,7 +26,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Two tests read the PRE-FIX code at pinned commits (fb53224 in
           # conserved-display, 5602460 in empty-time) as their seen-to-fail
