@@ -1,6 +1,6 @@
 # Executor brief: M2, RUN on the hand-set pair, the engine's fate with STALLED, cards 1 and 4.
 
-Repo `/home/mjarnold/pollination-morphology`, master `0617b47`. Authority: the spec
+Repo `/home/<user>/pollination-morphology`, master `0617b47`. Authority: the spec
 `docs/superpowers/specs/2026-09-12-northstar-design.md` — §3 "A stall is a loss" (:193-227), §4 the
 trigger rule, signature rule, **precedence (grey wins)** and cards 1 and 4 (:235-280), §9 M2 row (:385)
 and the smoke/`data-state` paragraphs (:424-434), §8's one sanctioned `sim/` change (:362-363). Read them
@@ -50,7 +50,7 @@ M1 (which moved the loop into `population-run.js`); locate code by content, not 
    the DOM (positive seed, null block sample, the STALLED run). Local only until M4.
 
 ## Reference (read-only)
-`/home/mjarnold/.claude/jobs/0276dcca/tmp/v6-pollen/probe6.js` + `controls.out` — the verified
+`/home/<user>/.claude/jobs/<job>/tmp/v6-pollen/probe6.js` + `controls.out` — the verified
 fixed-bee fixture and its 0.80/0.85 controls. M1's brief for conventions:
 `docs/superpowers/briefs/2026-09-22-m1-sliders-and-founding.md`.
 

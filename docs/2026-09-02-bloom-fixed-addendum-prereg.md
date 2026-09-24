@@ -88,4 +88,4 @@ If C7a and C7b both come back at ~0.289, the suspicion motivating this document
 was unfounded and the extra hour of compute bought a stronger negative control
 than the prereg had. That is a fine outcome and gets reported as such.
 
-Claude-Session: https://claude.ai/code/session_01HzohYchgND5CTDDrinLf1D
+Claude-Session: <session-url>

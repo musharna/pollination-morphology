@@ -106,8 +106,8 @@ Three independent checks, all negative:
 | check                     | command                                                                                   | result                                                                          |
 | ------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | ever tracked in any ref?  | `git rev-list --all` × `git ls-tree -r --name-only`, grepping every tree for `euglossine` | only `docs/2026-08-28-euglossine-ceiling.md` has ever existed under that name   |
-| present anywhere on disk? | `find /home/mjarnold -name '*euglossine*'`                                                | two hits, both the `.md` — the repo copy and a copy inside a jobd run directory |
-| is the input still here?  | `find /home/mjarnold -iname 'Pollination_List_RLT*'`                                      | **no hits** — the source spreadsheet is gone too                                |
+| present anywhere on disk? | `find /home/<user> -name '*euglossine*'`                                                | two hits, both the `.md` — the repo copy and a copy inside a jobd run directory |
+| is the input still here?  | `find /home/<user> -iname 'Pollination_List_RLT*'`                                      | **no hits** — the source spreadsheet is gone too                                |
 | recoverable from stash?   | `git stash list`                                                                          | empty                                                                           |
 
 So the plan's fallback applies. `docs/2026-08-28-euglossine-ceiling.md:7` now states that the

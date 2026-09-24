@@ -1,6 +1,6 @@
 # Executor brief: pollen M3b, options from the page, cards 2/3/5/6, paired arms, deck.
 
-Repo `/home/mjarnold/pollination-morphology`, master `6b9c08f`. Authority: spec §9 M3b row (large; read
+Repo `/home/<user>/pollination-morphology`, master `6b9c08f`. Authority: spec §9 M3b row (large; read
 it in full), §4 cards 2, 3, 5, 6 + trigger/signature/precedence rules, §5 levels 3–5 option objects,
 §14 deck. Read fresh; spec wins.
 
