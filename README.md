@@ -50,8 +50,7 @@ experiment ran. Three are negative. Full text, controls and correction history i
 | `sim/packing.js`   | overlap metric and species-packing ceiling                                     |
 | `sim/evolve.js`    | the evolution loop: shared pollinator, stigma interference, lottery demography |
 | `visit.html`       | watch one bee load pollen in one flower and fail to deliver it to the next     |
-| `population.html`  | a whole community evolving on one shared pollinator                            |
-| `greybox.html`     | the two-flowers-one-bee reveal, stripped to its mechanism                      |
+| `sandbox.html`     | the sandbox: a whole community evolving on one shared pollinator               |
 | `experiments/`     | the ablation, the pre-v1 checks, v1, the tolerance sweep                       |
 | `docs/`            | groundwork, and a write-up per experiment including what went wrong            |
 | `docs/FINDINGS.md` | start here — the headline results and what is still open                       |

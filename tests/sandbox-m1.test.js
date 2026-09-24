@@ -25,7 +25,7 @@ const path = require("node:path");
 const { loadPage } = require("../tools/fake-dom.js");
 
 const ROOT = path.join(__dirname, "..");
-const PAGE = process.env.SANDBOX_PAGE || path.join(ROOT, "population.html");
+const PAGE = process.env.SANDBOX_PAGE || path.join(ROOT, "sandbox.html");
 const PAGE_ROOT = process.env.SANDBOX_PAGE
   ? path.dirname(process.env.SANDBOX_PAGE)
   : ROOT;
@@ -306,7 +306,7 @@ test("the page's own script still parses and the loop is not inline", () => {
   for (const [, body] of inline)
     assert.ok(
       !/\bI\.step\s*\(/.test(body),
-      "population.html still drives step() inline — the loop belongs in population-run.js",
+      "sandbox.html still drives step() inline — the loop belongs in population-run.js",
     );
 });
 

@@ -125,9 +125,9 @@ test("a traced run gives the renderer aligned, in-range points to draw", () => {
  * message only in the devtools console — the exact failure mode that shipped
  * twice already. `new Function` parses without executing, so this catches it
  * without needing a browser or a DOM. */
-test("population.html's inline script parses", () => {
+test("sandbox.html's inline script parses", () => {
   const html = fs.readFileSync(
-    path.join(__dirname, "..", "population.html"),
+    path.join(__dirname, "..", "sandbox.html"),
     "utf8",
   );
   const blocks = [
@@ -140,7 +140,7 @@ test("population.html's inline script parses", () => {
   for (const [, src] of blocks) {
     assert.doesNotThrow(
       () => new Function(src),
-      "population.html's inline script does not parse — the page would be blank",
+      "sandbox.html's inline script does not parse — the page would be blank",
     );
   }
 });
