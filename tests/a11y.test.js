@@ -14,7 +14,7 @@ const path = require("node:path");
 const ROOT = path.join(__dirname, "..");
 const PAGES = process.env.A11Y_PAGE
   ? [process.env.A11Y_PAGE]
-  : ["population.html", "visit.html"].map((f) => path.join(ROOT, f));
+  : ["sandbox.html", "visit.html"].map((f) => path.join(ROOT, f));
 
 /* Opening tags of one element type, as attribute strings. The pages are
  * prettier-formatted, so tags can span lines; [^>]* is enough because no

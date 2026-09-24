@@ -58,6 +58,23 @@ jobs:
           test -f site/.nojekyll
           test -f site/sim/placement.js
           test -f site/sim/browser-bundle.js
+          test -f site/sandbox.html
+          test ! -e site/greybox.html
+
+      # The browser smoke (northstar M4): every page loads with zero console
+      # errors, visit animates, and the sandbox's #run evolves a community in a
+      # real Chromium. Until M4 it ran locally only.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright (Chromium)
+        run: |
+          python3 -m pip install playwright==1.60.0
+          python3 -m playwright install --with-deps chromium
+
+      - name: Browser smoke of the built site
+        run: python3 tools/smoke-site.py site
 
       - uses: actions/upload-pages-artifact@v3
         with:

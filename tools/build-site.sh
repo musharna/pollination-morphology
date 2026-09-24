@@ -4,7 +4,7 @@
 #
 # site/ is an ALLOWLISTED staging directory, never the repo root: only the files
 # named here are published. Everything it contains is either tracked source
-# copied verbatim (the three playables, the two scripts they load, the landing
+# copied verbatim (the two playables, the two scripts they load, the landing
 # page) or generated here (.nojekyll). The output is gitignored — this script is
 # the committed artifact, not its result.
 #
@@ -16,13 +16,12 @@ cd "$ROOT"
 
 OUT="site"
 
-# The three playables, and ONLY the sim modules they actually load. Verified by
+# The two playables, and ONLY the sim modules they actually load. Verified by
 # reading the <script src=...> of each page:
 #   visit.html      -> sim/placement.js
-#   greybox.html    -> sim/placement.js
-#   population.html -> sim/browser-bundle.js
-#   population.html -> population-run.js (its own generation loop, M1)
-PLAYABLES=(visit.html population.html greybox.html)
+#   sandbox.html    -> sim/browser-bundle.js
+#   sandbox.html    -> population-run.js (its own generation loop, M1)
+PLAYABLES=(sandbox.html visit.html)
 SIM_MODULES=(sim/placement.js sim/browser-bundle.js)
 # Page scripts that are not sim modules: shipped beside the page that loads them.
 PAGE_SCRIPTS=(population-run.js)

@@ -7,9 +7,7 @@ behaving correctly. Inspection settled it:
   index.html       landing page. No canvas. Every same-origin link resolves 200.
   visit.html       AUTOPLAYS — its control reads "Pause" on load, 2 rAF sites.
                    Canvas must be non-blank AND change between two samples.
-  greybox.html     STATIC BY DESIGN — zero rAF, zero setInterval, no controls.
-                   Canvas must be non-blank. It must NOT be required to animate.
-  population.html  WAITS for the user (<button id="run">). Canvas non-blank on
+  sandbox.html     WAITS for the user (<button id="run">). Canvas non-blank on
                    load, must NOT animate before the click, and MUST animate
                    after it — the real end-to-end check that the evolution loop
                    runs in a browser.
@@ -41,8 +39,7 @@ PORT = 0  # ephemeral: this host runs parallel jobs, fixed ports collide
 SPEC = [
     ("index.html", "links"),
     ("visit.html", "autoplay"),
-    ("greybox.html", "static"),
-    ("population.html", "click"),
+    ("sandbox.html", "click"),
 ]
 
 Handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=ROOT)
@@ -443,12 +440,12 @@ with sync_playwright() as p:
             note = f"static by design, {n} canvas rendered non-blank"
 
         elif mode == "click":
-            # population.html's real contract, read off the page (lines 1060-1088):
+            # sandbox.html's real contract, read off the page (lines 1060-1088):
             # #run disables itself, computes the generations, and ON COMPLETION
             # enables #scrub and #play. So Run DRAWS ONCE; Play animates the
             # playback. Asserting "animates after Run" was wrong; the right
             # assertions are that the computation ran, drew, and armed playback.
-            # population.html legitimately shows an EMPTY plot area before #run, so a
+            # sandbox.html legitimately shows an EMPTY plot area before #run, so a
             # uniform canvas on load is CORRECT here and is deliberately not
             # asserted against. What must hold is that #run then draws.
             pass
@@ -548,6 +545,6 @@ if failures:
         print("  -", f)
     sys.exit(1)
 print("all entry points: HTTP 200, zero console errors, zero uncaught exceptions.")
-print("visit/greybox canvases carry >1 distinct colour; population.html is")
+print("visit canvases carry >1 distinct colour; sandbox.html is")
 print("legitimately uniform before #run and is NOT asserted non-blank there --")
 print("what is asserted is that #run draws and #play then animates.")

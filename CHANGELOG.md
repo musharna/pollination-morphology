@@ -7,6 +7,13 @@ public release; the full research history is in `docs/ROADMAP.md`, which is cano
 
 ### Added
 
+- Northstar M4, consolidation: `population.html` is renamed `sandbox.html` and the landing
+  page leads with it; `greybox.html` is removed (the sandbox carries its reveal); the
+  browser smoke (`tools/smoke-site.py`) now runs in the Pages workflow after the build,
+  so a page that loads with console errors or a sandbox whose `#run` does not evolve
+  blocks the deploy.
+- Northstar cards are founding-aware: cards 1, 2, 3, 5 and 6 are grey unless the run is
+  founded at the target d their edges were measured under, and levels 2 to 6 load it.
 - Basic accessibility on `visit.html` and `population.html`: every control is labelled, each
   canvas carries `role="img"` + `aria-label` and a visually-hidden `aria-live` text mirror of the
   readouts the page already computes, landmarks (`<main>`, `<section aria-label="Controls">`),

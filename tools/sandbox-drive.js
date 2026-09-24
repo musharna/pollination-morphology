@@ -12,7 +12,7 @@ const { execFileSync } = require("child_process");
 const { loadPage } = require("./fake-dom.js");
 
 const ROOT = path.join(__dirname, "..");
-const PAGE = process.env.SANDBOX_PAGE || path.join(ROOT, "population.html");
+const PAGE = process.env.SANDBOX_PAGE || path.join(ROOT, "sandbox.html");
 const PAGE_ROOT = process.env.SANDBOX_PAGE
   ? path.dirname(process.env.SANDBOX_PAGE)
   : ROOT;
