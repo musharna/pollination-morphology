@@ -35,7 +35,7 @@ jobs:
           # every push since (09-16 -> ); the live site froze at e50b665.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 18
 
