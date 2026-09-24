@@ -76,7 +76,7 @@ jobs:
       - name: Browser smoke of the built site
         run: python3 tools/smoke-site.py site
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
