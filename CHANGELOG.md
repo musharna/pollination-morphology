@@ -7,6 +7,13 @@ public release; the full research history is in `docs/ROADMAP.md`, which is cano
 
 ### Added
 
+- A work-count gate for the simulation (`tools/work-count.js`, `tests/work-count.test.js`):
+  the smoke's seeded runs (level 2 seed 1, and level 5's width-locus object at seed 3, both
+  founded at target d 8, at the page configuration) must make exactly the committed number of
+  calls into `sim/` and `population-run.js`. The smoke's 60 s bounds pass runs that take 9–29 s
+  on CI, so a several-fold slowdown deployed green; any change in call count now fails, on every
+  machine. `node tools/work-count.js --update` lowers the baseline, `--allow-increase` accepts a
+  rise.
 - Card 1 under hand-set founding is recorded as a null: last-generation, pooled and median
   receipt ratios all overlap the random-mating null (`docs/2026-09-24-card1-hand-set.md`,
   `tools/card1-hand-set-diag.js`); the grey card now says why. The old `population.html`
