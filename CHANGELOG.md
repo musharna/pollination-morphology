@@ -7,6 +7,10 @@ public release; the full research history is in `docs/ROADMAP.md`, which is cano
 
 ### Added
 
+- Card 1 under hand-set founding is recorded as a null: last-generation, pooled and median
+  receipt ratios all overlap the random-mating null (`docs/2026-09-24-card1-hand-set.md`,
+  `tools/card1-hand-set-diag.js`); the grey card now says why. The old `population.html`
+  URL forwards to `sandbox.html`.
 - Northstar M4, consolidation: `population.html` is renamed `sandbox.html` and the landing
   page leads with it; `greybox.html` is removed (the sandbox carries its reveal); the
   browser smoke (`tools/smoke-site.py`) now runs in the Pages workflow after the build,

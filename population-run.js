@@ -335,6 +335,11 @@
             : `closed: receipt ratio ${q.ratio.toFixed(3)}, not below the null edge ${CARD1_EDGE}` +
               (fate === "one lost" || fate === "FUSED" ? "" : `; fate ${fate}`),
       };
+    /* hand-set founding has no card-1 edge on any receipt statistic tried
+     * (docs/2026-09-24-card1-hand-set.md), so the grey says why */
+    if (clean && cfg === "page" && sig.foundD === null)
+      card1.text +=
+        "; hand-set founding has no edge: its null reaches every placed run (docs/2026-09-24-card1-hand-set.md)";
 
     let card4;
     if (!(clean && cfg !== null)) card4 = grey(at(["page", "level"]));

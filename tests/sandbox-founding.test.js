@@ -23,6 +23,7 @@ test("card 1: target 8 seed 25's genomes, hand-set founded, is grey; target 4 se
   assert.ok(+off.ratio < 0.603, `the case no longer sits below the edge: ${off.ratio}`);
   assert.equal(off.cards.card1, "grey", off.cardText.card1);
   assert.match(off.cardText.card1, /founded at target d 4 or 8/);
+  assert.match(off.cardText.card1, /hand-set founding has no edge/);
   const on = runPage({ seed: 16, useD: true, d: 4, n: 18, gens: 24, siteN: 90 });
   assert.equal(on.cards.card1, "open", on.cardText.card1);
 });

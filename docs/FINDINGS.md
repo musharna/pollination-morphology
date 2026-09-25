@@ -218,6 +218,11 @@ Also open, carried from the release disposition table:
   survives, but its provenance is incomplete.
 - **That document's Round-2 table mixes run lengths** — a 250-generation row printed beside
   a 120-generation one.
+- ✅ **CLOSED 2026-09-24 — card 1 has no statistic under hand-set founding.** Last-generation,
+  pooled and median receipt ratios all overlap their random-mating null (lowest null 0.344 /
+  0.156 / 0.633 against lowest placed 0.577 / 0.745 / 0.704); paired by seed the geometric
+  cost averages about 9%, too small to judge one run. The card stays grey and says why; the
+  "found at target d" switch stays. [2026-09-24-card1-hand-set.md](2026-09-24-card1-hand-set.md)
 - ✅ **CLOSED 2026-09-11 — the four hand-rolled normal-approximation helpers are gone**, and
   the affected experiments were re-run against their own pinned models to check what moved.
   No published verdict changed. One published interval did: `2026-08-04-density-dependence.md`
