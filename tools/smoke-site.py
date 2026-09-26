@@ -520,6 +520,8 @@ def heat_checks(page, name, failures, ink_empty, ink_load):
 def m2_checks(browser, name):
     notes = []
     page = browser.new_page()
+    errs = []
+    page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(f"{BASE}/{name}", wait_until="load")
     run = lambda s: page.evaluate(M2_RUN, s)  # noqa: E731
     PAGE_CFG = {"n": 18, "gens": 24, "siteN": 90}
@@ -549,6 +551,7 @@ def m2_checks(browser, name):
     if r["fate"] != "STALLED" or r["stalled"] != 35 or r["cards"] != exp:
         failures.append(f"{name}: M2 stall fixture read {r}")
     notes.append(f"stall {r['fate']} {r['stalled']}/35")
+    sweep_state(page, name, "stall", errs, True)
     r = run({**LEVEL, "lineages": 0.80})
     if r["fate"] != "FUSED" or r["stalled"] != 0:
         failures.append(f"{name}: M2 stall control antherT 0.80 read {r}")
@@ -701,6 +704,8 @@ def _diff(t):
 def m3b_checks(browser, name):
     notes = []
     page = browser.new_page()
+    errs = []
+    page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(f"{BASE}/{name}", wait_until="load")
     slowest = [0.0, ""]
 
@@ -720,6 +725,8 @@ def m3b_checks(browser, name):
         got5.append(r["fate"])
         if r["fate"] != fate or r["stalled"] != 0 or "bout not drawn" not in r["caption"]:
             failures.append(f"{name}: M3b level 5 seed {seed} read {r['fate']} stalled {r['stalled']} caption {r['caption']!r}")
+        if seed == 3:
+            sweep_state(page, name, "L5", errs, True)
     notes.append("L5 s1-5 " + "/".join(got5))
     # level 4: q 0.85 seed 8 open; q 1 seed 8 closed; q 0.69 seed 1 closed reversed
     for q, seed, fate, flat, state in ((0.85, 8, "one lost", "HELD", "open"), (1, 8, "one lost", "HELD", "closed"),
@@ -765,6 +772,88 @@ def m3b_checks(browser, name):
     notes.append(f"slowest run {slowest[1]} {slowest[0] / 1000:.1f} s")
     page.close()
     return notes
+
+
+# ------------------------------------------------------ state sweep (Task 7 Step 1)
+# Level 1 on load (no run), levels 2-6 at seed 3 after #run, and the stall fixture
+# (tests/sandbox-heat.test.js: free sandbox, seed 1, n 30, gens 35, siteN 160,
+# useD off, both lineages E.randomGenome(E.makeRng(4)) with antherT 0.825 - M2's
+# `run({**LEVEL, "lineages": 0.825})`). In every state #heat, #bodyMap, #thumb1
+# and #thumb2 each carry > 2% ink (THUMB_INK: the share of backing pixels off the
+# canvas's top-left corner pixel by > 24 in a channel; a distinct-colour count
+# saturates on anti-aliasing), and the page has raised zero errors. After each run:
+# #sFate == Sandbox.result().fate == the fate in the heat's drawn "final: <fate>"
+# label, recorded by the Task 5b fillText wrapper around one heat redraw (#scrub
+# 0 -> 1); that redraw must also change #heat's pixels - a heat left showing the
+# example (clearResult draws it before every run) keeps its ink, so ink alone
+# cannot see a heat that was never drawn for the run. Positive control: a final
+# label was recorded. The stall fixture is measured on M2's page after M2's own
+# stall run, level 5 seed 3 on M3b's page after its own run: not run twice.
+SWEEP_INK = ("heat", "bodyMap", "thumb1", "thumb2")
+SWEEP_ORDER = ("L1", "L2", "L3", "L4", "L5", "L6", "stall")
+sweep_notes = {}
+SWEEP_LEVEL = """async (s) => {
+  const $ = (id) => document.getElementById(id);
+  const sel = $("level");
+  sel.value = String(s.level);
+  sel.dispatchEvent(new Event("change"));
+  if (!s.run) return { error: null, status: $("status").textContent };
+  $("seed").value = String(s.seed);
+  $("status").textContent = "running…";
+  $("status").removeAttribute("data-error");
+  $("run").click();
+  const t0 = performance.now();
+  while ($("status").textContent === "running…" && performance.now() - t0 < 180000)
+    await new Promise((r) => setTimeout(r, 100));
+  return { error: $("status").getAttribute("data-error"), status: $("status").textContent };
+}"""
+SWEEP_FATE = """() => [document.getElementById('sFate').textContent,
+  window.Sandbox.result() ? window.Sandbox.result().fate : null]"""
+
+
+def sweep_state(page, name, tag, pageerrors, ran):
+    at = f"{name}: sweep {tag}"
+    ink = {c: page.evaluate(THUMB_INK, c) for c in SWEEP_INK}
+    for c, f in ink.items():
+        if not f > 0.02:
+            failures.append(f"{at}: #{c} ink {f:.2%} (need > 2%)")
+    note = " ".join(f"{c} {f:.1%}" for c, f in ink.items())
+    if ran:
+        s0 = page.evaluate(CANVAS_SIG, "heat")
+        page.evaluate(HEAT_REC_ON)
+        page.evaluate(SET_INPUT, ["scrub", 1])
+        rec = page.evaluate(HEAT_REC_OFF)["rec"]
+        s1 = page.evaluate(CANVAS_SIG, "heat")
+        page.evaluate(SET_INPUT, ["scrub", 0])
+        fin = [t["text"] for t in rec if t["text"].startswith("final")]
+        drawn = fin[-1][len("final: "):] if fin and fin[-1].startswith("final: ") else None
+        shown, model = page.evaluate(SWEEP_FATE)
+        if not fin:
+            failures.append(f"{at}: control - no 'final' label recorded on a heat redraw (got {[t['text'] for t in rec][:6]})")
+        if s0 == s1:
+            failures.append(f"{at}: #heat unchanged when #scrub moved 0 -> 1 - the heat is not drawn for the run")
+        if not (shown == model == drawn and model):
+            failures.append(f"{at}: fate disagrees - #sFate {shown!r}, Sandbox.result().fate {model!r}, heat label {fin[-1] if fin else None!r}")
+        note += f", fate {shown}/{model}/{drawn}, heat {'follows' if s0 != s1 else 'STATIC'} on scrub"
+    if pageerrors:
+        failures.append(f"{at}: {len(pageerrors)} page error(s): {pageerrors[:2]}")
+    sweep_notes[tag] = f"{tag} {note}, pageerrors {len(pageerrors)}"
+
+
+def sweep_checks(browser, name):
+    """Level 1 loaded, levels 2, 3, 4 and 6 at seed 3 run, on one page."""
+    page = browser.new_page()
+    page.set_viewport_size({"width": 1400, "height": 900})
+    errs = []
+    page.on("pageerror", lambda e: errs.append(str(e)))
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    for lv in (1, 2, 3, 4, 6):
+        r = page.evaluate(SWEEP_LEVEL, {"level": lv, "seed": 3, "run": lv != 1})
+        if r["error"]:
+            failures.append(f"{name}: sweep L{lv} run errored: {r['error']}")
+        sweep_state(page, name, f"L{lv}", errs, lv != 1)
+    page.close()
+    return "sweep " + "; ".join(sweep_notes.get(t, f"{t} NOT MEASURED") for t in SWEEP_ORDER)
 
 
 with sync_playwright() as p:
@@ -941,6 +1030,7 @@ with sync_playwright() as p:
             note += "; M3a " + ", ".join(m3a_checks(browser, name))
             note += "; M3b " + ", ".join(m3b_checks(browser, name))
             note += "; " + heat_dpr_checks(browser, name, failures)
+            note += "; " + sweep_checks(browser, name)
 
         if errors:
             failures.append(f"{name}: {len(errors)} console error(s): {errors[:3]}")
