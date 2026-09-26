@@ -21,10 +21,11 @@ OUT="site"
 #   visit.html      -> sim/placement.js
 #   sandbox.html    -> sim/browser-bundle.js
 #   sandbox.html    -> population-run.js (its own generation loop, M1)
+#   sandbox.html    -> ancestry-heat.js (the heatmap model and its drawing)
 PLAYABLES=(sandbox.html visit.html)
 SIM_MODULES=(sim/placement.js sim/browser-bundle.js)
 # Page scripts that are not sim modules: shipped beside the page that loads them.
-PAGE_SCRIPTS=(population-run.js)
+PAGE_SCRIPTS=(population-run.js ancestry-heat.js)
 # The speculative deck (northstar spec §14): one JSON data table beside the page,
 # checked by tests/deck.test.js. Shipped as data; no page fetches it yet.
 PAGE_DATA=(deck.json)

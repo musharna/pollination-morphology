@@ -636,6 +636,7 @@
 
     <script src="sim/browser-bundle.js"></script>
     <script src="population-run.js"></script>
+    <script src="ancestry-heat.js"></script>
     <script>
       const I = window.IBM,
         P = window.Placement,
@@ -811,14 +812,7 @@
 
       /* ancestry → corolla tint. Pure lineages read gold and magenta; mixed
        * ancestry washes toward bone, so a field going uniformly pale IS fusion. */
-      function ancHex(a) {
-        const A = [232, 178, 58],
-          B = [204, 102, 153];
-        const toWhite = 1 - Math.abs(a - 0.5) * 2;
-        const base = a < 0.5 ? A : B;
-        const c = base.map((v) => Math.round(v + (226 - v) * toWhite * 0.8));
-        return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
-      }
+      const ancHex = window.AncestryHeat.ancHex;
 
       /* ------------------------------------------------------------- flowers */
       const T_STEPS = 9,
