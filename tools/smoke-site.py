@@ -642,16 +642,21 @@ def body_key_check(page, at):
 # the Task 5b fillText recorder on #bodyMap; no two recorded label boxes may
 # intersect. Positive controls: the left title text was recorded, and the
 # overlay message is on the page - on the canvas or in #bodyLegend. Seen
-# failing on BASE (both drawn in the title row, overlapping). Bee and viewport
-# are restored after.
-def body_title_overlap(page, at, left):
-    vp = page.viewport_size or {"width": 1280, "height": 720}
+# failing on BASE (both drawn in the title row, overlapping). Fix round 1
+# (m3), the other side: at 1400 px, where the title row has room to spare, the
+# stale overlay note must be drawn ON the canvas title row and not sent to the
+# key line (a page that always falls back fails here; seen failing on a mutant
+# with the fallback forced). Bee and viewport are restored after.
+def _body_stale_draw(page, at, vw, must_resize):
+    """must_resize: the narrow draw's control. At 1400 the page's max width may
+    already hold (a 1280 viewport lays #bodyMap out the same), so no wait."""
     w0 = page.evaluate("() => document.getElementById('bodyMap').clientWidth")
-    page.set_viewport_size({"width": 600, "height": 900})
-    try:
-        page.wait_for_function("(w0) => document.getElementById('bodyMap').clientWidth !== w0", arg=w0, timeout=3000)
-    except Exception:  # noqa: BLE001
-        failures.append(f"{at}: control - #bodyMap clientWidth stayed {w0} at 600x900 (no resize)")
+    page.set_viewport_size({"width": vw, "height": 900})
+    if must_resize:
+        try:
+            page.wait_for_function("(w0) => document.getElementById('bodyMap').clientWidth !== w0", arg=w0, timeout=3000)
+        except Exception:  # noqa: BLE001
+            failures.append(f"{at}: control - #bodyMap clientWidth stayed {w0} at {vw}x900 (no resize)")
     page.wait_for_timeout(300)
     bee = page.evaluate("() => window.Sandbox.bee()")
     page.evaluate(BODY_REC_ON)
@@ -659,12 +664,23 @@ def body_title_overlap(page, at, left):
     m = page.evaluate(BODY_REC_OFF)
     legend = page.evaluate("() => (document.getElementById('bodyLegend') || {}).textContent || ''")
     page.evaluate("(b) => window.Sandbox.setBee(b)", bee)
+    return m, legend
+
+
+def body_title_overlap(page, at, left):
+    vp = page.viewport_size or {"width": 1280, "height": 720}
+    wide, wide_legend = _body_stale_draw(page, f"{at} (1400)", 1400, False)
+    m, legend = _body_stale_draw(page, at, 600, True)
     page.set_viewport_size(vp)
     page.wait_for_timeout(300)
+    over = "run overlay hidden"
+    on_canvas = [t for t in wide["rec"] if t["text"].startswith(over)]
+    if not on_canvas or on_canvas[0]["y"] > BODY_TITLE_ROW or over in wide_legend:
+        failures.append(f"{at}: at 1400 px (room to spare) the overlay note is not on the canvas title row "
+                        f"(canvas {[(t['text'][:20], t['y']) for t in on_canvas]}, in key line {over in wide_legend})")
     got = [t["text"] for t in m["rec"]]
     if not any(left in t for t in got):
         failures.append(f"{at}: control - no {left!r} title recorded (got {got[:6]})")
-    over = "run overlay hidden"
     if not (any(t.startswith(over) for t in got) or over in legend):
         failures.append(f"{at}: control - the overlay message is neither on the canvas nor in the key")
     box = []

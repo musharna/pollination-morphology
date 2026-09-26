@@ -38,6 +38,41 @@ test("M10: the win line names the fate and the lost lineage; #sFate is the bare 
   assert.equal($(L2, "levelWin").textContent, "result: one lost (lineage 2 gone) — only HELD wins");
 });
 
+/* Fix round 1 (I1): the engine calls "one lost" on the final MEAN ancestry
+ * (sim/ibm.js fateOf), not on a label count reaching zero. The shown run's
+ * final offspring is replaced by a fixture the ENGINE itself calls "one lost"
+ * (IBM.fateOf, asserted), and the win line redrawn (Sandbox.setBee with the
+ * bee's own values runs showWin). Lineage 1 gone, and both stragglers (one
+ * plant at the other end: neither label count is 0). Seen failing on c1eb511:
+ * the stragglers read bare "one lost". A page hard-coding "lineage 2 gone"
+ * fails the lineage-1 cases. */
+test("I1: the lost lineage is read off the final mean, as the engine decides it", () => {
+  const p = runPage({ level: 2, seed: 3 });
+  const S = p.page.Sandbox;
+  const I = p.page.IBM;
+  const R = S.result();
+  const saved = R.final;
+  const pop = (ancs) => ancs.map((anc) => ({ ...saved[0], anc }));
+  const n = (k, a) => Array(k).fill(a);
+  const cases = [
+    [n(30, 1), 1], // lineage 1 gone
+    [[...n(29, 0), 1], 2], // straggler at lineage 2's end
+    [[...n(29, 1), 0], 1], // straggler at lineage 1's end
+    [n(30, 0), 2], // control: the run's own case
+  ];
+  try {
+    for (const [ancs, gone] of cases) {
+      R.final = pop(ancs);
+      assert.equal(I.fateOf(R.final, R.v0, false, false), "one lost", `control: the engine calls ${ancs.slice(-2)} one lost`);
+      S.setBee(S.bee());
+      assert.equal(p.page.document.getElementById("levelWin").textContent,
+        `result: one lost (lineage ${gone} gone) — only HELD wins`, `final: ${ancs.filter((x) => x === 0).length} at 0, ${ancs.filter((x) => x === 1).length} at 1`);
+    }
+  } finally {
+    R.final = saved;
+  }
+});
+
 test("M2: the status names the founders' separation; #sSep and #sReal say what they measure", () => {
   const R = L2.page.Sandbox.result();
   assert.equal($(L2, "status").textContent, `founders' separation ${R.realised.toFixed(3)}`);

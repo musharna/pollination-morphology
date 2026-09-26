@@ -452,7 +452,7 @@ test("7d: the final variance dot's colour comes from the fate, not the HELD line
     return arcs[0].fill;
   };
   assert.equal(dotFill("HELD"), "#6fbf73");
-  for (const f of ["STALLED", "one lost", "FUSED", "EXTINCT"])
+  for (const f of ["STALLED", "one lost", "FUSED", "BOTH LOST"])
     assert.equal(dotFill(f), "#d9704f", `fate ${f}: dot must not be the HELD green`);
   assert.equal(dotFill(undefined), "#e8e6e1");
 });

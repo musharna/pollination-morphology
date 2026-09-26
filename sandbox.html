@@ -389,8 +389,16 @@
       #hero .heroFoot {
         grid-column: 1 / -1;
       }
+      /* tiles on a fixed grid (fix round 1, m4): a long band wraps inside its
+       * column instead of widening its tile and pushing the rest onto rows
+       * of their own; 5 columns at the 1400 px hero, fewer when narrow */
       #hero .heroFoot .stats {
         margin-top: 8px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      }
+      #hero .heroFoot .stat {
+        min-width: 0;
       }
       .verdict {
         margin-bottom: 8px;
@@ -2091,12 +2099,20 @@
         return { lo, hi, mid: fin.length - lo - hi };
       }
       /* the fate word, and for "one lost" which lineage is gone (critic r2
-       * M10), read off those labels: the one with none left */
+       * M10). The engine calls "one lost" on the final offspring's MEAN
+       * ancestry, outside the hybrid band (sim/ibm.js fateOf: m < 0.15 or
+       * m > 0.85), not on label counts: 29 plants at 0 and one at 1 is "one
+       * lost" with both labels non-empty. So the side is read off the same
+       * mean: given "one lost", below 0.5 the tracer went to lineage 1's end
+       * (lineage 2 gone), above it to lineage 2's. No threshold is restated;
+       * a mean inside the band means page and engine disagree, and says so. */
       function fateWords(R) {
         if (R.fate !== "one lost") return R.fate;
-        const { lo, hi } = finalLabels(R);
-        const gone = lo === 0 && hi > 0 ? 1 : hi === 0 && lo > 0 ? 2 : null;
-        return gone ? `one lost (lineage ${gone} gone)` : R.fate;
+        const a = R.final.map((i) => (i.anc === undefined ? 0 : i.anc));
+        const m = a.reduce((s, x) => s + x, 0) / a.length;
+        if (window.SandboxRun.isHybrid(m))
+          throw new Error(`fate "one lost" but the final mean ancestry ${m} is inside the hybrid band`);
+        return `one lost (lineage ${m < 0.5 ? 2 : 1} gone)`;
       }
       function showWin() {
         const d = realisedSeparation();
