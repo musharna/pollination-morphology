@@ -33,9 +33,14 @@ import socketserver
 import sys
 import threading
 
+# the step running now, so a walltime abort names it like every other failure
+CURRENT = {"step": "setup"}
 signal.signal(
     signal.SIGALRM,
-    lambda *_: (sys.stderr.write("aborting: walltime guard\n"), sys.exit(2)),
+    lambda *_: (
+        sys.stderr.write(f"landing-shots: {CURRENT['step']} failed: walltime guard\n"),
+        sys.exit(2),
+    ),
 )
 # A sandbox run can take 2+ minutes on a loaded host; the #play wait below is
 # 240 s, so the guard sits well above it.
@@ -118,6 +123,7 @@ def main():
         )
 
         step = "sandbox"
+        CURRENT["step"] = step
         try:
             page = ctx.new_page()
             page.on("pageerror", lambda e: errors.append(f"sandbox: {e}"))
@@ -126,7 +132,10 @@ def main():
                 fail(step, f"HTTP {resp.status if resp else None}")
             # The page default: #level untouched (free sandbox), seed 3.
             if page.input_value("#level") != "free":
-                fail(step, f"#level default is {page.input_value('#level')!r}, not 'free'")
+                fail(
+                    step,
+                    f"#level default is {page.input_value('#level')!r}, not 'free'",
+                )
             page.fill("#seed", "3")
             page.click("#run")
             page.wait_for_selector("#play:not([disabled])", timeout=RUN_TIMEOUT_MS)
@@ -144,9 +153,14 @@ def main():
                 )
             except Exception:  # noqa: BLE001
                 got = page.text_content("#sGen")
-                fail(step, f"#sGen never read '{mx} / {mx}' after scrubbing (read {got!r})")
+                fail(
+                    step,
+                    f"#sGen never read '{mx} / {mx}' after scrubbing (read {got!r})",
+                )
             page.wait_for_timeout(500)
-            size = save_tile(page, ["#hero .heroL", "#hero .heroR"], f"{OUT}/sandbox-tile.jpg", step)
+            size = save_tile(
+                page, ["#hero .heroL", "#hero .heroR"], f"{OUT}/sandbox-tile.jpg", step
+            )
             print(f"landing-shots: {OUT}/sandbox-tile.jpg {size[0]}x{size[1]}")
             page.close()
         except SystemExit:
@@ -155,6 +169,7 @@ def main():
             fail(step, e)
 
         step = "visit"
+        CURRENT["step"] = step
         try:
             page = ctx.new_page()
             page.on("pageerror", lambda e: errors.append(f"visit: {e}"))
