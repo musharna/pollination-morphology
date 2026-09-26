@@ -69,6 +69,17 @@ for f in "${SIM_MODULES[@]}"; do
 	cp "$f" "$OUT/$f"
 done
 
+# Landing-page tiles: screenshots made by tools/landing-shots.py and committed
+# under assets/. index.html references them, so a missing one fails the build.
+mkdir -p "$OUT/assets"
+for f in assets/sandbox-tile.jpg assets/visit-tile.jpg; do
+	[ -f "$f" ] || {
+		echo "build-site: missing landing tile $f (run tools/landing-shots.py)" >&2
+		exit 1
+	}
+	cp "$f" "$OUT/$f"
+done
+
 # population.html was renamed sandbox.html at northstar M4; old links land on a
 # stub that forwards (query and hash kept) instead of a 404.
 cat >"$OUT/population.html" <<'HTML'

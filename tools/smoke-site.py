@@ -806,7 +806,29 @@ with sync_playwright() as p:
                 if code != 200:
                     failures.append(f"index.html link '{h}' -> {code}")
                 report.append(f"    link {h:<18} -> {code}")
-            note = f"{len(hrefs)} same-origin links checked"
+            # Every <img> must actually decode: the tiles are lazy, so bring each
+            # into view, wait for it to settle, then require naturalWidth > 0.
+            # Positive control: the page must carry at least one <img>, else an
+            # empty page would pass.
+            page.evaluate(
+                """() => document.querySelectorAll('img').forEach(i => i.scrollIntoView())"""
+            )
+            try:
+                page.wait_for_function(
+                    "() => Array.from(document.images).every(i => i.complete)", timeout=15000
+                )
+            except Exception:  # noqa: BLE001
+                failures.append(f"{name}: an <img> never finished loading within 15 s")
+            imgs = page.evaluate(
+                """() => Array.from(document.images).map(i => [i.getAttribute('src'), i.naturalWidth])"""
+            )
+            if not imgs:
+                failures.append(f"{name}: expected <img> tiles, found none")
+            for src, w in imgs:
+                if not w > 0:
+                    failures.append(f"{name}: <img src='{src}'> did not load (naturalWidth {w})")
+                report.append(f"    img  {src:<24} naturalWidth {w}")
+            note = f"{len(hrefs)} same-origin links checked, {len(imgs)} img checked"
 
         elif mode == "autoplay":
             if uniform:
