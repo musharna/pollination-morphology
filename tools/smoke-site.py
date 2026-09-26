@@ -336,6 +336,107 @@ def thumb_checks(page, name, failures):
 # shows the scene (> 20% of its pixels off its corner colour) - without it, a
 # field already broken by the load-time thumbnail renders compares equal to
 # itself. Seen failing with renderThumb's `finally` removed.
+# Heat labels fit at the displayed width (Task 5b). CanvasRenderingContext2D
+# fillText is wrapped to record every label drawn on #heat - {text, x, y, w =
+# measureText (capped at a maxWidth), align}; a clearRect on #heat starts a new
+# draw, so only the last draw is kept - while the heat redraws, then unwrapped.
+# The example (on load, whose "final: one lost" and title are the long labels)
+# is redrawn by a resize; the run's heat (after #run) by an 'input' on #scrub
+# and by a resize. At 1400x900 and at 700x900: every label lies within [0, W];
+# no gutter label (drawn left of the plot) ends past lay.padL - 4; no two
+# labels on one baseline overlap. Positive control: the labels named in
+# HEAT_LABEL_NEED were recorded, so an empty recording cannot pass. (BASE's
+# layout has no padL; its plot origin xOf(0) is the same number.)
+HEAT_REC_ON = """() => {
+  const c = document.getElementById('heat');
+  const P = CanvasRenderingContext2D.prototype;
+  const R = (window.__heatRec = { rec: [], fillText: P.fillText, clearRect: P.clearRect });
+  P.clearRect = function () {
+    if (this.canvas === c) R.rec = [];
+    return R.clearRect.apply(this, arguments);
+  };
+  P.fillText = function (text, x, y, maxW) {
+    if (this.canvas === c) {
+      let w = this.measureText(text).width;
+      if (maxW !== undefined) w = Math.min(w, maxW);
+      R.rec.push({ text: String(text), x, y, w, align: this.textAlign });
+    }
+    return R.fillText.apply(this, arguments);
+  };
+}"""
+HEAT_REC_OFF = """() => {
+  const P = CanvasRenderingContext2D.prototype, R = window.__heatRec;
+  P.fillText = R.fillText;
+  P.clearRect = R.clearRect;
+  delete window.__heatRec;
+  const S = window.Sandbox.heatSize();
+  const model = window.Sandbox.heat() || window.ExampleHeat.model;
+  const lay = window.AncestryHeat.layout(model, S.W, S.H);
+  return { rec: R.rec, W: S.W, padL: lay.padL === undefined ? lay.xOf(0) : lay.padL };
+}"""
+HEAT_LABEL_NEED = ("generation 0", "final", "HELD line", "hybrid band")
+
+
+def _heat_resize(page, vw, failures, at):
+    w0 = page.evaluate("() => document.getElementById('heat').clientWidth")
+    page.set_viewport_size({"width": vw, "height": 900})
+    try:  # the ResizeObserver refit is async
+        page.wait_for_function(
+            "(w0) => document.getElementById('heat').clientWidth !== w0", arg=w0, timeout=3000)
+    except Exception:  # noqa: BLE001
+        failures.append(f"{at}: control - #heat clientWidth stayed {w0} at {vw}x900 (no resize)")
+    page.wait_for_timeout(300)
+
+
+def _heat_label_assert(m, at, need, failures):
+    W, padL = m["W"], m["padL"]
+    got = [t["text"] for t in m["rec"]]
+    for n in need:
+        if not any(t.startswith(n) for t in got):
+            failures.append(f"{at}: control - no {n!r} label recorded (got {got[:8]})")
+    spans = []
+    for t in m["rec"]:
+        x0 = t["x"] - t["w"] if t["align"] == "right" else t["x"] - t["w"] / 2 if t["align"] == "center" else t["x"]
+        spans.append((round(t["y"], 1), x0, x0 + t["w"], t["text"]))
+    for y, x0, x1, text in spans:
+        if x0 < -0.5 or x1 > W + 0.5:
+            failures.append(f"{at}: {text!r} spans [{x0:.1f}, {x1:.1f}], outside [0, {W}]")
+        if x0 < padL and x1 > padL - 4:
+            failures.append(f"{at}: gutter label {text!r} ends at {x1:.1f}, past padL {padL} - 4")
+    for y in sorted({sp[0] for sp in spans}):
+        row = sorted((sp for sp in spans if sp[0] == y), key=lambda sp: sp[1])
+        for a, b in zip(row, row[1:]):
+            if b[1] < a[2]:
+                failures.append(f"{at}: {a[3]!r} [{a[1]:.1f}, {a[2]:.1f}] overlaps {b[3]!r} [{b[1]:.1f}, {b[2]:.1f}] on y={y}")
+    gut = max((sp[2] for sp in spans if sp[1] < padL), default=0)
+    return f"W {W} {len(spans)} labels gutter<={gut:.1f}/padL {padL}"
+
+
+def heat_label_checks(page, name, failures, example):
+    """example=True: before #run (the example, title included), redrawn by resizes.
+    example=False: after #run, redrawn by an 'input' on #scrub, then by a resize."""
+    tag = "example" if example else "run"
+    need = HEAT_LABEL_NEED + (("example:",) if example else ())
+    notes = []
+    if example:
+        for vw in (700, 1400):
+            page.evaluate(HEAT_REC_ON)
+            _heat_resize(page, vw, failures, f"{name}: heat labels ({tag})")
+            notes.append(f"{vw}: " + _heat_label_assert(
+                page.evaluate(HEAT_REC_OFF), f"{name}: heat labels ({tag}) at {vw}x900", need, failures))
+    else:
+        page.evaluate(HEAT_REC_ON)
+        page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+        notes.append("1400: " + _heat_label_assert(
+            page.evaluate(HEAT_REC_OFF), f"{name}: heat labels ({tag}) at 1400x900", need, failures))
+        page.evaluate(HEAT_REC_ON)
+        _heat_resize(page, 700, failures, f"{name}: heat labels ({tag})")
+        notes.append("700: " + _heat_label_assert(
+            page.evaluate(HEAT_REC_OFF), f"{name}: heat labels ({tag}) at 700x900", need, failures))
+        _heat_resize(page, 1400, failures, f"{name}: heat labels ({tag}) restore")
+    return f"heat labels {tag} " + "; ".join(notes)
+
+
 def run_view_checks(page, name, failures):
     page.evaluate(SET_INPUT, ["scrub", 0])
     b0 = page.evaluate(CANVAS_SIG, "bodyMap")
@@ -785,6 +886,7 @@ with sync_playwright() as p:
                 )
 
             thumb_note = thumb_checks(page, name, failures)
+            label_note = heat_label_checks(page, name, failures, True)
             pre = page.evaluate(SHOT)
             heat_base, heat_load = heat_load_checks(page, name, failures)
             page.click("#run")
@@ -802,6 +904,7 @@ with sync_playwright() as p:
             view_note = "run views not checked (run incomplete)"
             if completed:
                 heat_note = heat_checks(page, name, failures, heat_base, heat_load)
+                heat_note += ", " + heat_label_checks(page, name, failures, False)
                 view_note = run_view_checks(page, name, failures)
             n3, changed3, _ = (0, 0, 0)
             if completed:
@@ -810,7 +913,7 @@ with sync_playwright() as p:
                 if changed3 == 0:
                     failures.append(f"{name}: clicked #play and NOTHING animated - playback does not run")
             note = (f"{fs_note}, idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
-                    f"{heat_note}, {thumb_note}, {view_note}, #play animating {changed3}/{n3}")
+                    f"{heat_note}, {label_note}, {thumb_note}, {view_note}, #play animating {changed3}/{n3}")
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)
             note += "; M3a " + ", ".join(m3a_checks(browser, name))

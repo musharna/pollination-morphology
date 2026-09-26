@@ -148,3 +148,101 @@ test("drawHeat always writes the declared labels; hatch only when stalled", () =
   assert.match(r2.text(), /recruited nothing/);
   assert.ok(r2.hatchStrokes() > 0, "both columns are stalled — the hatch must be drawn");
 });
+
+/* Task 5b: the labels must fit at the heat's real displayed width (~566 px in
+ * the hero, narrower stacked). A recording ctx that tracks textAlign at each
+ * fillText and measures text at 6.2 px per character. Seen failing on
+ * b315762: "final: <fate>" was left-aligned at xOf(last) - 40 (ran off the
+ * right edge) and the HELD label started at PAD.L + 4, inside the gen-0
+ * cursor box. */
+test("labels fit: final right-aligned at W - 16, HELD label clear of the gen-0 cursor box", () => {
+  const recordText = () => {
+    const texts = [];
+    const state = { textAlign: "left" };
+    const ctx = new Proxy(state, {
+      get: (t, k) => {
+        if (k === "measureText") return (s) => ({ width: 6.2 * String(s).length });
+        if (k === "fillText")
+          return (s, x, y, maxW) => {
+            const w = Math.min(6.2 * String(s).length, maxW === undefined ? Infinity : maxW);
+            const x0 = t.textAlign === "right" ? x - w : t.textAlign === "center" ? x - w / 2 : x;
+            texts.push({ s, x, y, maxW, align: t.textAlign, x0, x1: x0 + w });
+          };
+        return k in t ? t[k] : () => {};
+      },
+      set: (t, k, v) => ((t[k] = v), true),
+    });
+    return { ctx, texts };
+  };
+  const frames = Array.from({ length: 35 }, () => frame([0, 0.5, 1]));
+  const m = H.heatModel(frames, [0, 0.5, 1].map(ind), frames[0].ancVar);
+  for (const W of [420, 566, 760]) {
+    const Hh = Math.round((W * 420) / 760);
+    const r = recordText();
+    H.drawHeat(r.ctx, m, { W, H: Hh, cursor: 0, fate: "one lost" });
+    const fin = r.texts.find((t) => /^final: one lost$/.test(t.s));
+    assert.ok(fin, `W=${W}: the final label was drawn`); // control: the label exists
+    assert.equal(fin.align, "right", `W=${W}: final label alignment`);
+    assert.equal(fin.x, W - 16, `W=${W}: final label x`);
+    const lay = H.layout(m, W, Hh);
+    const held = r.texts.find((t) => /^HELD line/.test(t.s));
+    assert.ok(held, `W=${W}: the HELD label was drawn`);
+    const box0 = lay.xOf(0) - 2, box1 = lay.xOf(0) + lay.colW + 2;
+    assert.ok(held.x1 < box0 || held.x0 > box1,
+      `W=${W}: HELD label [${held.x0}, ${held.x1}] crosses the gen-0 cursor box [${box0}, ${box1}]`);
+    // the gutter labels (drawn left of the plot) end 8 px before the cursor box
+    const gutter = r.texts.filter((t) => t.x < lay.xOf(0) - 2);
+    assert.equal(gutter.length, 6, `W=${W}: gutter labels drawn`);
+    for (const g of gutter) {
+      assert.ok(g.x1 + 8 <= box0, `W=${W}: gutter label ${g.s} ends at ${g.x1}, box at ${box0}`);
+      // the gutter is wide enough that nothing is condensed to fit it
+      assert.equal(g.maxW, undefined, `W=${W}: gutter label ${g.s} condensed to ${g.maxW}`);
+    }
+    for (const t of r.texts) assert.ok(t.x0 >= 0 && t.x1 <= W, `W=${W}: ${t.s} [${t.x0}, ${t.x1}] outside [0, ${W}]`);
+    assert.equal(r.ctx.textAlign, "left", `W=${W}: textAlign restored`);
+  }
+});
+
+test("layout exposes padL, and colAt agrees with drawHeat's plot origin", () => {
+  const m = H.heatModel([frame([0, 1]), frame([0, 1])], [0, 1].map(ind), 0.25);
+  const lay = H.layout(m, 566, 313);
+  assert.equal(typeof lay.padL, "number");
+  assert.equal(lay.xOf(0), lay.padL);
+  assert.equal(H.colAt(m, lay.padL + 0.5, 566, 313), 0);
+  assert.equal(H.colAt(m, lay.padL - 0.5, 566, 313), -1);
+  // the optional padL moves the plot; the default is the one drawHeat uses
+  assert.equal(H.layout(m, 566, 313, lay.padL + 10).xOf(0), lay.padL + 10);
+});
+
+test("title: truncated with … to the room between generation 0 and the final label", () => {
+  const texts = [];
+  const state = { textAlign: "left" };
+  const ctx = new Proxy(state, {
+    get: (t, k) => {
+      if (k === "measureText") return (s) => ({ width: 6.2 * String(s).length });
+      if (k === "fillText")
+        return (s, x, y) => {
+          const w = 6.2 * String(s).length;
+          const x0 = t.textAlign === "right" ? x - w : x;
+          texts.push({ s, y, x0, x1: x0 + w });
+        };
+      return k in t ? t[k] : () => {};
+    },
+    set: (t, k, v) => ((t[k] = v), true),
+  });
+  const frames = Array.from({ length: 35 }, () => frame([0, 0.5, 1]));
+  const m = H.heatModel(frames, [0, 0.5, 1].map(ind), frames[0].ancVar);
+  const title = "example: level 2, seed 3 — press Run for yours";
+  for (const [W, cut] of [[420, true], [760, false]]) {
+    texts.length = 0;
+    H.drawHeat(ctx, m, { W, H: 232, cursor: -1, fate: "one lost", title });
+    const hy = texts.find((t) => t.s === "generation 0").y;
+    const row = texts.filter((t) => t.y === hy).sort((a, b) => a.x0 - b.x0);
+    const shown = row.find((t) => t.s.startsWith("example:"));
+    assert.ok(shown, `W=${W}: the title was drawn`);
+    assert.equal(shown.s !== title, cut, `W=${W}: title ${JSON.stringify(shown.s)}`);
+    if (cut) assert.match(shown.s, /…$/);
+    for (let i = 1; i < row.length; i++)
+      assert.ok(row[i].x0 >= row[i - 1].x1, `W=${W}: ${row[i - 1].s} overlaps ${row[i].s}`);
+  }
+});

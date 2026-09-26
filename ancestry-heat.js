@@ -71,17 +71,26 @@
     return { bins: BINS, v0, heldLine: 0.4 * v0, cols };
   }
 
-  const PAD = { L: 74, R: 16, T: 30, B: 24 };
+  /* PAD.L is the left gutter: its widest label plus 8 px must end before the
+   * gen-0 cursor box at xOf(0) - 2. Measured in headless Chromium (default
+   * launch, 2026-09-26), 11px system-ui: "hybrid band" 66.2, "(0.15–0.85)"
+   * 63.1, "lineage 1/2" 50.8, "ancestry" 47.6, "variance" 47.4 px. Drawn at
+   * x = GUTTER_X: 6 + 66.2 + 8 + 2 = 82.2, so 86 leaves ~4 px for a wider
+   * system font; drawHeat measures again and condenses any label that would
+   * not fit (fillText maxWidth), never moving the plot. One constant, so
+   * drawHeat and colAt (which has no ctx) share one layout. */
+  const PAD = { L: 86, R: 16, T: 30, B: 24 };
+  const GUTTER_X = 6;
   const FINAL_GAP = 12;
-  function layout(model, W, H) {
+  function layout(model, W, H, padL = PAD.L) {
     const n = model.cols.length;
     const heatTop = PAD.T,
       heatBot = Math.round(H * 0.64);
     const stripTop = heatBot + 26,
       stripBot = H - PAD.B;
-    const colW = (W - PAD.L - PAD.R - FINAL_GAP) / n;
-    const xOf = (i) => PAD.L + i * colW + (model.cols[i] && model.cols[i].final ? FINAL_GAP : 0);
-    return { W, H, colW, xOf, heatTop, heatBot, stripTop, stripBot, rowH: (heatBot - heatTop) / BINS };
+    const colW = (W - padL - PAD.R - FINAL_GAP) / n;
+    const xOf = (i) => padL + i * colW + (model.cols[i] && model.cols[i].final ? FINAL_GAP : 0);
+    return { W, H, padL, padR: PAD.R, colW, xOf, heatTop, heatBot, stripTop, stripBot, rowH: (heatBot - heatTop) / BINS };
   }
   function colAt(model, x, W, H) {
     const lay = layout(model, W, H);
@@ -113,11 +122,31 @@
     ctx.fillText(msg, PAD.L, H / 2);
   }
 
+  /* measured width, or null on a ctx that cannot measure (no measureText, or
+   * the node fake DOM's no-op context, tools/fake-dom.js, which returns nothing) */
+  const widthOf = (ctx, s) => {
+    const m = typeof ctx.measureText === "function" ? ctx.measureText(s) : null;
+    return m && typeof m.width === "number" ? m.width : null;
+  };
+
   function drawHeat(ctx, model, o) {
     const { W, H } = o;
     const lay = layout(model, W, H);
     ctx.clearRect(0, 0, W, H);
     ctx.font = "11px system-ui";
+    ctx.textAlign = "left";
+    /* a gutter label ends 8 px before the gen-0 cursor box (xOf(0) - 2) */
+    const gutterMax = lay.padL - 2 - 8 - GUTTER_X;
+    const gutter = (s, y) => {
+      const w = widthOf(ctx, s);
+      if (w !== null && w > gutterMax) ctx.fillText(s, GUTTER_X, y, gutterMax);
+      else ctx.fillText(s, GUTTER_X, y);
+    };
+    const right = (s, x, y) => {
+      ctx.textAlign = "right";
+      ctx.fillText(s, x, y);
+      ctx.textAlign = "left";
+    };
     /* cells: hue = the bin's ancestry, opacity = its share of the column */
     model.cols.forEach((c, i) => {
       const x = lay.xOf(i);
@@ -145,43 +174,62 @@
     for (const b of [HYB_FIRST, HYB_LAST + 1]) {
       const y = lay.heatTop + b * lay.rowH;
       ctx.beginPath();
-      ctx.moveTo(PAD.L, y);
+      ctx.moveTo(lay.padL, y);
       ctx.lineTo(W - PAD.R, y);
       ctx.stroke();
     }
     ctx.setLineDash([]);
     ctx.fillStyle = "#e8b23a";
-    ctx.fillText("lineage 1", 6, lay.heatTop + 12);
+    gutter("lineage 1", lay.heatTop + 12);
     ctx.fillStyle = "#cc6699";
-    ctx.fillText("lineage 2", 6, lay.heatBot - 4);
+    gutter("lineage 2", lay.heatBot - 4);
     ctx.fillStyle = INK2;
-    ctx.fillText("hybrid band", 6, (lay.heatTop + lay.heatBot) / 2);
-    ctx.fillText("(0.15–0.85)", 6, (lay.heatTop + lay.heatBot) / 2 + 13);
-    /* x: generations, then the final offspring */
+    gutter("hybrid band", (lay.heatTop + lay.heatBot) / 2);
+    gutter("(0.15–0.85)", (lay.heatTop + lay.heatBot) / 2 + 13);
+    /* x: generations, then the final offspring, right-aligned to the plot's
+     * right edge so it never runs off the canvas */
     const last = model.cols.length - 1;
-    ctx.fillText("generation 0", lay.xOf(0), lay.heatTop - 8);
-    ctx.fillText(`final${o.fate ? ": " + o.fate : ""}`, Math.max(PAD.L, lay.xOf(last) - 40), lay.heatTop - 8);
-    if (o.title) ctx.fillText(o.title, PAD.L + 90, lay.heatTop - 8);
+    const hy = lay.heatTop - 8;
+    const gen0 = "generation 0";
+    ctx.fillText(gen0, lay.xOf(0), hy);
+    const finalText = `final${o.fate ? ": " + o.fate : ""}`;
+    right(finalText, W - PAD.R, hy);
+    /* the title sits between the two, TRUNCATED with "…" to the room left
+     * (measured); the full text is the page's #heatLive */
+    if (o.title) {
+      const gw = widthOf(ctx, gen0),
+        fw = widthOf(ctx, finalText);
+      const tx = gw === null ? lay.padL + 90 : Math.max(lay.padL + 90, lay.xOf(0) + gw + 16);
+      let t = o.title;
+      if (fw !== null) {
+        const room = W - PAD.R - fw - 16 - tx;
+        while (t && widthOf(ctx, t === o.title ? t : t + "…") > room) t = t.slice(0, -1).trimEnd();
+        if (t !== o.title) t = t ? t + "…" : "";
+      }
+      if (t) ctx.fillText(t, tx, hy);
+    }
     if (model.cols.some((c) => c.stalled))
-      ctx.fillText("hatched: this generation recruited nothing (parents handed back)", PAD.L, lay.heatBot + 16);
+      ctx.fillText("hatched: this generation recruited nothing (parents handed back)", lay.padL, lay.heatBot + 16,
+        W - PAD.R - lay.padL);
     /* the strip: ancestry variance against the HELD line */
     const vals = model.cols.map((c) => c.ancVar).filter((v) => v !== null);
     const top = Math.max(model.v0, ...vals, 1e-9) * 1.1;
     const yOf = (v) => lay.stripBot - (v / top) * (lay.stripBot - lay.stripTop);
     ctx.strokeStyle = RULE;
-    ctx.strokeRect(PAD.L, lay.stripTop, W - PAD.L - PAD.R, lay.stripBot - lay.stripTop);
+    ctx.strokeRect(lay.padL, lay.stripTop, W - lay.padL - PAD.R, lay.stripBot - lay.stripTop);
     ctx.strokeStyle = "#d9704f";
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
-    ctx.moveTo(PAD.L, yOf(model.heldLine));
+    ctx.moveTo(lay.padL, yOf(model.heldLine));
     ctx.lineTo(W - PAD.R, yOf(model.heldLine));
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#d9704f";
-    ctx.fillText(`HELD line 0.4 × founding = ${model.heldLine.toFixed(4)}`, PAD.L + 4, yOf(model.heldLine) - 4);
+    /* right-aligned, above the line: clear of the gen-0 cursor box */
+    right(`HELD line 0.4 × founding = ${model.heldLine.toFixed(4)}`, W - PAD.R - 4, yOf(model.heldLine) - 4);
     ctx.fillStyle = INK2;
-    ctx.fillText("ancestry", 6, lay.stripTop + 12);
-    ctx.fillText("variance", 6, lay.stripTop + 25);
+    gutter("ancestry", lay.stripTop + 12);
+    gutter("variance", lay.stripTop + 25);
     ctx.strokeStyle = "#e8e6e1";
     ctx.beginPath();
     let started = false;
