@@ -180,14 +180,39 @@
       }
       .genes {
         display: grid;
-        grid-template-columns: 1fr 1.25fr 1fr;
-        gap: 18px;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
         align-items: start;
       }
       @media (max-width: 1000px) {
         .genes {
           grid-template-columns: 1fr;
         }
+      }
+      /* a lineage card: heading, its flower, then its sliders beside it */
+      .linCard {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 4px 14px;
+        align-items: start;
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        padding: 10px 12px;
+      }
+      .linCard h2,
+      .linCard .warn {
+        grid-column: 1 / -1;
+      }
+      @media (max-width: 560px) {
+        .linCard {
+          grid-template-columns: 1fr;
+        }
+      }
+      /* fixed CSS size; the backing store is this x devicePixelRatio (fitCanvas) */
+      .linCard canvas {
+        box-sizing: content-box;
+        width: 220px;
+        height: 180px;
       }
       .genes h2 {
         font-size: 0.95rem;
@@ -210,9 +235,18 @@
         font-variant-numeric: tabular-nums;
         color: var(--ink);
       }
-      .beeCol .stats {
+      #bodyMap {
+        margin-top: 14px;
+      }
+      .beeRow {
+        display: flex;
+        gap: 10px 28px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        margin-top: 8px;
+      }
+      .beeRow .stats {
         gap: 18px;
-        margin-top: 10px;
       }
       .tile-target b {
         color: var(--gold);
@@ -687,62 +721,82 @@
 
       <section class="panel" aria-label="Lineage shapes">
         <div class="genes">
-          <div>
+          <div class="linCard">
             <h2 id="h-lin1">lineage 1</h2>
+            <canvas
+              id="thumb1"
+              width="220"
+              height="180"
+              role="img"
+              aria-label="lineage 1's flower, drawn from its genome by the same model the field uses"
+            ></canvas>
             <div id="genes1" role="group" aria-labelledby="h-lin1"></div>
             <p class="note warn" id="touch1"></p>
           </div>
 
-          <div class="beeCol">
-            <canvas
-              id="bodyMap"
-              width="620"
-              height="240"
-              role="img"
-              aria-label="The animal's body: position along the body left to right, around the body top to bottom, with the named regions shaded. Both lineages' anther and stigma sites are drawn live from the shapes on either side."
-            ></canvas>
-            <p id="bodyLive" class="visually-hidden" aria-live="polite"></p>
-            <p class="note" style="margin-top: 6px">
-              computed from the shapes above, not settable
-            </p>
-            <div class="row">
-              <div class="ctl">
-                <label for="reach">reach — bee, fixed for the run</label
-                ><input
-                  type="range"
-                  id="reach"
-                  min="0.4"
-                  max="1.2"
-                  step="0.01"
-                />
-              </div>
-              <div class="ctl">
-                <label for="bodyLen">body length — bee, fixed for the run</label
-                ><input
-                  type="range"
-                  id="bodyLen"
-                  min="1"
-                  max="2.6"
-                  step="0.01"
-                />
-              </div>
-            </div>
-            <div class="stats">
-              <div class="stat">
-                <b id="sReal">—</b><span>realised separation</span>
-                <span class="band" id="sRealBand"></span>
-              </div>
-              <div class="stat tile-target">
-                <b id="sTarget">reach 8</b><span>level 1 target</span>
-                <span class="band">the goal, not a measurement</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
+          <div class="linCard">
             <h2 id="h-lin2">lineage 2</h2>
+            <canvas
+              id="thumb2"
+              width="220"
+              height="180"
+              role="img"
+              aria-label="lineage 2's flower, drawn from its genome by the same model the field uses"
+            ></canvas>
             <div id="genes2" role="group" aria-labelledby="h-lin2"></div>
             <p class="note warn" id="touch2"></p>
+          </div>
+        </div>
+        <p id="thumbLive" class="visually-hidden" aria-live="polite"></p>
+
+        <canvas
+          id="bodyMap"
+          width="1180"
+          height="300"
+          role="img"
+          aria-label="The animal's body: position along the body left to right, around the body top to bottom, with the named regions shaded. On it: the founders (the two lineages' anther and stigma sites from the sliders, or the shown run's founding sites when it was founded at target d), and the shown generation's plants, one dot each coloured by ancestry."
+        ></canvas>
+        <p id="bodyLive" class="visually-hidden" aria-live="polite"></p>
+        <p class="note" id="bodyKey" style="margin: 6px 0 0">
+          Three layers: the bee's named body regions (shaded bands); the
+          founders — with no run, or a hand-set run, each lineage's contact
+          cloud and mean anther site from the sliders above; for a run founded
+          at target d, rings at that run's own founding sites; and the shown
+          generation's plants, one dot each coloured by ancestry, hidden with
+          a reason if a shape the run was made from has since moved.
+        </p>
+        <div class="beeRow">
+          <div class="row">
+            <div class="ctl">
+              <label for="reach">reach — bee, fixed for the run</label
+              ><input
+                type="range"
+                id="reach"
+                min="0.4"
+                max="1.2"
+                step="0.01"
+              />
+            </div>
+            <div class="ctl">
+              <label for="bodyLen">body length — bee, fixed for the run</label
+              ><input
+                type="range"
+                id="bodyLen"
+                min="1"
+                max="2.6"
+                step="0.01"
+              />
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <b id="sReal">—</b><span>realised separation</span>
+              <span class="band" id="sRealBand"></span>
+            </div>
+            <div class="stat tile-target">
+              <b id="sTarget">reach 8</b><span>level 1 target</span>
+              <span class="band">the goal, not a measurement</span>
+            </div>
           </div>
         </div>
         <details>
@@ -757,20 +811,14 @@
             placement is an outcome of two geometries meeting, never a setting.
           </p>
         </details>
-        <canvas
-          id="map"
-          width="760"
-          height="260"
-          role="img"
-          aria-label="Pollen placement map on the animal's body: position along the body left to right, around the body top to bottom; one dot per flower coloured by lineage."
-        ></canvas>
         <details>
           <summary>what the body map and the bee show</summary>
           <p class="note" style="margin-top: 0">
             <strong>Where the pollen actually goes.</strong> The same
             population, plotted on the animal's body: along the body left to
             right, around it top to bottom. This is the abstract view — it is
-            what the model measures, and the field above is what it means.
+            what the model measures, and the field above is what it means. The
+            founders are computed from the shapes above, not settable.
           </p>
           <p class="note">
             ⚠️ The bee visits a <strong>handful</strong> of flowers per
@@ -794,47 +842,99 @@
       const $ = (id) => document.getElementById(id);
       const cv = $("field"),
         ctx = cv.getContext("2d");
-      const mapC = $("map").getContext("2d");
-      const bodyC = $("bodyMap").getContext("2d");
+      const bodyEl = $("bodyMap"),
+        bodyC = bodyEl.getContext("2d");
+      const thumbEl = [$("thumb1"), $("thumb2")];
+      const thumbCtx = thumbEl.map((c) => c.getContext("2d"));
       const heatEl = $("heat"),
         heatC = heatEl.getContext("2d");
+
+      /* Size a canvas to its content-box width x devicePixelRatio. The LOGICAL
+       * size (CSS px, what every drawing call is written in) is w = clientWidth,
+       * h by the aspect; the backing store is that x dpr and the transform maps
+       * one to the other. With no layout (a hidden canvas, node's fake DOM) the
+       * aspect itself is the logical size, at dpr 1. `changed` is true when the
+       * logical size, the dpr or the backing store moved, so a resize redraws
+       * only then (no ResizeObserver loop). */
+      function fitCanvas(el, c, aspectW, aspectH) {
+        const cw = el.clientWidth;
+        let w = aspectW,
+          h = aspectH,
+          dpr = 1;
+        if (cw > 0) {
+          w = cw;
+          h = Math.round((w * aspectH) / aspectW);
+          dpr = window.devicePixelRatio || 1;
+        }
+        const bw = Math.round(w * dpr),
+          bh = Math.round(h * dpr);
+        const was = el._fit || {};
+        const changed =
+          w !== was.w || h !== was.h || dpr !== was.dpr || el.width !== bw || el.height !== bh;
+        el._fit = { w, h, dpr };
+        /* assigning width clears the canvas, even to the same value: only when it moved */
+        if (el.width !== bw) el.width = bw;
+        if (el.height !== bh) el.height = bh;
+        c.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return { w, h, dpr, changed };
+      }
+
       /* LOGICAL size (CSS px) the heat is drawn at; the backing store is this x dpr.
        * 760x420 is the fallback when the canvas has no width (hidden, or node's fake DOM). */
       let HEAT_W = 760,
         HEAT_H = 420,
         HEAT_DPR = 1;
-      /* Size the heat to its content-box width x devicePixelRatio, keeping the
-       * 760:420 aspect. Returns true when the logical size, dpr or backing store
-       * changed, so a resize redraws only then (no ResizeObserver loop). */
       function sizeHeat() {
-        const cw = heatEl.clientWidth;
-        let W = 760,
-          H = 420,
-          dpr = 1;
-        if (cw > 0) {
-          W = cw;
-          H = Math.round((W * 420) / 760);
-          dpr = window.devicePixelRatio || 1;
-        }
-        const bw = Math.round(W * dpr),
-          bh = Math.round(H * dpr);
-        const changed =
-          W !== HEAT_W || H !== HEAT_H || dpr !== HEAT_DPR || heatEl.width !== bw || heatEl.height !== bh;
-        HEAT_W = W;
-        HEAT_H = H;
-        HEAT_DPR = dpr;
-        /* assigning width clears the canvas, even to the same value: only when it moved */
-        if (heatEl.width !== bw) heatEl.width = bw;
-        if (heatEl.height !== bh) heatEl.height = bh;
-        heatC.setTransform(dpr, 0, 0, dpr, 0, 0);
-        return changed;
+        const r = fitCanvas(heatEl, heatC, 760, 420);
+        HEAT_W = r.w;
+        HEAT_H = r.h;
+        HEAT_DPR = r.dpr;
+        return r.changed;
       }
-      sizeHeat();
-      const onHeatResize = () => {
-        if (sizeHeat()) drawHeat();
-      };
-      if (window.ResizeObserver) new window.ResizeObserver(onHeatResize).observe(heatEl);
-      else if (window.addEventListener) window.addEventListener("resize", onHeatResize);
+
+      /* The 3D renderer's target: project() and flush() read ONLY this. The
+       * field is the default; renderThumb() swaps in a thumbnail and restores
+       * this in a `finally`. `scale` is the projection's focal length in
+       * logical px: 900 at the field's original 1180 px, so the scene keeps
+       * its framing at any displayed width. */
+      const FIELD_VIEW = { canvas: cv, ctx, w: 1180, h: 560, scale: 900, dpr: 1 };
+      let VIEW = FIELD_VIEW;
+      function sizeField() {
+        const r = fitCanvas(cv, ctx, 1180, 560);
+        FIELD_VIEW.w = r.w;
+        FIELD_VIEW.h = r.h;
+        FIELD_VIEW.dpr = r.dpr;
+        FIELD_VIEW.scale = (900 * r.w) / 1180;
+        return r.changed;
+      }
+      /* thumbnails: CSS-fixed at 220x180, so the logical size is 220x180 and
+       * only the dpr can move their backing store */
+      const THUMB_SCALE = 900;
+      const THUMB_VIEW = [0, 1].map((li) => ({
+        canvas: thumbEl[li],
+        ctx: thumbCtx[li],
+        w: 220,
+        h: 180,
+        scale: THUMB_SCALE,
+        dpr: 1,
+      }));
+      function sizeThumb(li) {
+        const r = fitCanvas(thumbEl[li], thumbCtx[li], 220, 180);
+        const V = THUMB_VIEW[li];
+        V.w = r.w;
+        V.h = r.h;
+        V.dpr = r.dpr;
+        V.scale = (THUMB_SCALE * r.w) / 220;
+        return r.changed;
+      }
+      let BODY_W = 1180,
+        BODY_H = 300;
+      function sizeBody() {
+        const r = fitCanvas(bodyEl, bodyC, 1180, 300);
+        BODY_W = r.w;
+        BODY_H = r.h;
+        return r.changed;
+      }
       let HEAT = null; // the heat model last built for the current run, or null
       /* ⚠️ A COPY, not DEFAULT_BEE itself. The two bee sliders set the run's
        * parameter object; writing through to the module's own object would
@@ -927,10 +1027,10 @@
         z = d[1] * sp + z * cp;
         const zv = z + camDist;
         if (zv < 0.05) return null;
-        const scale = 900;
+        const scale = VIEW.scale;
         return {
-          x: cv.width / 2 + (scale * x) / zv,
-          y: cv.height / 2 - (scale * y) / zv,
+          x: VIEW.w / 2 + (scale * x) / zv,
+          y: VIEW.h / 2 - (scale * y) / zv,
           z: zv,
           s: scale / zv,
         };
@@ -970,6 +1070,7 @@
         });
       }
       function flush() {
+        const ctx = VIEW.ctx;
         items.sort((a, b) => b.z - a.z);
         for (const it of items) {
           if (it.kind === "poly") {
@@ -1403,26 +1504,47 @@
       const BODY_Y = (phi, H) => 12 + ((phi + Math.PI) / TAU) * (H - 12 - 26);
       const LINEAGE_COL = ["#e8b23a", "#cc6699"];
 
+      /* The shapes a run was made from, as one comparable string: for a run
+       * founded at target d the sliders did not found it, so only the bee; for
+       * a hand-set run the two genomes and the bee. Recorded at Run
+       * (RUN_KEY); if it differs at draw time the run's plants are not drawn
+       * beside founders or a bee they did not come from. */
+      let RUN_KEY = null;
+      const runKeyNow = (useD) =>
+        useD
+          ? JSON.stringify([bee.reach, bee.bodyLen])
+          : JSON.stringify([LINEAGE, bee.reach, bee.bodyLen]);
+      const OVERLAY_HIDDEN = "hidden: shapes changed since the run";
+      let BODY_LAYERS = { source: "sliders", founders: [null, null], dots: 0, overlay: "none" };
+
+      /* One body map, three layers: the bee's regions; the founders (the
+       * sliders' contact clouds + mean anther sites, or the shown run's own
+       * founding sites when it was founded at target d); the shown generation
+       * GENS[frame].places, one dot per plant coloured by ancestry, while the
+       * shapes the run was made from are unchanged. */
       function drawBodyMap() {
-        const W = 620,
-          H = 240;
+        sizeBody();
+        const W = BODY_W,
+          H = BODY_H;
+        const T = 14,
+          B = 28;
+        const X = (s) => BODY_X(s, W),
+          Y = (phi) => T + ((phi + Math.PI) / TAU) * (H - T - B);
         bodyC.clearRect(0, 0, W, H);
-        bodyC.font = "10px system-ui";
+        bodyC.font = "12px system-ui";
+        bodyC.textAlign = "left";
         bee.regions.forEach((r, i) => {
           bodyC.fillStyle =
             i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.014)";
-          bodyC.fillRect(
-            BODY_X(r.s0, W),
-            12,
-            BODY_X(r.s1, W) - BODY_X(r.s0, W),
-            H - 12 - 26,
-          );
+          bodyC.fillRect(X(r.s0), T, X(r.s1) - X(r.s0), H - T - B);
           bodyC.fillStyle = "#6a7078";
-          bodyC.fillText(r.name, BODY_X(r.s0, W) + 4, H - 26 + 13);
+          bodyC.fillText(r.name, X(r.s0) + 4, H - B + 17);
         });
 
         const opts = sandboxOpts();
         const lines = [];
+        const fromRun = !!(RESULT && RESULT.useD);
+        const founders = [null, null];
         for (let li = 0; li < 2; li++) {
           const f = E.toFlower(LINEAGE[li]);
           /* The same call sim/evolve.js:155-165 already makes. A distribution
@@ -1442,37 +1564,184 @@
           $("touch" + (li + 1)).textContent = touches
             ? ""
             : "this flower never touches the bee";
+          if (fromRun) continue; // the founders layer is the run's, below
           if (!touches) {
             lines.push(`lineage ${li + 1} never touches the bee`);
             continue;
           }
           const col = LINEAGE_COL[li];
           for (const [hits, r, fill] of [
-            [a.hits, 2.0, col],
-            [s.hits, 1.6, "#8fd694"],
+            [a.hits, 2.2, col],
+            [s.hits, 1.8, "#8fd694"],
           ]) {
             bodyC.fillStyle = fill;
             bodyC.globalAlpha = 0.35;
             for (const h of hits) {
               bodyC.beginPath();
-              bodyC.arc(BODY_X(h.s, W), BODY_Y(h.phi, H), r, 0, TAU);
+              bodyC.arc(X(h.s), Y(h.phi), r, 0, TAU);
               bodyC.fill();
             }
             bodyC.globalAlpha = 1;
           }
           /* the mean anther site — the point the realised separation measures */
           const p = placeOf(LINEAGE[li], opts);
+          founders[li] = p || null;
           if (p) {
             bodyC.fillStyle = col;
             bodyC.beginPath();
-            bodyC.arc(BODY_X(p.s, W), BODY_Y(p.phi, H), 6, 0, TAU);
+            bodyC.arc(X(p.s), Y(p.phi), 6, 0, TAU);
             bodyC.fill();
             lines.push(
               `lineage ${li + 1} anther at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it`,
             );
           }
         }
+        if (fromRun) {
+          /* the run's founders: foundTwoLineages chose them at target d, so
+           * the hand-set sliders say nothing about this run */
+          [RESULT.p1, RESULT.p2].forEach((p, li) => {
+            founders[li] = p;
+            if (!p) return;
+            bodyC.strokeStyle = LINEAGE_COL[li];
+            bodyC.lineWidth = 2.5;
+            bodyC.beginPath();
+            bodyC.arc(X(p.s), Y(p.phi), 9, 0, TAU);
+            bodyC.stroke();
+            /* above the ring, haloed: the generation's dots crowd the ring itself */
+            const lab = `lineage ${li + 1} founder`;
+            bodyC.lineWidth = 4;
+            bodyC.strokeStyle = "#101216";
+            bodyC.strokeText(lab, X(p.s) - 12, Y(p.phi) - 16);
+            bodyC.fillStyle = LINEAGE_COL[li];
+            bodyC.fillText(lab, X(p.s) - 12, Y(p.phi) - 16);
+            lines.push(
+              `this run's founder ${li + 1} at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it`,
+            );
+          });
+          bodyC.fillStyle = "#9aa0a8";
+          bodyC.fillText("rings: this run's founders (founded at target d)", 8, T + 12);
+        }
+
+        let overlay = "none",
+          dots = 0;
+        const G = RESULT ? GENS[frame] : null;
+        if (G) {
+          if (runKeyNow(RESULT.useD) === RUN_KEY) {
+            overlay = "shown";
+            G.places.forEach((p, i) => {
+              if (!p) return;
+              bodyC.fillStyle = ancHex(G.anc[i]);
+              bodyC.beginPath();
+              bodyC.arc(X(p.s), Y(p.phi), 4.4, 0, TAU);
+              bodyC.fill();
+              dots++;
+            });
+            lines.push(`generation ${frame}: ${dots} plants drawn`);
+          } else {
+            overlay = OVERLAY_HIDDEN;
+            bodyC.fillStyle = "#d9704f";
+            bodyC.textAlign = "right";
+            bodyC.fillText("run overlay " + OVERLAY_HIDDEN, W - 8, T + 12);
+            bodyC.textAlign = "left";
+            lines.push("run overlay " + OVERLAY_HIDDEN);
+          }
+        }
+        /* the run's founder rings again, on top: the plants descended from
+         * them sit on and around them and otherwise bury the ring */
+        if (fromRun)
+          founders.forEach((p, li) => {
+            if (!p) return;
+            bodyC.strokeStyle = "#101216";
+            bodyC.lineWidth = 5;
+            bodyC.beginPath();
+            bodyC.arc(X(p.s), Y(p.phi), 10, 0, TAU);
+            bodyC.stroke();
+            bodyC.strokeStyle = LINEAGE_COL[li];
+            bodyC.lineWidth = 2.5;
+            bodyC.stroke();
+          });
+        BODY_LAYERS = { source: fromRun ? "run" : "sliders", founders, dots, overlay };
         $("bodyLive").textContent = lines.join(". ");
+      }
+
+      /* ------------------------------------------------ the flower thumbnails */
+      /* One flower of the lineage's genome, through the SAME renderer as the
+       * field (project/poly/flush, drawFlower), aimed at a thumbnail. Every
+       * piece of camera state it touches, and the render target, is saved and
+       * restored in a `finally`: the field reads the same globals. Camera
+       * tuned by rendering and looking: the patch camera's yaw and pitch
+       * (looking down into the mouth), ONE fixed distance for every genome so
+       * the two cards' flowers compare in size, then the projected flower is
+       * centred on its own bounding box — a fixed aim point cut the lobes off
+       * a long tube and left a short one in a corner. Only a flower too big for
+       * the card at that distance is shrunk to fit (THUMB_FIT.k < 1). */
+      const THUMB_CAM = { yaw: 0.5, pitch: 0.62, dist: 20 };
+      const THUMB_FIT = [1, 1];
+      function centreItems(its, w, h, m) {
+        let x0 = Infinity,
+          y0 = Infinity,
+          x1 = -Infinity,
+          y1 = -Infinity;
+        const see = (x, y, r) => {
+          x0 = Math.min(x0, x - r);
+          x1 = Math.max(x1, x + r);
+          y0 = Math.min(y0, y - r);
+          y1 = Math.max(y1, y + r);
+        };
+        for (const it of its)
+          if (it.kind === "poly") for (const q of it.ps) see(q.x, q.y, 0);
+          else see(it.x, it.y, it.r);
+        if (!(x1 > x0 && y1 > y0)) return 1;
+        const k = Math.min(1, (w - 2 * m) / (x1 - x0), (h - 2 * m) / (y1 - y0));
+        const cx = (x0 + x1) / 2,
+          cy = (y0 + y1) / 2;
+        const tx = (x) => w / 2 + (x - cx) * k,
+          ty = (y) => h / 2 + (y - cy) * k;
+        for (const it of its)
+          if (it.kind === "poly") it.ps = it.ps.map((q) => ({ ...q, x: tx(q.x), y: ty(q.y) }));
+          else {
+            it.x = tx(it.x);
+            it.y = ty(it.y);
+            it.r *= k;
+          }
+        return k;
+      }
+      function renderThumb(li) {
+        const saved = {
+          yaw,
+          pitch,
+          camDist,
+          t: [camTarget[0], camTarget[1], camTarget[2]],
+          view: VIEW,
+          items,
+        };
+        try {
+          sizeThumb(li);
+          VIEW = THUMB_VIEW[li];
+          items = [];
+          VIEW.ctx.clearRect(0, 0, VIEW.w, VIEW.h);
+          const f = E.toFlower(LINEAGE[li]);
+          const top = 3.6 + 0.9 * (f.axisLen - 1.8);
+          const b = basis(vUnit([0, -1, 0]), [0, top, 0]);
+          yaw = THUMB_CAM.yaw;
+          pitch = THUMB_CAM.pitch;
+          camDist = THUMB_CAM.dist;
+          camTarget[0] = 0;
+          camTarget[1] = top - 0.45 * f.axisLen;
+          camTarget[2] = 0;
+          drawFlower(f, b, ancHex(li));
+          THUMB_FIT[li] = centreItems(items, VIEW.w, VIEW.h, 8);
+          flush();
+        } finally {
+          yaw = saved.yaw;
+          pitch = saved.pitch;
+          camDist = saved.camDist;
+          camTarget[0] = saved.t[0];
+          camTarget[1] = saved.t[1];
+          camTarget[2] = saved.t[2];
+          VIEW = saved.view;
+          items = saved.items;
+        }
       }
 
       /* ⚠️ MEASURED, NOT ASSERTED. For each gene, the anther dot at the gene's
@@ -1517,6 +1786,9 @@
         $("sRealBand").textContent = separationBand(d);
         if (only === undefined || only === 0) sweepLabels(0);
         if (only === undefined || only === 1) sweepLabels(1);
+        const redrawn = only === undefined ? [0, 1] : [only];
+        for (const li of redrawn) renderThumb(li);
+        $("thumbLive").textContent = redrawn.map((li) => `lineage ${li + 1}`).join(" and ") + " redrawn";
         drawBodyMap();
         showWin();
       }
@@ -1756,6 +2028,8 @@
           cards,
           p1: main.p1,
           p2: main.p2,
+          /* founded at target d: the founders are foundTwoLineages', not the sliders' */
+          useD,
           phenology: !!options.phenology,
         };
       }
@@ -1850,9 +2124,12 @@
       // ----------------------------------------------------------- rendering
       function draw(ts) {
         const G = GENS[frame];
-        ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.clearRect(0, 0, FIELD_VIEW.w, FIELD_VIEW.h);
         if (!G) return;
-        const t = (ts - t0) / 1000;
+        /* a rAF timestamp is the frame's START, which can precede the
+         * performance.now() Play took as t0: a negative t made k negative and
+         * LOG[k] undefined (an uncaught "reading 'j'" in the smoke) */
+        const t = Math.max(0, (ts - t0) / 1000);
         const n0 = G.flowers.length;
 
         /*
@@ -1876,13 +2153,12 @@
           FOLLOW.near = -Infinity;
           drawPatch(G);
           flush();
-          ctx.fillStyle = "#9aa0a8";
-          ctx.font = "12px system-ui";
-          ctx.fillText(
-            `generation ${frame} · ${G.flowers.length} flowers, each with its own contact sites (${G.sites.length} site sets) · bout not drawn: the sliced season does not log one`,
-            14,
-            cv.height - 13,
-          );
+          fieldCaption([
+            [
+              `generation ${frame} · ${G.flowers.length} flowers, each with its own contact sites (${G.sites.length} site sets) · bout not drawn: the sliced season does not log one`,
+              "#9aa0a8",
+            ],
+          ]);
           if (playing) raf = nextFrame(draw);
           return;
         }
@@ -2008,22 +2284,47 @@
           deliv += LOG[q].nTook;
           for (const g of LOG[q].took) if (!g.own) right++;
         }
-        ctx.fillStyle = "#9aa0a8";
-        ctx.font = "12px system-ui";
-        ctx.fillText(
-          `generation ${frame} · visit ${rec.t} of ${G.visits} · flower ${rec.j + 1}/${n} · ` +
-            `carrying ${rec.carry} grains · ${deliv} delivered in this window (${right} outcrossed)`,
-          14,
-          cv.height - 30,
-        );
-        ctx.fillStyle = "#6d737b";
-        ctx.fillText(
-          `a ${LOG.length}-visit window from visit ${window.SandboxRun.BOUT_FROM} — the model's own visit order, not a tour`,
-          14,
-          cv.height - 13,
-        );
+        fieldCaption([
+          [
+            `generation ${frame} · visit ${rec.t} of ${G.visits} · flower ${rec.j + 1}/${n} · ` +
+              `carrying ${rec.carry} grains · ${deliv} delivered in this window (${right} outcrossed)`,
+            "#9aa0a8",
+          ],
+          [
+            `a ${LOG.length}-visit window from visit ${window.SandboxRun.BOUT_FROM} — the model's own visit order, not a tour`,
+            "#6d737b",
+          ],
+        ]);
 
         if (playing) raf = nextFrame(draw);
+      }
+
+      /* The field's in-canvas caption, in logical px at a real 12 px: now that
+       * the canvas is not CSS-shrunk, a 566 px field cannot hold one long line,
+       * so each paragraph wraps at its " · " breaks (then words) and the block
+       * sits on the bottom edge. */
+      function fieldCaption(paras) {
+        ctx.font = "12px system-ui";
+        const maxW = FIELD_VIEW.w - 28;
+        const fits = (t) => {
+          const m = ctx.measureText(t);
+          return !m || !(m.width > maxW); // no measurement (fake DOM): one line
+        };
+        const rows = [];
+        for (const [text, col] of paras) {
+          let line = "";
+          for (const tok of text.split(/(?<= · )|(?<= )/)) {
+            if (line && !fits(line + tok)) {
+              rows.push([line.replace(/ · $/, "").trimEnd(), col]);
+              line = tok;
+            } else line += tok;
+          }
+          if (line) rows.push([line, col]);
+        }
+        rows.forEach(([t, col], i) => {
+          ctx.fillStyle = col;
+          ctx.fillText(t, 14, FIELD_VIEW.h - 13 - 16 * (rows.length - 1 - i));
+        });
       }
 
       /* prefers-reduced-motion: the render loop drops from continuous rAF to
@@ -2040,35 +2341,6 @@
       function cancelFrame(h) {
         cancelAnimationFrame(h);
         clearTimeout(h);
-      }
-
-      function drawMap(g) {
-        const W = 760,
-          H = 260,
-          L = 46,
-          R = 12,
-          T = 12,
-          B = 26;
-        mapC.clearRect(0, 0, W, H);
-        const x = (s) => L + ((s + 0.08) / 1.16) * (W - L - R);
-        const y = (phi) => T + ((phi + Math.PI) / TAU) * (H - T - B);
-        mapC.font = "10px system-ui";
-        P.DEFAULT_BEE.regions.forEach((r, i) => {
-          mapC.fillStyle =
-            i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.014)";
-          mapC.fillRect(x(r.s0), T, x(r.s1) - x(r.s0), H - T - B);
-          mapC.fillStyle = "#6a7078";
-          mapC.fillText(r.name, x(r.s0) + 4, H - B + 13);
-        });
-        const G = GENS[g];
-        if (!G) return;
-        G.places.forEach((p, i) => {
-          if (!p) return;
-          mapC.fillStyle = ancHex(G.anc[i]);
-          mapC.beginPath();
-          mapC.arc(x(p.s), y(p.phi), 4.4, 0, TAU);
-          mapC.fill();
-        });
       }
 
       /* The run's result: set once per run, not per scrubbed frame. The fate
@@ -2154,10 +2426,11 @@
       }
 
       function show(g) {
-        frame = g;
-        drawMap(g);
-        drawHeat();
         const G = GENS[g];
+        if (!G) return; // no run (clearResult), or past its last generation
+        frame = g;
+        drawBodyMap();
+        drawHeat();
         $("sGen").textContent = `${g} / ${GENS.length - 1}`;
         $("sSep").textContent = G.sep.toFixed(2);
         $("sAnc").textContent = G.ancVar.toFixed(4);
@@ -2194,7 +2467,22 @@
       /* A new run clears the last one's result first, so a run that fails to
        * found never leaves the previous fate and cards standing beside it. */
       function clearResult() {
+        /* the run itself, not just its verdict: nothing is left to scrub or
+         * play beside the example heat after a level change (Task 3 M3) */
+        stopPlay();
+        clearInterval(window.__gen);
         RESULT = null;
+        GENS = [];
+        frame = 0;
+        RUN_KEY = null;
+        $("scrub").value = 0;
+        $("scrub").max = 0;
+        $("scrub").disabled = true;
+        $("play").disabled = true;
+        for (const id of ["sGen", "sSep", "sAnc", "sHyb", "sGap"]) $(id).textContent = "—";
+        $("fieldLive").textContent = "No run yet. Set the inputs and press Run.";
+        draw(performance.now());
+        drawBodyMap();
         $("fieldCaption").textContent = "";
         $("sFate").textContent = "—";
         $("sFate").style.color = "";
@@ -2228,6 +2516,7 @@
             const R = buildRun();
             GENS = R.gens;
             RESULT = R;
+            RUN_KEY = runKeyNow(R.useD);
             HEAT = window.AncestryHeat.heatModel(R.gens, R.final, R.v0);
             showResult(R);
             showWin();
@@ -2335,6 +2624,18 @@
         heat: () => HEAT,
         heatSize: () => ({ W: HEAT_W, H: HEAT_H, dpr: HEAT_DPR, backing: [heatEl.width, heatEl.height] }),
         result: () => RESULT,
+        bodyLayers: () => ({ ...BODY_LAYERS, founders: [...BODY_LAYERS.founders] }),
+        lineage: (li) => ({ ...LINEAGE[li] }),
+        bee: () => ({ reach: bee.reach, bodyLen: bee.bodyLen }),
+        /* as the two bee sliders' oninput does */
+        setBee(b) {
+          for (const k of ["reach", "bodyLen"])
+            if (k in b) {
+              bee[k] = +b[k];
+              $(k).value = String(b[k]);
+            }
+          refreshSandbox();
+        },
         setLineage(li, genome) {
           for (const k of GENE_ORDER)
             if (k in genome) {
@@ -2345,6 +2646,42 @@
           refreshSandbox();
         },
       };
+
+      /* Every fitted canvas re-fits on a change of its displayed size, and
+       * redraws only when its logical size or dpr actually moved. */
+      const FITTED = [
+        [heatEl, () => sizeHeat() && drawHeat()],
+        [cv, () => sizeField() && !playing && draw(performance.now())],
+        [bodyEl, () => sizeBody() && drawBodyMap()],
+        [thumbEl[0], () => sizeThumb(0) && renderThumb(0)],
+        [thumbEl[1], () => sizeThumb(1) && renderThumb(1)],
+      ];
+      const refitAll = () => FITTED.forEach(([, fit]) => fit());
+      if (window.ResizeObserver)
+        for (const [el, fit] of FITTED) new window.ResizeObserver(fit).observe(el);
+      else if (window.addEventListener) window.addEventListener("resize", refitAll);
+      /* A DPR-only change (the window moved to another monitor, same width)
+       * fires no resize: listen for the current resolution to stop matching,
+       * re-fit, and re-arm at the new dpr. */
+      function watchDpr() {
+        if (!window.matchMedia) return;
+        const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+        if (!mq || !mq.addEventListener) return;
+        mq.addEventListener(
+          "change",
+          () => {
+            refitAll();
+            watchDpr();
+          },
+          { once: true },
+        );
+      }
+      sizeHeat();
+      sizeField();
+      sizeBody();
+      sizeThumb(0);
+      sizeThumb(1);
+      watchDpr();
 
       initSandbox();
       $("status").textContent = "press Run";

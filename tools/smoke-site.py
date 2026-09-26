@@ -195,8 +195,12 @@ HEAT_COL5 = """() => {
 HEAT_DPR = """() => {
   const c = document.getElementById('heat');
   const S = window.Sandbox && window.Sandbox.heatSize ? window.Sandbox.heatSize() : null;
+  const other = Object.fromEntries(['field', 'bodyMap'].map((id) => {
+    const e = document.getElementById(id);
+    return [id, { cw: e.clientWidth, bw: e.width }];
+  }));
   return { cw: c.clientWidth, bw: c.width, bh: c.height, shown: c.getBoundingClientRect().width,
-           dpr: window.devicePixelRatio, S };
+           dpr: window.devicePixelRatio, S, other };
 }"""
 
 
@@ -223,6 +227,10 @@ def heat_dpr_checks(browser, name, failures):
             failures.append(f"{at}: devicePixelRatio {m['dpr']}, want 2 (the context is wrong)")
         if abs(m["bw"] - round(2 * m["cw"])) > 1:
             failures.append(f"{at}: #heat backing width {m['bw']} vs clientWidth {m['cw']} - want {round(2 * m['cw'])}")
+        # Task 5 (A1): the field and the body map follow the same rule
+        for cid, o in m["other"].items():
+            if o["cw"] < 200 or abs(o["bw"] - round(2 * o["cw"])) > 1:
+                failures.append(f"{at}: #{cid} backing width {o['bw']} vs clientWidth {o['cw']} - want {round(2 * o['cw'])} (and displayed >= 200 px)")
         if not m["S"] or m["S"]["W"] != m["cw"]:
             failures.append(f"{at}: Sandbox.heatSize() {m['S']!r} - want W == clientWidth {m['cw']}")
         elif abs(m["bh"] - round(2 * m["S"]["H"])) > 1:
@@ -233,7 +241,9 @@ def heat_dpr_checks(browser, name, failures):
         failures.append(f"{name}: control - #heat clientWidth {seen[0]['cw']} did not change at 900x900 (no resize)")
     ctx.close()
     a, b = seen
-    return f"DPR2 backing/clientWidth {a['bw']}/{a['cw']} at 1400, {b['bw']}/{b['cw']} at 900"
+    o = "; ".join(f"#{k} {v['bw']}/{v['cw']} at 1400, {b['other'][k]['bw']}/{b['other'][k]['cw']} at 900"
+                  for k, v in a["other"].items())
+    return f"DPR2 backing/clientWidth #heat {a['bw']}/{a['cw']} at 1400, {b['bw']}/{b['cw']} at 900; {o}"
 
 
 HEAT_STATE = """() => [document.getElementById('heatLive').textContent,
@@ -264,6 +274,86 @@ def first_screen_checks(page, name, failures):
     if fs["advOpen"] is not False:
         failures.append(f"{name}: #advanced open is {fs['advOpen']!r} on load, want False (a closed drawer)")
     return f"first screen tops {t}, advanced open {fs['advOpen']}"
+
+
+# ------------------------------------------- Task 5: thumbnails and the body map
+# A thumbnail is drawn when more than 5% of its pixels differ from its own
+# top-left corner pixel by more than 24 in any channel (a distinct-colour count
+# saturates on anti-aliasing and could not fail, Task 2). Moving g1_axisLen to
+# its max must change #thumb1 and leave #thumb2 byte-identical (control: the
+# other card is untouched). Seen failing with renderThumb returning at once.
+THUMB_INK = """(id) => {
+  const c = document.getElementById(id);
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4)
+    for (let k = 0; k < 4; k++) if (Math.abs(d[i + k] - d[k]) > 24) { n++; break; }
+  return n / (c.width * c.height);
+}"""
+# FNV-1a over the canvas's backing pixels: equal iff (up to hash collision) identical
+CANVAS_SIG = """(id) => {
+  const c = document.getElementById(id);
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let h = 2166136261;
+  for (let i = 0; i < d.length; i++) h = Math.imul(h ^ d[i], 16777619) >>> 0;
+  return h;
+}"""
+SET_INPUT = """([id, v]) => {
+  const e = document.getElementById(id);
+  const was = e.value;
+  e.value = v === null ? e.max : String(v);
+  e.dispatchEvent(new Event('input'));
+  return was;
+}"""
+
+
+def thumb_checks(page, name, failures):
+    ink = [page.evaluate(THUMB_INK, f"thumb{i}") for i in (1, 2)]
+    for i, f in zip((1, 2), ink):
+        if not f > 0.05:
+            failures.append(f"{name}: #thumb{i} has {f:.1%} of pixels off its corner colour on load (need > 5%)")
+    s1, s2 = page.evaluate(CANVAS_SIG, "thumb1"), page.evaluate(CANVAS_SIG, "thumb2")
+    g1 = page.evaluate("() => window.Sandbox.lineage(0)")
+    page.evaluate(SET_INPUT, ["g1_axisLen", None])
+    t1, t2 = page.evaluate(CANVAS_SIG, "thumb1"), page.evaluate(CANVAS_SIG, "thumb2")
+    # exact restore (a range input snaps a written value to its step)
+    page.evaluate("(g) => window.Sandbox.setLineage(0, g)", g1)
+    if t1 == s1:
+        failures.append(f"{name}: g1_axisLen to its max left #thumb1 unchanged")
+    if t2 != s2:
+        failures.append(f"{name}: g1_axisLen changed #thumb2 (control: only lineage 1's card may redraw)")
+    return f"thumbs {ink[0]:.1%}/{ink[1]:.1%} off-corner, axisLen max -> thumb1 {'changed' if t1 != s1 else 'SAME'}, thumb2 {'same' if t2 == s2 else 'CHANGED'}"
+
+
+# After a run: #bodyMap differs between scrub 0 and scrub 10 (the shown
+# generation is drawn). Then the camera restore: redraw the field at the shown
+# generation (an input on #scrub at its own value), sample; move a gene slider
+# (renderThumb swaps the camera and render target), redraw the same way,
+# sample again - identical. Positive control: before the thumb render the field
+# shows the scene (> 20% of its pixels off its corner colour) - without it, a
+# field already broken by the load-time thumbnail renders compares equal to
+# itself. Seen failing with renderThumb's `finally` removed.
+def run_view_checks(page, name, failures):
+    page.evaluate(SET_INPUT, ["scrub", 0])
+    b0 = page.evaluate(CANVAS_SIG, "bodyMap")
+    page.evaluate(SET_INPUT, ["scrub", 10])
+    b10 = page.evaluate(CANVAS_SIG, "bodyMap")
+    if b0 == b10:
+        failures.append(f"{name}: #bodyMap identical at scrub 0 and scrub 10 - the shown generation is not drawn")
+    g = page.evaluate("() => document.getElementById('scrub').value")
+    page.evaluate(SET_INPUT, ["scrub", g])
+    f0 = page.evaluate(CANVAS_SIG, "field")
+    fink = page.evaluate(THUMB_INK, "field")
+    if not fink > 0.2:
+        failures.append(f"{name}: control - #field has {fink:.1%} of pixels off its corner colour at the shown generation (need > 20%: the scene is not drawn)")
+    g2 = page.evaluate("() => window.Sandbox.lineage(1)")
+    page.evaluate(SET_INPUT, ["g2_mouthR", None])
+    page.evaluate(SET_INPUT, ["scrub", g])
+    f1 = page.evaluate(CANVAS_SIG, "field")
+    page.evaluate("(g) => window.Sandbox.setLineage(1, g)", g2)
+    if f0 != f1:
+        failures.append(f"{name}: #field changed after a thumbnail render at the same generation - the camera or render target was not restored")
+    return f"bodyMap scrub0 vs 10 {'differ' if b0 != b10 else 'SAME'}, field {fink:.1%} off-corner, field across a thumb render {'identical' if f0 == f1 else 'CHANGED'}"
 
 
 def heat_load_checks(page, name, failures):
@@ -680,6 +770,7 @@ with sync_playwright() as p:
                     f"at load (read {m1['target']!r})"
                 )
 
+            thumb_note = thumb_checks(page, name, failures)
             pre = page.evaluate(SHOT)
             heat_base, heat_load = heat_load_checks(page, name, failures)
             page.click("#run")
@@ -694,8 +785,10 @@ with sync_playwright() as p:
             if completed and drew == 0:
                 failures.append(f"{name}: #run completed but the canvas never changed - nothing was drawn")
             heat_note = "heat not checked (run incomplete)"
+            view_note = "run views not checked (run incomplete)"
             if completed:
                 heat_note = heat_checks(page, name, failures, heat_base, heat_load)
+                view_note = run_view_checks(page, name, failures)
             n3, changed3, _ = (0, 0, 0)
             if completed:
                 page.click("#play")
@@ -703,7 +796,7 @@ with sync_playwright() as p:
                 if changed3 == 0:
                     failures.append(f"{name}: clicked #play and NOTHING animated - playback does not run")
             note = (f"{fs_note}, idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
-                    f"{heat_note}, #play animating {changed3}/{n3}")
+                    f"{heat_note}, {thumb_note}, {view_note}, #play animating {changed3}/{n3}")
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)
             note += "; M3a " + ", ".join(m3a_checks(browser, name))
