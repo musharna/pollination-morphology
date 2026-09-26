@@ -592,7 +592,7 @@
       <section id="hero" class="panel" aria-label="Result">
         <div class="heroL">
           <div class="verdict">
-            <b id="sFate">—</b><span>fate (the run's last offspring)</span>
+            <b id="sFate">—</b><span id="sFateSub">fate (the run's last offspring)</span>
             <span class="band" id="sFateBand"></span>
           </div>
           <canvas
@@ -1714,6 +1714,7 @@
           bodyC.globalAlpha = 1;
         };
         const founders = [null, null];
+        const founderLabels = []; // a run's "lineage N founder" labels, drawn last
         const missing = []; // a part that never touches, named in the title row
         const key = []; // one entry per kind of mark drawn (writeBodyKey)
         let stigmaDrawn = false;
@@ -1784,6 +1785,7 @@
           /* the run's founders: foundTwoLineages chose them at target d, so
            * the hand-set sliders say nothing about this run */
           const placed = [];
+          founderLabels.length = 0;
           [RESULT.p1, RESULT.p2].forEach((p, li) => {
             founders[li] = p;
             if (!p) return;
@@ -1814,13 +1816,8 @@
             ].map(([x, y]) => fit(x, y));
             const [lx, ly] = tries.find((t) => !hits(t)) || tries[0];
             placed.push([lx, ly, w]);
-            bodyC.globalAlpha = stale ? 0.4 : 1;
-            bodyC.lineWidth = 4;
-            bodyC.strokeStyle = "#101216";
-            bodyC.strokeText(lab, lx, ly);
-            bodyC.fillStyle = LINEAGE_COL[li];
-            bodyC.fillText(lab, lx, ly);
-            bodyC.globalAlpha = 1;
+            /* drawn last, over the generation's plants (critic r4 #4) */
+            founderLabels.push({ lab, lx, ly, w, li });
             lines.push(
               `this run's founder ${li + 1} at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it` +
                 (stale ? " (on the old bee)" : ""),
@@ -1889,6 +1886,17 @@
             bodyC.stroke();
             ringDone();
           });
+        /* the founder labels, last, each on a plate in the canvas background
+         * at 85% (critic r4 #4: the generation's dots overprinted them) */
+        for (const { lab, lx, ly, w, li } of founderLabels) {
+          bodyC.globalAlpha = 0.85;
+          bodyC.fillStyle = "#101216";
+          bodyC.fillRect(lx - 3, ly - 11, w + 6, 15);
+          bodyC.globalAlpha = stale ? 0.4 : 1;
+          bodyC.fillStyle = LINEAGE_COL[li];
+          bodyC.fillText(lab, lx, ly);
+          bodyC.globalAlpha = 1;
+        }
         BODY_LAYERS = { source: fromRun ? "run" : "sliders", founders, dots, overlay, foundersStale: stale, key, overlayNote };
         writeBodyKey(key, overlayNote);
         $("bodyLive").textContent = lines.join(". ");
@@ -2764,15 +2772,10 @@
        * the sliders, and nothing is appended. */
       function stallWhy(R) {
         if (R.fate !== "STALLED") return "";
-        const k = R.stalledGens,
-          N = GENS.length;
-        let t =
-          `no offspring were recruited in ${k} of ${N} generations, so the variance below is ` +
-          (k === N ? "the founders' carried forward" : "carried forward unchanged through them") +
-          ", not a hold";
+        let miss = ["", ""];
         if (!R.useD) {
           const opts = sandboxOpts();
-          const miss = [0, 1].map((li) => {
+          miss = [0, 1].map((li) => {
             const c = contactsOf(li, opts);
             return !c.onA && !c.onS
               ? "flower never touches the bee"
@@ -2782,9 +2785,19 @@
                   ? "anthers never touch the bee"
                   : "";
           });
-          if (miss[0] && miss[0] === miss[1]) t += ` — the ${miss[0]}`;
-          else miss.forEach((m, li) => m && (t += ` — lineage ${li + 1}'s ${m}`));
         }
+        return stallSentence(R.fate, R.stalledGens, GENS.length, miss);
+      }
+      /* the words alone, from the fate, the count and each lineage's missing
+       * part ("" for none): pure, so a test can drive every branch (7e fix 1) */
+      function stallSentence(fate, k, N, miss) {
+        if (fate !== "STALLED") return "";
+        let t =
+          `no offspring were recruited in ${k} of ${N} generations, so the variance below is ` +
+          (k === N ? "the founders' carried forward" : "carried forward unchanged through them") +
+          ", not a hold";
+        if (miss[0] && miss[0] === miss[1]) t += ` — the ${miss[0]}`;
+        else miss.forEach((m, li) => m && (t += ` — lineage ${li + 1}'s ${m}`));
         return t + " · ";
       }
 
@@ -2794,6 +2807,10 @@
           ? "bout not drawn: the sliced season does not log one (sim/ibm.js:1432-1438)"
           : "";
         $("sFate").textContent = R.fate;
+        /* STALLED is not read off offspring: fateOf returns it when the run's
+         * stall flag is set, any generation with recruits === 0 (critic r4 #1) */
+        $("sFateSub").textContent =
+          R.fate === "STALLED" ? "fate (a generation recruited no offspring)" : "fate (the run's last offspring)";
         $("sFate").style.color = R.fate === "HELD" ? "var(--ok)" : "var(--bad)";
         $("sFateBand").textContent =
           stallWhy(R) +
@@ -2807,10 +2824,14 @@
         const cfgLine = (c) =>
           `N ${c.n}, ${c.gens} generations, siteN ${c.siteN}`;
         const C = window.SandboxRun.CONFIGS;
+        /* null: no generation's parents held both hybrids and the rest
+         * (population-run.js quantities; card 1's "never shared a generation") */
         const ratio =
-          R.q.ratio === null ? "no generation held both" : R.q.ratio.toFixed(3);
+          R.q.ratio === null
+            ? "receipt ratio: not measured — no generation held both hybrids and non-hybrids"
+            : `receipt ratio ${R.q.ratio.toFixed(3)}`;
         $("sHybBand").textContent =
-          `generations with any hybrid: ${R.q.hybGens} of ${GENS.length} (among the parents) · receipt ratio ${ratio}` +
+          `generations with any hybrid: ${R.q.hybGens} of ${GENS.length} (among the parents) · ${ratio}` +
           ` · "hybrids received less than the rest" below ${window.SandboxRun.CARD1_EDGE} (null edge, ${cfgLine(C.page)}, placement-mediated; grey at any other)` +
           ` · the experiment's 0.809 [0.706, 0.912] is a different statistic (both sex roles, docs/2026-08-02-hybrid-placement.md)`;
         $("sGapBand").textContent =
@@ -2940,6 +2961,7 @@
         const X = window.ExampleHeat;
         $("sFate").textContent = X ? `example: ${X.fate}` : "—";
         $("sFate").style.color = X ? "var(--ink-2)" : "";
+        $("sFateSub").textContent = "fate (the run's last offspring)";
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])
           $(id).textContent = "";
         if (X)
@@ -3092,6 +3114,7 @@
         heat: () => HEAT,
         heatSize: () => ({ W: HEAT_W, H: HEAT_H, dpr: HEAT_DPR, backing: [heatEl.width, heatEl.height] }),
         result: () => RESULT,
+        stallSentence,
         bodyLayers: () => ({ ...BODY_LAYERS, founders: [...BODY_LAYERS.founders] }),
         thumbSource,
         thumbGenome: (li) => (THUMB_DRAWN[li] ? { ...THUMB_DRAWN[li] } : null),

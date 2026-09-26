@@ -196,3 +196,60 @@ test("#10: the level-5 bout note is written once, by #fieldCaption", () => {
   assert.equal(n, 1, `the bout note appears ${n} times in the page source`);
   assert.match(SRC, /"bout not drawn: the sliced season does not log one \(sim\/ibm\.js:1432-1438\)"/, "control: the one kept");
 });
+
+/* ---- fix round 1 (review + critic r4) ---------------------------------- */
+
+/* review I1: the stall sentence's every branch, from the page's own words
+ * function. A `${N} of ${N}` mutant fails the k < N case. */
+test("fix 1: the stall sentence counts k of N, words k < N and k = N apart, and omits a missing-part suffix it lacks", () => {
+  const f = STALL.page.Sandbox.stallSentence;
+  assert.equal(typeof f, "function", "the page exposes Sandbox.stallSentence");
+  assert.equal(f("STALLED", 3, 35, ["stigma never touches the bee", ""]),
+    "no offspring were recruited in 3 of 35 generations, so the variance below is carried forward unchanged through them, not a hold — lineage 1's stigma never touches the bee · ");
+  assert.equal(f("STALLED", 35, 35, ["stigma never touches the bee", "stigma never touches the bee"]),
+    "no offspring were recruited in 35 of 35 generations, so the variance below is the founders' carried forward, not a hold — the stigma never touches the bee · ");
+  assert.equal(f("STALLED", 12, 24, ["", ""]),
+    "no offspring were recruited in 12 of 24 generations, so the variance below is carried forward unchanged through them, not a hold · ");
+  assert.equal(f("FUSED", 0, 35, ["", ""]), "", "a fate other than STALLED has no stall sentence");
+});
+
+/* critic r4 #1: STALLED is not read off offspring */
+test("fix 1: the fate's subtitle names what STALLED is read on", () => {
+  assert.equal($(STALL, "sFateSub").textContent, "fate (a generation recruited no offspring)");
+  assert.equal($(CTRL, "sFateSub").textContent, "fate (the run's last offspring)", "control: FUSED");
+});
+
+/* critic r4 #3: the no-ratio case has a verb and says what "both" is */
+test("fix 1: the hybrid band says the receipt ratio was not measured, and why", () => {
+  const p = runPage({ seed: 1, d: 8, useD: true }); // page config, card 4's positive: no hybrid ever
+  assert.equal(p.hybGens, 0, "control: no generation held a hybrid");
+  const t = $(p, "sHybBand").textContent;
+  assert.match(t, / · receipt ratio: not measured — no generation held both hybrids and non-hybrids · /, t);
+  assert.equal(p.ratio, null, "the harness still reads no ratio");
+  assert.match($(CTRL, "sHybBand").textContent, / · receipt ratio (\d+\.\d{3}|Infinity) · /, "control: a measured ratio");
+});
+
+/* critic r4 #4: a target-d run's founder labels are drawn after the plants,
+ * each on a background plate */
+test("fix 1: the founder labels are drawn over the plant dots, on plates", () => {
+  const p = runPage({ level: 2, seed: 3 });
+  const ctx = p.page.document.getElementById("bodyMap").getContext("2d");
+  const calls = [];
+  for (const k of ["arc", "fillText", "fillRect", "strokeText"])
+    ctx[k] = (...a) => calls.push({ k, a, fill: ctx.fillStyle, alpha: ctx.globalAlpha });
+  const b = p.page.Sandbox.bee();
+  p.page.Sandbox.setBee({ reach: b.reach }); // redraw, shapes unchanged
+  const dots = calls.map((c, i) => [c, i]).filter(([c]) => c.k === "arc" && c.a[2] === 4.4);
+  assert.ok(dots.length > 0, "control: the generation's plants were drawn");
+  const lastDot = dots.at(-1)[1];
+  for (const n of [1, 2]) {
+    const i = calls.findIndex((c) => c.k === "fillText" && c.a[0] === `lineage ${n} founder`);
+    assert.ok(i >= 0, `control: lineage ${n}'s founder label drawn`);
+    assert.ok(i > lastDot, `lineage ${n}'s founder label (call ${i}) is drawn before the last plant dot (call ${lastDot})`);
+    const plate = calls.slice(0, i).reverse().find((c) => c.k === "fillRect");
+    assert.ok(plate && plate.fill === "#101216" && plate.alpha === 0.85, `no plate under lineage ${n}'s label`);
+    const [lx, ly] = calls[i].a.slice(1, 3);
+    const [px, py, pw, ph] = plate.a;
+    assert.ok(px < lx && px + pw > lx && py < ly - 8 && py + ph > ly + 2, `plate [${plate.a}] misses the label at ${lx}, ${ly}`);
+  }
+});

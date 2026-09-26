@@ -95,7 +95,7 @@ def sample(page, settle, gap):
 # quantity on the null side AND grey on cards 1 and 4 - grey wins), and the
 # STALLED fixture with its 0.80 / 0.85 controls. tests/sandbox-m2-*.test.js
 # assert the same in the fake DOM; this is the real-browser control on them.
-M2_RUN = """async (s) => {
+M2_RUN = r"""async (s) => {
   const $ = (id) => document.getElementById(id);
   if (s.lineages) {
     const E = window.Evolve;
@@ -116,7 +116,7 @@ M2_RUN = """async (s) => {
   const band = $("sFateBand").textContent, hb = $("sHybBand").textContent;
   const st = /stalled generations: (none|\d+) of (\d+)/.exec(band);
   const hy = /generations with any hybrid: (\d+) of (\d+)/.exec(hb);
-  const ra = /receipt ratio (\S+)/.exec(hb);
+  const ra = /receipt ratio(?:: (not measured)| (\S+))/.exec(hb);
   const cards = {};
   for (const c of ["card1", "card2", "card3", "card4", "card5", "card6"])
     cards[c] = $(c) ? $(c).getAttribute("data-state") : null;
@@ -126,7 +126,7 @@ M2_RUN = """async (s) => {
     fate: $("sFate").textContent,
     stalled: !st ? null : st[1] === "none" ? 0 : +st[1],
     hyb: hy ? +hy[1] : null,
-    ratio: ra ? ra[1] : null,
+    ratio: !ra ? null : ra[1] ? "no" : ra[2],
     cards,
   };
 }"""
@@ -892,7 +892,7 @@ def m3a_checks(browser, name):
 # null blocks (seeds 1-5): cards 2 and 3 under a = 1 and under randomMating
 # (quantity on the null side AND grey), card 5's flat arm (never open). Every
 # run is timed; the slowest is reported against the 60 s budget.
-M3B_RUN = """async (s) => {
+M3B_RUN = r"""async (s) => {
   const $ = (id) => document.getElementById(id);
   const sel = $("level");
   sel.value = String(s.level);

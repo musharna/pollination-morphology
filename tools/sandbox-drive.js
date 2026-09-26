@@ -113,7 +113,8 @@ function runPage(settings) {
   const hybBand = text("sHybBand") || "";
   const stalled = /stalled generations: (none|\d+) of (\d+)/.exec(fateBand);
   const hyb = /generations with any hybrid: (\d+) of (\d+)/.exec(hybBand);
-  const ratio = /receipt ratio (\S+)/.exec(hybBand);
+  /* "receipt ratio: not measured — ..." when no generation held both (7e fix 1) */
+  const ratio = /receipt ratio(?:: (not measured)| (\S+))/.exec(hybBand);
   const realised = /founders' separation (\S+)/.exec(text("status") || "");
   return {
     status: text("status"),
@@ -123,7 +124,7 @@ function runPage(settings) {
     gensRun: stalled ? +stalled[2] : null,
     hybGens: hyb ? +hyb[1] : null,
     hybOf: hyb ? +hyb[2] : null,
-    ratio: !ratio ? null : ratio[1] === "no" ? null : ratio[1],
+    ratio: !ratio || ratio[1] ? null : ratio[2],
     realised: realised ? realised[1] : null,
     useD: doc.getElementById("useD").checked,
     d: doc.getElementById("d").value,
