@@ -133,17 +133,28 @@ M2_RUN = """async (s) => {
 
 
 # ------------------------------------------------------------ the heatmap (#heat)
-# After #run: the heat grid carries the run - its OPAQUE pixel count (alpha 255,
-# inside the grid rows from AncestryHeat.layout) clearly exceeds the same count
-# on the empty placeholder measured before #run. (A distinct-colour count cannot
-# fail here: anti-aliased placeholder text alone saturates it on a transparent
-# canvas.) Then a REAL mouse click on column 5's centre - computed from
-# AncestryHeat.layout on the page's own model, scaled to the canvas's content
-# box - moves the scrubber to generation 5. Positive control: #scrub reads 0
+# The heat grid's OPAQUE pixel count (alpha 255, inside the grid rows from
+# AncestryHeat.layout) is compared with a BASELINE: AncestryHeat.drawEmpty with
+# the page's placeholder message, drawn on an offscreen 760x420 canvas. (A
+# distinct-colour count cannot fail here: anti-aliased placeholder text alone
+# saturates it on a transparent canvas. The baseline is offscreen because #heat
+# shows the labelled example on load, so #heat itself has no empty state.)
+# On load, before #run: > 5x baseline, #heatLive says "Example run", and
+# Sandbox.heat() is null (it is an example, not a run). After #run: > 5x
+# baseline, Sandbox.heat() non-null, #heatLive no longer the example. Then a
+# REAL mouse click on column 5's centre - computed from AncestryHeat.layout on
+# the page's own model, scaled to the canvas's content box - moves the scrubber to generation 5. Positive control: #scrub reads 0
 # before the click, so a scrubber already at 5 cannot pass it.
-HEAT_INK = """() => {
-  const c = document.getElementById('heat');
+HEAT_INK = """(off) => {
+  let c = document.getElementById('heat');
   if (!c) return -1;
+  if (off) {
+    c = document.createElement('canvas');
+    c.width = 760;
+    c.height = 420;
+    window.AncestryHeat.drawEmpty(c.getContext('2d'), 760, 420,
+      "press Run: each column will be one generation's plants, sorted by ancestry");
+  }
   const lay = window.AncestryHeat.layout({ cols: [{ final: false }] }, 760, 420);
   const x0 = Math.round(lay.xOf(0)), y0 = Math.round(lay.heatTop), y1 = Math.round(lay.heatBot);
   const d = c.getContext('2d').getImageData(x0, y0, 760 - x0, y1 - y0).data;
@@ -167,20 +178,44 @@ HEAT_COL5 = """() => {
 }"""
 
 
-def heat_checks(page, name, failures, ink_empty):
-    ink = page.evaluate(HEAT_INK)
-    if ink_empty < 0 or ink <= 5 * ink_empty:
+HEAT_STATE = """() => [document.getElementById('heatLive').textContent,
+  window.Sandbox.heat() === null]"""
+
+
+def heat_load_checks(page, name, failures):
+    """Before #run: the labelled example, not a run. Returns (baseline, ink on load)."""
+    base = page.evaluate(HEAT_INK, True)
+    ink = page.evaluate(HEAT_INK, False)
+    live, no_model = page.evaluate(HEAT_STATE)
+    if base <= 0 or ink <= 5 * base:
+        failures.append(
+            f"{name}: #heat grid has {ink} opaque pixels on load vs {base} on the empty "
+            f"placeholder baseline (need > 5x: the example is not drawn)"
+        )
+    if not live.startswith("Example run"):
+        failures.append(f"{name}: #heatLive on load reads {live[:60]!r}, want 'Example run...'")
+    if not no_model:
+        failures.append(f"{name}: Sandbox.heat() is non-null before #run - the example posed as a run")
+    return base, ink
+
+
+def heat_checks(page, name, failures, ink_empty, ink_load):
+    ink = page.evaluate(HEAT_INK, False)
+    if ink_empty <= 0 or ink <= 5 * ink_empty:
         failures.append(
             f"{name}: #heat grid has {ink} opaque pixels after #run vs {ink_empty} on the "
-            f"empty placeholder (need > 5x)"
+            f"empty placeholder baseline (need > 5x)"
         )
+    live, _ = page.evaluate(HEAT_STATE)
+    if live.startswith("Example"):
+        failures.append(f"{name}: #heatLive still reads the example after #run: {live[:60]!r}")
     before = page.evaluate("() => document.getElementById('scrub').value")
     if before != "0":
         failures.append(f"{name}: #scrub read {before!r} before the heat click (control expects '0')")
     pt = page.evaluate(HEAT_COL5)
     if pt is None:
         failures.append(f"{name}: Sandbox.heat() is null after #run - nothing to click")
-        return f"heat opaque {ink_empty}->{ink}, no model"
+        return f"heat opaque baseline {ink_empty}, load {ink_load}, run {ink}, no model"
     page.mouse.click(pt["x"], pt["y"])
     page.wait_for_timeout(300)
     after = page.evaluate(
@@ -190,7 +225,7 @@ def heat_checks(page, name, failures, ink_empty):
         failures.append(
             f"{name}: clicked #heat column 5 - #scrub {after[0]!r}, #sGen {after[1]!r} (want 5, '5 / ...')"
         )
-    return f"heat opaque {ink_empty}->{ink}, scrub {before}->{after[0]} on column-5 click"
+    return f"heat opaque baseline {ink_empty}, load {ink_load}, run {ink}, scrub {before}->{after[0]} on column-5 click"
 
 
 def m2_checks(browser, name):
@@ -508,7 +543,8 @@ with sync_playwright() as p:
             # assertions are that the computation ran, drew, and armed playback.
             # sandbox.html legitimately shows an EMPTY plot area before #run, so a
             # uniform canvas on load is CORRECT here and is deliberately not
-            # asserted against. What must hold is that #run then draws.
+            # asserted against (except #heat, which shows the labelled example:
+            # heat_load_checks). What must hold is that #run then draws.
             pass
             if changed:
                 failures.append(f"{name}: animated BEFORE #run was clicked ({changed})")
@@ -558,7 +594,7 @@ with sync_playwright() as p:
                 )
 
             pre = page.evaluate(SHOT)
-            heat_empty = page.evaluate(HEAT_INK)
+            heat_base, heat_load = heat_load_checks(page, name, failures)
             page.click("#run")
             try:
                 page.wait_for_selector("#play:not([disabled])", timeout=60000)
@@ -572,7 +608,7 @@ with sync_playwright() as p:
                 failures.append(f"{name}: #run completed but the canvas never changed - nothing was drawn")
             heat_note = "heat not checked (run incomplete)"
             if completed:
-                heat_note = heat_checks(page, name, failures, heat_empty)
+                heat_note = heat_checks(page, name, failures, heat_base, heat_load)
             n3, changed3, _ = (0, 0, 0)
             if completed:
                 page.click("#play")
@@ -610,6 +646,6 @@ if failures:
         print("  -", f)
     sys.exit(1)
 print("all entry points: HTTP 200, zero console errors, zero uncaught exceptions.")
-print("visit canvases carry >1 distinct colour; sandbox.html is")
-print("legitimately uniform before #run and is NOT asserted non-blank there --")
-print("what is asserted is that #run draws and #play then animates.")
+print("visit canvases carry >1 distinct colour; sandbox.html's #heat shows the")
+print("labelled example before #run (> 5x the placeholder's opaque pixels); what")
+print("is asserted after that is that #run draws and #play then animates.")

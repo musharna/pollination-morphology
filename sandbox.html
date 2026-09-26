@@ -646,6 +646,7 @@
     <script src="sim/browser-bundle.js"></script>
     <script src="population-run.js"></script>
     <script src="ancestry-heat.js"></script>
+    <script src="example-heat.js"></script>
     <script>
       const I = window.IBM,
         P = window.Placement,
@@ -1936,7 +1937,8 @@
       }
 
       /* The ancestry heatmap (ancestry-heat.js): the run's frames plus its
-       * final offspring, the cursor on the shown generation. Task 3 extends it. */
+       * final offspring, the cursor on the shown generation; with no run, the
+       * labelled example (example-heat.js, the page's own level 2 seed 3 run). */
       function drawHeat() {
         const A = window.AncestryHeat;
         if (HEAT) {
@@ -1952,6 +1954,18 @@
             `Ancestry over ${HEAT.cols.length - 1} generations and the final offspring. ` +
             `Final: ${fin.n} plants, ${fin.hyb} hybrids, fate ${RESULT ? RESULT.fate : "—"}. ` +
             `${k} generations recruited nothing. Showing generation ${frame}.`;
+          return;
+        }
+        const X = window.ExampleHeat;
+        if (X) {
+          A.drawHeat(heatC, X.model, {
+            W: HEAT_W,
+            H: HEAT_H,
+            cursor: -1,
+            fate: X.fate,
+            title: `example: level ${X.config.level}, seed ${X.config.seed} — press Run for yours`,
+          });
+          $("heatLive").textContent = `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own.`;
           return;
         }
         A.drawEmpty(
