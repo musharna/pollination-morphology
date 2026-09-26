@@ -9,8 +9,11 @@ Serves site/ on an ephemeral port (as tools/smoke-site.py does), default
 Playwright Chromium launch (software rendering), viewport 1400x900, device
 scale 1.
 
-  sandbox  level 2, seed 3, click #run, wait for #play to enable, screenshot
-           the #hero section -> assets/sandbox-tile.jpg
+  sandbox  the page default a visitor gets on arrival (free sandbox, seed 3):
+           click #run, wait for #play to enable, move #scrub to its last
+           generation and wait for #sGen to read "<max> / <max>", then clip to
+           the hero's two columns (.heroL verdict + heat, .heroR field) -
+           not the scrubber, stats or bands below -> assets/sandbox-tile.jpg
   visit    load, wait 2.5 s, screenshot the main canvas #c
            -> assets/visit-tile.jpg
 
@@ -55,26 +58,39 @@ def fail(step, err):
     sys.exit(1)
 
 
-def save_tile(page, selector, dest, step):
-    el = page.locator(selector)
-    if el.count() != 1:
-        fail(step, f"expected one {selector}, found {el.count()}")
+def union_box(page, selectors, step):
+    """Page-coordinate box covering every selector (each must match once)."""
+    boxes = []
+    for sel in selectors:
+        el = page.locator(sel)
+        if el.count() != 1:
+            fail(step, f"expected one {sel}, found {el.count()}")
+        b = el.bounding_box()
+        if not b:
+            fail(step, f"{sel} has no bounding box")
+        boxes.append(b)
+    sx, sy = page.evaluate("() => [window.scrollX, window.scrollY]")
+    x0 = min(b["x"] for b in boxes)
+    y0 = min(b["y"] for b in boxes)
+    x1 = max(b["x"] + b["width"] for b in boxes)
+    y1 = max(b["y"] + b["height"] for b in boxes)
+    return {"x": x0 + sx, "y": y0 + sy, "width": x1 - x0, "height": y1 - y0}
+
+
+def save_tile(page, selectors, dest, step):
+    box = union_box(page, selectors, step)
     if Image is not None:
-        png = el.screenshot(type="png")
+        png = page.screenshot(type="png", clip=box, full_page=True)
         img = Image.open(io.BytesIO(png)).convert("RGB")
         h = round(img.height * WIDTH / img.width)
         img = img.resize((WIDTH, h), Image.LANCZOS)
         img.save(dest, "JPEG", quality=QUALITY, optimize=True)
         return img.size
-    # No Pillow: re-render the page at the scale that makes the element 640 px
-    # wide and clip to it.
-    box = el.bounding_box()
-    if not box:
-        fail(step, f"{selector} has no bounding box")
-    scale = WIDTH / box["width"]
-    page.evaluate(f"document.body.style.zoom = {scale}")
-    box = el.bounding_box()
-    page.screenshot(path=dest, type="jpeg", quality=QUALITY, clip=box)
+    # No Pillow: re-render the page at the scale that makes the box 640 px wide
+    # and clip to it.
+    page.evaluate(f"document.body.style.zoom = {WIDTH / box['width']}")
+    box = union_box(page, selectors, step)
+    page.screenshot(path=dest, type="jpeg", quality=QUALITY, clip=box, full_page=True)
     return (round(box["width"]), round(box["height"]))
 
 
@@ -108,12 +124,29 @@ def main():
             resp = page.goto(f"{base}/sandbox.html", wait_until="load")
             if not resp or resp.status != 200:
                 fail(step, f"HTTP {resp.status if resp else None}")
-            page.select_option("#level", "2")
+            # The page default: #level untouched (free sandbox), seed 3.
+            if page.input_value("#level") != "free":
+                fail(step, f"#level default is {page.input_value('#level')!r}, not 'free'")
             page.fill("#seed", "3")
             page.click("#run")
             page.wait_for_selector("#play:not([disabled])", timeout=RUN_TIMEOUT_MS)
+            # Show the last generation, not generation 0.
+            mx = page.evaluate(
+                """() => { const s = document.getElementById('scrub');
+                   s.value = s.max; s.dispatchEvent(new Event('input', {bubbles: true}));
+                   return s.max; }"""
+            )
+            try:
+                page.wait_for_function(
+                    "(m) => document.getElementById('sGen').textContent.trim() === m + ' / ' + m",
+                    arg=str(mx),
+                    timeout=10000,
+                )
+            except Exception:  # noqa: BLE001
+                got = page.text_content("#sGen")
+                fail(step, f"#sGen never read '{mx} / {mx}' after scrubbing (read {got!r})")
             page.wait_for_timeout(500)
-            size = save_tile(page, "#hero", f"{OUT}/sandbox-tile.jpg", step)
+            size = save_tile(page, ["#hero .heroL", "#hero .heroR"], f"{OUT}/sandbox-tile.jpg", step)
             print(f"landing-shots: {OUT}/sandbox-tile.jpg {size[0]}x{size[1]}")
             page.close()
         except SystemExit:
@@ -129,7 +162,7 @@ def main():
             if not resp or resp.status != 200:
                 fail(step, f"HTTP {resp.status if resp else None}")
             page.wait_for_timeout(2500)
-            size = save_tile(page, "#c", f"{OUT}/visit-tile.jpg", step)
+            size = save_tile(page, ["#c"], f"{OUT}/visit-tile.jpg", step)
             print(f"landing-shots: {OUT}/visit-tile.jpg {size[0]}x{size[1]}")
             page.close()
         except SystemExit:
