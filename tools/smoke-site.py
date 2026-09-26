@@ -329,7 +329,10 @@ def thumb_checks(page, name, failures):
 # generation is drawn). Then the camera restore: redraw the field at the shown
 # generation (an input on #scrub at its own value), sample; move a gene slider
 # (renderThumb swaps the camera and render target), redraw the same way,
-# sample again - identical. Positive control: before the thumb render the field
+# sample again - identical. The field camera is first dragged off its default
+# yaw/pitch with a real pointer drag (the thumbnail camera shares the patch's
+# yaw 0.5 / pitch 0.62, so a missing yaw/pitch restore is invisible at the
+# defaults); control: the drag changed the field. Positive control: before the thumb render the field
 # shows the scene (> 20% of its pixels off its corner colour) - without it, a
 # field already broken by the load-time thumbnail renders compares equal to
 # itself. Seen failing with renderThumb's `finally` removed.
@@ -342,7 +345,18 @@ def run_view_checks(page, name, failures):
         failures.append(f"{name}: #bodyMap identical at scrub 0 and scrub 10 - the shown generation is not drawn")
     g = page.evaluate("() => document.getElementById('scrub').value")
     page.evaluate(SET_INPUT, ["scrub", g])
+    pre_drag = page.evaluate(CANVAS_SIG, "field")
+    page.evaluate("() => document.getElementById('field').scrollIntoView({ block: 'center' })")
+    bb = page.locator("#field").bounding_box()
+    cx, cy = bb["x"] + bb["width"] / 2, bb["y"] + bb["height"] / 2
+    page.mouse.move(cx, cy)
+    page.mouse.down()
+    page.mouse.move(cx + 80, cy + 40, steps=8)
+    page.mouse.up()
+    page.evaluate(SET_INPUT, ["scrub", g])
     f0 = page.evaluate(CANVAS_SIG, "field")
+    if f0 == pre_drag:
+        failures.append(f"{name}: control - a pointer drag on #field left it unchanged (the camera did not move off its default)")
     fink = page.evaluate(THUMB_INK, "field")
     if not fink > 0.2:
         failures.append(f"{name}: control - #field has {fink:.1%} of pixels off its corner colour at the shown generation (need > 20%: the scene is not drawn)")

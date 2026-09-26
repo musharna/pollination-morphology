@@ -37,6 +37,11 @@ test("every kept id is present exactly once", () => {
     assert.equal(body.split(`id="${id}"`).length - 1, 1, `#${id}`);
 });
 
+test("one body map: the old #map canvas is gone (A14)", () => {
+  assert.equal(at("map"), -1, 'id="map" is still in the page');
+  assert.ok(at("bodyMap") > 0, "control: #bodyMap is present");
+});
+
 test("run controls, verdict and every band are outside any <details>", () => {
   for (const id of ["level", "seed", "run", "play", "status", "levelWin", "levelBrief",
     "sFate", "sFateBand", "sAncBand", "sHybBand", "sGapBand", "sRealBand", "heat", "field", "scrub"])

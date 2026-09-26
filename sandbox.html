@@ -192,7 +192,8 @@
       /* a lineage card: heading, its flower, then its sliders beside it */
       .linCard {
         display: grid;
-        grid-template-columns: 220px 1fr;
+        /* 222 = the thumbnail's 220 px content box + its 1 px border each side */
+        grid-template-columns: 222px 1fr;
         gap: 4px 14px;
         align-items: start;
         border: 1px solid var(--rule);
@@ -1314,7 +1315,7 @@
       let frame = 0,
         playing = false,
         raf = null,
-        t0 = 0;
+        t0 = null; // set by draw() from its own first timestamp
 
       /* ⚠️ A RING WAS WRONG TWICE OVER. It leaves a dead hole in the middle of
        * the frame, and it implies spatial structure the default IBM does not
@@ -2126,10 +2127,13 @@
         const G = GENS[frame];
         ctx.clearRect(0, 0, FIELD_VIEW.w, FIELD_VIEW.h);
         if (!G) return;
-        /* a rAF timestamp is the frame's START, which can precede the
-         * performance.now() Play took as t0: a negative t made k negative and
-         * LOG[k] undefined (an uncaught "reading 'j'" in the smoke) */
-        const t = Math.max(0, (ts - t0) / 1000);
+        /* ONE CLOCK: t0 is taken from the first timestamp draw() itself is
+         * handed, never from a separate performance.now(). A rAF timestamp is
+         * the frame's START, which can precede a now() taken just before the
+         * request: t < 0, k < 0 and LOG[k] undefined (an uncaught "reading
+         * 'j'" in the smoke). Play, show() and Run set t0 = null. */
+        if (t0 === null) t0 = ts;
+        const t = (ts - t0) / 1000;
         const n0 = G.flowers.length;
 
         /*
@@ -2159,7 +2163,7 @@
               "#9aa0a8",
             ],
           ]);
-          if (playing) raf = nextFrame(draw);
+          if (playing) nextFrame(draw);
           return;
         }
         const period = 1.05;
@@ -2296,7 +2300,7 @@
           ],
         ]);
 
-        if (playing) raf = nextFrame(draw);
+        if (playing) nextFrame(draw);
       }
 
       /* The field's in-canvas caption, in logical px at a real 12 px: now that
@@ -2333,14 +2337,24 @@
       const REDUCED_MOTION = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       );
+      /* Both handles are kept: under reduced motion the frame is a timeout
+       * that THEN requests an animation frame, and the inner rAF id must be
+       * stored too or stopPlay cannot cancel it. Separate variables, because a
+       * timeout id and a rAF id are different number spaces. */
+      let frameTimer = null;
       function nextFrame(fn) {
         if (REDUCED_MOTION.matches)
-          return setTimeout(() => requestAnimationFrame(fn), 250);
-        return requestAnimationFrame(fn);
+          frameTimer = setTimeout(() => {
+            frameTimer = null;
+            raf = requestAnimationFrame(fn);
+          }, 250);
+        else raf = requestAnimationFrame(fn);
       }
-      function cancelFrame(h) {
-        cancelAnimationFrame(h);
-        clearTimeout(h);
+      function cancelFrame() {
+        if (frameTimer !== null) clearTimeout(frameTimer);
+        if (raf) cancelAnimationFrame(raf);
+        frameTimer = null;
+        raf = null;
       }
 
       /* The run's result: set once per run, not per scrubbed frame. The fate
@@ -2452,7 +2466,7 @@
           `Cluster separation ${G.sep.toFixed(2)}. ` +
           `Ancestry variance ${G.ancVar.toFixed(4)}. Fate: ${w}.`;
         if (!playing) {
-          t0 = performance.now();
+          t0 = null;
           draw(performance.now());
         }
       }
@@ -2460,8 +2474,7 @@
       function stopPlay() {
         playing = false;
         $("play").textContent = "Play";
-        if (raf) cancelFrame(raf);
-        raf = null;
+        cancelFrame();
       }
 
       /* A new run clears the last one's result first, so a run that fails to
@@ -2536,15 +2549,14 @@
               (mis
                 ? ` · <span class="warn">${mis} generations misaligned</span>`
                 : " · placement/ancestry aligned throughout");
-            t0 = performance.now();
+            t0 = null;
             show(0);
           } catch (err) {
+            /* the whole run state, not just the verdict: no scrub, play,
+             * RUN_KEY or body-map dots left live beside the error */
+            clearResult();
             $("status").innerHTML = `<span class="warn">${err.message}</span>`;
             $("status").setAttribute("data-error", err.message);
-            GENS = [];
-            RESULT = null;
-            HEAT = null;
-            drawHeat();
           } finally {
             $("run").disabled = false;
           }
@@ -2584,8 +2596,8 @@
         if (playing) return stopPlay();
         playing = true;
         $("play").textContent = "Pause";
-        t0 = performance.now();
-        raf = nextFrame(draw);
+        t0 = null;
+        nextFrame(draw);
         clearInterval(window.__gen);
         window.__gen = setInterval(() => {
           if (!playing) return clearInterval(window.__gen);
@@ -2662,19 +2674,30 @@
       else if (window.addEventListener) window.addEventListener("resize", refitAll);
       /* A DPR-only change (the window moved to another monitor, same width)
        * fires no resize: listen for the current resolution to stop matching,
-       * re-fit, and re-arm at the new dpr. */
+       * re-fit, and re-arm at the new dpr. A fractional dpr may not match its
+       * own dppx query (then no change event would ever come), so the fallback
+       * is a resize-time re-check, hooked ONCE. No loop: a handler re-fits
+       * only when the dpr differs from the one armed, and re-arming records
+       * the current dpr; a change event fires only on a match transition. */
+      let DPR_ARMED = null,
+        dprResizeHooked = false;
+      function onDprMaybeChanged() {
+        if ((window.devicePixelRatio || 1) === DPR_ARMED) return;
+        refitAll();
+        watchDpr();
+      }
       function watchDpr() {
+        DPR_ARMED = window.devicePixelRatio || 1;
         if (!window.matchMedia) return;
-        const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
-        if (!mq || !mq.addEventListener) return;
-        mq.addEventListener(
-          "change",
-          () => {
-            refitAll();
-            watchDpr();
-          },
-          { once: true },
-        );
+        const mq = window.matchMedia(`(resolution: ${DPR_ARMED}dppx)`);
+        if (mq && mq.matches && mq.addEventListener) {
+          mq.addEventListener("change", onDprMaybeChanged, { once: true });
+          return;
+        }
+        if (!dprResizeHooked && window.addEventListener) {
+          dprResizeHooked = true;
+          window.addEventListener("resize", onDprMaybeChanged);
+        }
       }
       sizeHeat();
       sizeField();
