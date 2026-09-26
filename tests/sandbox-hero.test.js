@@ -76,3 +76,23 @@ test("the field legend says lineage 1 / lineage 2", () => {
   assert.match(key[1], /lineage 2<\/span>/);
   assert.doesNotMatch(key[1], /lineage [AB]\b/);
 });
+
+/* Task 7b fix round 1 (M3): while the field shows the founders, its live
+ * mirror carries the founders' caption and its aria-label describes them; a
+ * run restores both. Seen failing on 2effaa0. */
+test("the field's live text and aria-label describe the founders before a run, the patch after", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "sandbox.html"), "utf8");
+  const patchAria = /<canvas\s+id="field"[\s\S]*?aria-label="([^"]+)"/.exec(html)[1];
+  const p = runPage({ noRun: true });
+  const f = p.page.document.getElementById("field");
+  assert.match(p.page.document.getElementById("fieldLive").textContent,
+    /the two founders, from the sliders — press Run to grow a field/);
+  assert.match(f.getAttribute("aria-label"), /founding flowers, from the sliders/);
+  const q = runPage({ level: 2, seed: 3 });
+  const g = q.page.document.getElementById("field");
+  assert.equal(g.getAttribute("aria-label"), patchAria);
+  assert.match(q.page.document.getElementById("fieldLive").textContent, /^Generation \d+ of \d+\./);
+  // and a level change after the run (clearResult) brings the founders back
+  const r = runPage({ level: 2, seed: 3, thenLevel: 3 });
+  assert.match(r.page.document.getElementById("field").getAttribute("aria-label"), /founding flowers/);
+});

@@ -84,7 +84,8 @@
    * above heatTop, clear of the cursor box's top edge at heatTop - 2) */
   const PAD = { L: 86, R: 16, T: 40, B: 24 };
   const HEAD_Y = 13,
-    AXIS_DY = 7;
+    AXIS_DY = 7,
+    KEY_DY = 16; // the HELD key's baseline below stripBot, inside PAD.B (24)
   const GUTTER_X = 6;
   const FINAL_GAP = 12;
   function layout(model, W, H, padL = PAD.L) {
@@ -297,11 +298,26 @@
     if (model.cols.some((c) => c.stalled))
       plated("hatched: a stalled generation (recruited nothing; parents handed back)",
         sepX - 6, lay.heatBot + 17, "right", sepX - 6 - lay.padL - 16);
+    /* the HELD line's key: a caption row BELOW the strip, right-aligned to
+     * W - PAD.R, an 18 px dashed swatch then the text, no plate. Nothing is
+     * drawn over the strip, whose trace crosses the line exactly where the
+     * verdict turns (fix round 1: an in-strip plate hid trace points there). */
+    const heldText = `HELD line = 0.4 × founding = ${model.heldLine.toFixed(4)}`;
+    const ky = lay.stripBot + KEY_DY;
+    const hw = widthOf(ctx, heldText);
+    const hx0 = W - PAD.R - (hw === null ? 6.2 * heldText.length : hw);
+    ctx.strokeStyle = "#d9704f";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(hx0 - 6 - 18, ky - 4);
+    ctx.lineTo(hx0 - 6, ky - 4);
+    ctx.stroke();
+    ctx.setLineDash([]);
     ctx.fillStyle = "#d9704f";
-    /* right-aligned, above the line, ending left of the separator and the
-     * final column: clear of the gen-0 cursor box and of the final-variance
-     * dot (xOf(last) + colW/2) */
-    plated(`HELD line 0.4 × founding = ${model.heldLine.toFixed(4)}`, sepX - 6, yOf(model.heldLine) - 4, "right");
+    ctx.textAlign = "right";
+    ctx.fillText(heldText, W - PAD.R, ky);
+    ctx.textAlign = "left";
   }
 
   const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex };

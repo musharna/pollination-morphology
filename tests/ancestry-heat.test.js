@@ -250,11 +250,14 @@ test("title: truncated with … to the room left of the final label, on its row"
   }
 });
 
-/* Fix round 1: the final-variance dot sits at xOf(last) + colW / 2. With the
- * final variance just above the HELD line the dot is drawn at the label's
- * height, so the label must end left of the final column. Seen failing on
- * 915034e: the label ended at W - 20, inside the final column. */
-test("HELD label ends left of the final column (the final-variance dot)", () => {
+/* Fix round 1 (Task 6): the final-variance dot sits at xOf(last) + colW / 2;
+ * with the final variance just above the HELD line the dot was drawn at the
+ * in-strip label's height, so the label had to end left of the final column
+ * (seen failing on 915034e). Task 7b fix round 1 moved the label out of the
+ * strip into a key row below it, so the dot cannot meet it at any height:
+ * the assertion is now that the key lies wholly below the strip (and its
+ * cursor box, stripBot + 3), right-aligned to W - 16. */
+test("HELD key sits below the strip, clear of the final-variance dot", () => {
   const texts = [];
   const state = { textAlign: "left" };
   const ctx = new Proxy(state, {
@@ -264,7 +267,7 @@ test("HELD label ends left of the final column (the final-variance dot)", () => 
         return (s, x, y) => {
           const w = 6.2 * String(s).length;
           const x0 = t.textAlign === "right" ? x - w : x;
-          texts.push({ s, x0, x1: x0 + w });
+          texts.push({ s, x0, x1: x0 + w, y });
         };
       return k in t ? t[k] : () => {};
     },
@@ -284,9 +287,10 @@ test("HELD label ends left of the final column (the final-variance dot)", () => 
     const last = m.cols.length - 1;
     const held = texts.find((t) => /^HELD line/.test(t.s));
     assert.ok(held, `W=${W}: the HELD label was drawn`); // control
-    const c0 = lay.xOf(last), c1 = c0 + lay.colW;
-    assert.ok(held.x1 < c0 || held.x0 > c1,
-      `W=${W}: HELD label [${held.x0}, ${held.x1}] intersects the final column [${c0}, ${c1}]`);
+    assert.ok(last > 0);
+    assert.ok(held.y - 9 > lay.stripBot + 3 && held.y + 3 <= Hh,
+      `W=${W}: HELD key baseline ${held.y}, strip bottom ${lay.stripBot}, canvas ${Hh}`);
+    assert.equal(held.x1, W - 16, `W=${W}: HELD key right edge`);
   }
 });
 
@@ -314,8 +318,10 @@ const recordAll = () => {
 };
 const stallFrames = (n) => Array.from({ length: n }, () => frame([0, 0.5, 1], 0));
 
-test("7b: HELD, final and generation 0 labels sit on background plates, drawn after the cursor", () => {
-  const frames = Array.from({ length: 35 }, () => frame([0, 0, 1, 1]));
+/* Fix round 1 (M2): the gen N tick and the hatch key are plated too; the HELD
+ * key has left the strip and has no plate (next test). */
+test("7b: final, generation 0, gen N and the hatch key sit on background plates, drawn after the cursor", () => {
+  const frames = Array.from({ length: 35 }, (_, g) => frame([0, 0, 1, 1], g % 2 ? 0 : 5));
   const m = H.heatModel(frames, [0, 0.5, 0.5, 1].map(ind), frames[0].ancVar);
   for (const W of [420, 566, 760]) {
     const Hh = Math.round((W * 420) / 760);
@@ -324,7 +330,7 @@ test("7b: HELD, final and generation 0 labels sit on background plates, drawn af
     H.drawHeat(r.ctx, m, { W, H: Hh, cursor: last - 1, fate: "one lost" });
     const cursorAt = r.calls.findIndex((c) => c.k === "strokeRect" && c.lw === 2);
     assert.ok(cursorAt >= 0, `W=${W}: control - the cursor box was drawn`);
-    for (const re of [/^HELD line/, /^final: one lost$/, /^generation 0$/]) {
+    for (const re of [/^final: one lost$/, /^generation 0$/, /^gen 34$/, /^hatched:/]) {
       const t = r.texts().find((x) => re.test(x.s));
       assert.ok(t, `W=${W}: control - ${re} drawn`);
       assert.ok(t.i > cursorAt, `W=${W}: ${t.s} drawn before the cursor box (the box strikes through it)`);
@@ -390,5 +396,39 @@ test("7b: the hatch key sits in the heat-strip gap, clear of rows and of the cur
           `W=${W} cursor ${cursor}: cursor box y ${y}..${y + h} crosses the hatch key at ${k.y}`);
       }
     }
+  }
+});
+
+/* Task 7b fix round 1 (I1): nothing may cover the variance strip. An opaque
+ * plate behind an in-strip HELD label deleted trace points just above the
+ * HELD line, where the verdict turns, on the last generation's column where
+ * every run lands. No fillRect may intersect the strip's plot rect
+ * [padL, stripTop, W - padR, stripBot]. Seen failing on 2effaa0. Positive
+ * control: the trace was stroked inside that rect, and the HELD key drawn. */
+test("7b fix 1: no filled rect covers the variance strip; the HELD key is below it with a dashed swatch", () => {
+  const frames = Array.from({ length: 35 }, (_, g) => frame(g < 20 ? [0, 0, 1, 1] : [0, 0.5, 0.5, 1]));
+  const m = H.heatModel(frames, [0, 0.5, 0.5, 1].map(ind), frames[0].ancVar);
+  for (const W of [420, 566, 760]) {
+    const Hh = Math.round((W * 420) / 760);
+    const r = recordAll();
+    H.drawHeat(r.ctx, m, { W, H: Hh, cursor: m.cols.length - 2, fate: "one lost" });
+    const lay = H.layout(m, W, Hh);
+    const R = [lay.padL, lay.stripTop, W - lay.padR, lay.stripBot];
+    const inStrip = (x, y) => x >= R[0] && x <= R[2] && y >= R[1] && y <= R[3];
+    assert.ok(r.calls.some((c) => c.k === "lineTo" && inStrip(c.a[0], c.a[1])), `W=${W}: control - the trace is in the strip`);
+    for (const c of r.calls.filter((c) => c.k === "fillRect")) {
+      const [x, y, w, h] = c.a;
+      assert.ok(x + w <= R[0] || x >= R[2] || y + h <= R[1] || y >= R[3],
+        `W=${W}: fillRect [${x}, ${y}, ${w}, ${h}] (${c.fill}) covers the strip [${R.join(", ")}]`);
+    }
+    const held = r.texts().find((t) => /^HELD line = 0\.4 × founding = /.test(t.s));
+    assert.ok(held, `W=${W}: the HELD key was drawn`);
+    assert.ok(held.y - 9 > lay.stripBot, `W=${W}: HELD key at ${held.y}, strip bottom ${lay.stripBot}`);
+    assert.equal(held.x1, W - lay.padR);
+    // the swatch: an 18 px horizontal stroke ending left of the text, at its row
+    const sw = r.calls.find((c, i) => c.k === "moveTo" && r.calls[i + 1] && r.calls[i + 1].k === "lineTo" &&
+      r.calls[i + 1].a[0] - c.a[0] === 18 && c.a[1] === r.calls[i + 1].a[1] && r.calls[i + 1].a[0] <= held.x0 &&
+      c.a[1] > lay.stripBot);
+    assert.ok(sw, `W=${W}: no 18 px swatch before the HELD key`);
   }
 });

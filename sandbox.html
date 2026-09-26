@@ -2131,7 +2131,16 @@
        * field's yaw and pitch, so a drag still orbits; its target and distance
        * are saved and restored, since the run's field reads the same globals. */
       const FOUNDER_CAM = { dist: 12, gap: 1.9 };
+      const FOUNDERS_CAPTION = "the two founders, from the sliders — press Run to grow a field";
+      /* the field's own aria-label (a run's patch), captured once; while the
+       * founders are shown the label and the live mirror describe them, and a
+       * run puts both back (the Run handler; show() writes the mirror) */
+      const FIELD_ARIA = cv.getAttribute("aria-label");
+      const FOUNDERS_ARIA =
+        "3D view of the two founding flowers, from the sliders: lineage 1 (gold) on the left, lineage 2 (magenta) on the right. Press Run to grow a field. Drag to orbit.";
       function drawFounders() {
+        cv.setAttribute("aria-label", FOUNDERS_ARIA);
+        $("fieldLive").textContent = `No run yet: ${FOUNDERS_CAPTION}.`;
         const saved = { camDist, t: [camTarget[0], camTarget[1], camTarget[2]], near: FOLLOW.near };
         try {
           items = [];
@@ -2170,7 +2179,7 @@
           camTarget[2] = saved.t[2];
           FOLLOW.near = saved.near;
         }
-        fieldCaption([["the two founders, from the sliders — press Run to grow a field", "#9aa0a8"]]);
+        fieldCaption([[FOUNDERS_CAPTION, "#9aa0a8"]]);
       }
 
       // ----------------------------------------------------------- rendering
@@ -2617,6 +2626,7 @@
                 ? ` · <span class="warn">${mis} generations misaligned</span>`
                 : " · placement/ancestry aligned throughout");
             t0 = null;
+            cv.setAttribute("aria-label", FIELD_ARIA);
             /* the run ENDS on its last generation: the tiles, the field and
              * the heat cursor describe the moment the verdict is read on (the
              * final offspring's parents), not the founding. Play replays
