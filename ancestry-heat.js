@@ -139,6 +139,7 @@
     const gutterMax = lay.padL - 2 - 8 - GUTTER_X;
     const gutter = (s, y) => {
       const w = widthOf(ctx, s);
+      /* maxWidth: browsers squash the glyphs horizontally to fit, never clip */
       if (w !== null && w > gutterMax) ctx.fillText(s, GUTTER_X, y, gutterMax);
       else ctx.fillText(s, GUTTER_X, y);
     };
@@ -225,8 +226,9 @@
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = "#d9704f";
-    /* right-aligned, above the line: clear of the gen-0 cursor box */
-    right(`HELD line 0.4 × founding = ${model.heldLine.toFixed(4)}`, W - PAD.R - 4, yOf(model.heldLine) - 4);
+    /* right-aligned, above the line, ending left of the final column: clear of
+     * the gen-0 cursor box and of the final-variance dot (xOf(last) + colW/2) */
+    right(`HELD line 0.4 × founding = ${model.heldLine.toFixed(4)}`, lay.xOf(last) - 6, yOf(model.heldLine) - 4);
     ctx.fillStyle = INK2;
     gutter("ancestry", lay.stripTop + 12);
     gutter("variance", lay.stripTop + 25);

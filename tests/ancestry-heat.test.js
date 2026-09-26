@@ -246,3 +246,43 @@ test("title: truncated with … to the room between generation 0 and the final l
       assert.ok(row[i].x0 >= row[i - 1].x1, `W=${W}: ${row[i - 1].s} overlaps ${row[i].s}`);
   }
 });
+
+/* Fix round 1: the final-variance dot sits at xOf(last) + colW / 2. With the
+ * final variance just above the HELD line the dot is drawn at the label's
+ * height, so the label must end left of the final column. Seen failing on
+ * 915034e: the label ended at W - 20, inside the final column. */
+test("HELD label ends left of the final column (the final-variance dot)", () => {
+  const texts = [];
+  const state = { textAlign: "left" };
+  const ctx = new Proxy(state, {
+    get: (t, k) => {
+      if (k === "measureText") return (s) => ({ width: 6.2 * String(s).length });
+      if (k === "fillText")
+        return (s, x, y) => {
+          const w = 6.2 * String(s).length;
+          const x0 = t.textAlign === "right" ? x - w : x;
+          texts.push({ s, x0, x1: x0 + w });
+        };
+      return k in t ? t[k] : () => {};
+    },
+    set: (t, k, v) => ((t[k] = v), true),
+  });
+  const frames = Array.from({ length: 35 }, () => frame([0, 0, 1, 1]));
+  const final = [0.176, 0.824, 0.176, 0.824].map(ind);
+  const m = H.heatModel(frames, final, frames[0].ancVar);
+  const fin = m.cols.at(-1);
+  // precondition: the final variance is just above the HELD line
+  assert.ok(fin.ancVar > m.heldLine && fin.ancVar < 1.1 * m.heldLine, `final ${fin.ancVar} vs ${m.heldLine}`);
+  for (const W of [420, 566, 760]) {
+    texts.length = 0;
+    const Hh = Math.round((W * 420) / 760);
+    H.drawHeat(ctx, m, { W, H: Hh, cursor: 0, fate: "HELD" });
+    const lay = H.layout(m, W, Hh);
+    const last = m.cols.length - 1;
+    const held = texts.find((t) => /^HELD line/.test(t.s));
+    assert.ok(held, `W=${W}: the HELD label was drawn`); // control
+    const c0 = lay.xOf(last), c1 = c0 + lay.colW;
+    assert.ok(held.x1 < c0 || held.x0 > c1,
+      `W=${W}: HELD label [${held.x0}, ${held.x1}] intersects the final column [${c0}, ${c1}]`);
+  }
+});
