@@ -77,7 +77,9 @@ test("M2: the status names the founders' separation; #sSep and #sReal say what t
   const R = L2.page.Sandbox.result();
   assert.equal($(L2, "status").textContent, `founders' separation ${R.realised.toFixed(3)}`);
   /* static text: the fake DOM does not parse it, so read the source */
-  assert.match(SRC, /id="sSepBand"\s*>how far apart this generation's two clusters sit/);
+  /* 7e (critic r3 #3) reworded it: clusters of this generation's placements, split by placement alone */
+  assert.match(SRC, /id="sSepBand"\s*>how far apart the two clusters in this generation's placements/);
+  assert.match(SRC, /multiples of their own spread \(a ratio, not\s+the founders' distance\)/);
   for (const p of [L2, HAND, LOAD])
     assert.ok($(p, "sRealBand").textContent.startsWith("the sliders' pair, not the run"),
       `#sRealBand reads ${$(p, "sRealBand").textContent}`);

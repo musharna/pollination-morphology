@@ -778,6 +778,14 @@ def m2_checks(browser, name):
     if r["fate"] != "STALLED" or r["stalled"] != 35 or r["cards"] != exp:
         failures.append(f"{name}: M2 stall fixture read {r}")
     notes.append(f"stall {r['fate']} {r['stalled']}/35")
+    # Task 7e (critic r3 #1): the stall says why first, and the HELD rule on
+    # screen states both halves (fateOf tests the stall before the variance)
+    band = page.evaluate("() => document.getElementById('sFateBand').textContent")
+    if not band.startswith("no offspring were recruited in 35 of 35 generations"):
+        failures.append(f"{name}: stall #sFateBand does not open with why: {band!r}")
+    if "HELD needs every generation to recruit AND ancestry variance above 0.4 × founding" not in band:
+        failures.append(f"{name}: stall #sFateBand HELD rule lacks 'every generation to recruit': {band!r}")
+    notes.append("stall band why+rule")
     sweep_state(page, name, "stall", errs, True)
     sweep_notes["stall"] += ", " + body_marks_inside(page, f"{name}: sweep stall")
     sweep_notes["stall"] += ", " + body_key_check(page, f"{name}: sweep stall")

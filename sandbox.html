@@ -656,10 +656,14 @@
             <div class="stat">
               <b id="sSep">—</b><span>cluster separation</span>
               <!-- not the founders' units: sim/ibm.js twoClusterSeparation is a
-                   ratio, distance between medoids / mean within-cluster distance -->
+                   ratio, distance between medoids / mean within-cluster distance.
+                   Its input is the step's `places` (sites.map(placementOf)),
+                   never `anc`: the split knows no lineage (critic r3 #3) -->
               <span class="band" id="sSepBand"
-                >how far apart this generation's two clusters sit, in multiples
-                of their own spread (a ratio, not the founders' distance)</span
+                >how far apart the two clusters in this generation's placements
+                on the bee sit, in multiples of their own spread (a ratio, not
+                the founders' distance); the split is by placement alone, not
+                lineage, so both clusters can be one lineage</span
               >
             </div>
             <div class="stat">
@@ -1506,6 +1510,17 @@
         return { ...I.DEFAULTS, bee, ...(extra || {}) };
       }
 
+      /* A hand-set lineage's contacts with the bee, by part: the calls the
+       * body map draws from (sim/evolve.js:155-165), one source for the body
+       * map and the STALLED band (Task 7e). The founding needs the anther
+       * (placeOf is anther-only), pollen receipt needs the stigma. */
+      function contactsOf(li, opts) {
+        const f = E.toFlower(LINEAGE[li]);
+        const a = P.placementDistribution(f, bee, { n: opts.siteN, seed: 1000, part: "anther" });
+        const s = P.placementDistribution(f, bee, { n: opts.siteN, seed: 1001, part: "stigma" });
+        return { a, s, onA: a.hits.length > 0, onS: s.hits.length > 0 };
+      }
+
       /* The realised separation between the two hand-set genomes, computed as
        * foundTwoLineages computes `realised` — dist(p0, p), sim/ibm.js:575. */
       function realisedSeparation() {
@@ -1704,25 +1719,11 @@
         let stigmaDrawn = false;
         let titleEnd = null; // right end of the left title-row text, measured
         for (let li = 0; li < 2; li++) {
-          const f = E.toFlower(LINEAGE[li]);
-          /* The same call sim/evolve.js:155-165 already makes. A distribution
-           * with no hits is the model saying "never touches the animal"
-           * (sim/evolve.js:165) — no dot is drawn and the panel says so. */
-          const a = P.placementDistribution(f, bee, {
-            n: opts.siteN,
-            seed: 1000,
-            part: "anther",
-          });
-          const s = P.placementDistribution(f, bee, {
-            n: opts.siteN,
-            seed: 1001,
-            part: "stigma",
-          });
-          /* by part: the founding needs the anther (placeOf is anther-only),
-           * pollen receipt needs the stigma. The stall genome's anther touches
-           * and its stigma never does: it founds, and "never touches" was false. */
-          const onA = a.hits.length > 0,
-            onS = s.hits.length > 0;
+          /* A distribution with no hits is the model saying "never touches
+           * the animal" (sim/evolve.js:165) — no dot is drawn and the panel
+           * says so. By part: the stall genome's anther touches and its
+           * stigma never does: it founds, and "never touches" was false. */
+          const { a, s, onA, onS } = contactsOf(li, opts);
           $("touch" + (li + 1)).textContent =
             onA && onS
               ? ""
@@ -2542,7 +2543,9 @@
           flush();
           fieldCaption([
             [
-              `generation ${frame} · ${G.flowers.length} flowers, each with its own contact sites (${G.sites.length} site sets) · bout not drawn: the sliced season does not log one`,
+              /* the reason is #fieldCaption's, with its provenance, once
+               * (critic r3 #10: the note was printed twice on level 5) */
+              `generation ${frame} · ${G.flowers.length} flowers, each with its own contact sites (${G.sites.length} site sets)`,
               "#9aa0a8",
             ],
           ]);
@@ -2753,6 +2756,38 @@
       /* The run's result: set once per run, not per scrubbed frame. The fate
        * is the engine's (IBM.fateOf, five strings verbatim) on the FINAL
        * offspring; the page has no fate rule of its own. */
+      /* STALLED says why first (critic r3 #1): fateOf returns STALLED before
+       * it tests the variance (sim/ibm.js fateOf), because a generation that
+       * recruits nothing hands the parents back unchanged. On a hand-set run
+       * the sliders are the run's pair, so the part that misses the bee (the
+       * body map's contactsOf) is named; a target-d run's founders are not
+       * the sliders, and nothing is appended. */
+      function stallWhy(R) {
+        if (R.fate !== "STALLED") return "";
+        const k = R.stalledGens,
+          N = GENS.length;
+        let t =
+          `no offspring were recruited in ${k} of ${N} generations, so the variance below is ` +
+          (k === N ? "the founders' carried forward" : "carried forward unchanged through them") +
+          ", not a hold";
+        if (!R.useD) {
+          const opts = sandboxOpts();
+          const miss = [0, 1].map((li) => {
+            const c = contactsOf(li, opts);
+            return !c.onA && !c.onS
+              ? "flower never touches the bee"
+              : !c.onS
+                ? "stigma never touches the bee"
+                : !c.onA
+                  ? "anthers never touch the bee"
+                  : "";
+          });
+          if (miss[0] && miss[0] === miss[1]) t += ` — the ${miss[0]}`;
+          else miss.forEach((m, li) => m && (t += ` — lineage ${li + 1}'s ${m}`));
+        }
+        return t + " · ";
+      }
+
       function showResult(R) {
         const { lo, hi, mid } = finalLabels(R);
         $("fieldCaption").textContent = R.phenology
@@ -2761,11 +2796,14 @@
         $("sFate").textContent = R.fate;
         $("sFate").style.color = R.fate === "HELD" ? "var(--ok)" : "var(--bad)";
         $("sFateBand").textContent =
+          stallWhy(R) +
           `stalled generations: ${R.stalledGens || "none"} of ${GENS.length}` +
           ` · labels: ${lo} lineage 1, ${hi} lineage 2, ${mid} mixed` +
-          ` · HELD needs ancestry variance above 0.4 x founding (sim/ibm.js fateOf)`;
+          ` · HELD needs every generation to recruit AND ancestry variance above 0.4 × founding (sim/ibm.js fateOf)`;
+        /* no "fused or lost at 0.000" (critic r3 #7): the HELD line is the
+         * only threshold; FUSED and one lost are told apart by the mean */
         $("sAncBand").textContent =
-          `ancestry variance: founding ${R.v0.toFixed(4)}; HELD line ${(0.4 * R.v0).toFixed(4)} (0.4 x founding, the engine's predicate); "fused or lost" at 0.000`;
+          `ancestry variance: founding ${R.v0.toFixed(4)}; HELD line ${(0.4 * R.v0).toFixed(4)} (0.4 × founding, the engine's variance test)`;
         const cfgLine = (c) =>
           `N ${c.n}, ${c.gens} generations, siteN ${c.siteN}`;
         const C = window.SandboxRun.CONFIGS;

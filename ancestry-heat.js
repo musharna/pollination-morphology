@@ -136,6 +136,24 @@
     return m && typeof m.width === "number" ? m.width : null;
   };
 
+  /* A stalled generation's hatch, over [y0, y1] of a column at x, w wide:
+   * one source for the heat and the variance strip (Task 7e), so the flat
+   * trace of a stalled run visibly sits in the same hatched generations.
+   * Each stroke rises 8 px across the column; the last is cut at y1 on the
+   * same slope, so no stroke leaves the band it marks. */
+  const HATCH = "rgba(217,112,79,0.8)";
+  function hatch(ctx, x, w, y0, y1) {
+    ctx.strokeStyle = HATCH;
+    ctx.lineWidth = 1;
+    for (let y = y0; y < y1; y += 8) {
+      const yb = Math.min(y + 8, y1);
+      ctx.beginPath();
+      ctx.moveTo(x, yb);
+      ctx.lineTo(x + (w * (yb - y)) / 8, y);
+      ctx.stroke();
+    }
+  }
+
   function drawHeat(ctx, model, o) {
     const { W, H } = o;
     const lay = layout(model, W, H);
@@ -160,16 +178,7 @@
         ctx.fillRect(x, lay.heatTop + b * lay.rowH, lay.colW - 1, lay.rowH);
       });
       ctx.globalAlpha = 1;
-      if (c.stalled) {
-        ctx.strokeStyle = "rgba(217,112,79,0.8)";
-        ctx.lineWidth = 1;
-        for (let y = lay.heatTop; y < lay.heatBot; y += 8) {
-          ctx.beginPath();
-          ctx.moveTo(x, y + 8);
-          ctx.lineTo(x + lay.colW - 1, y);
-          ctx.stroke();
-        }
-      }
+      if (c.stalled) hatch(ctx, x, lay.colW - 1, lay.heatTop, lay.heatBot);
     });
     /* the hybrid band, the engine's (0.15, 0.85) */
     ctx.strokeStyle = INK2;
@@ -199,6 +208,11 @@
     const yOf = (v) => lay.stripBot - (v / top) * (lay.stripBot - lay.stripTop);
     ctx.strokeStyle = RULE;
     ctx.strokeRect(lay.padL, lay.stripTop, W - lay.padL - PAD.R, lay.stripBot - lay.stripTop);
+    /* the stalled generations again, under the trace: a stalled run's
+     * variance is the parents' handed back, flat, not a hold (Task 7e) */
+    model.cols.forEach((c, i) => {
+      if (c.stalled) hatch(ctx, lay.xOf(i), lay.colW - 1, lay.stripTop, lay.stripBot);
+    });
     ctx.strokeStyle = "#d9704f";
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
@@ -321,6 +335,19 @@
     ctx.textAlign = "right";
     ctx.fillText(heldText, W - PAD.R, ky);
     ctx.textAlign = "left";
+    /* the end dot's key (Task 7e), on the same row from the plot's left
+     * edge, ending 12 px before the HELD swatch. Measured 205 px at 11px
+     * system-ui (headless Chromium, 2026-09-26): it fits whole from a heat
+     * ~550 px wide (the 1400 px hero is 566); narrower, it is condensed
+     * (maxWidth) down to 60% of its width, a heat ~470 px wide; below that
+     * the row has no room and it is not drawn. */
+    const dotText = "dot: final variance, green when HELD";
+    const room = hx0 - 6 - 18 - 12 - lay.padL;
+    const dw = widthOf(ctx, dotText);
+    const dwEst = dw === null ? 6.2 * dotText.length : dw;
+    ctx.fillStyle = INK2;
+    if (dwEst <= room) ctx.fillText(dotText, lay.padL, ky);
+    else if (room >= 0.6 * dwEst) ctx.fillText(dotText, lay.padL, ky, room);
   }
 
   const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex };
