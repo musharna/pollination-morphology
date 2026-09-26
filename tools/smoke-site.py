@@ -894,6 +894,89 @@ def sweep_state(page, name, tag, pageerrors, ran):
     sweep_notes[tag] = f"{tag} {note}, pageerrors {len(pageerrors)}"
 
 
+# Task 7c. The thumbnails on a run founded at target d draw that run's two
+# founders (foundTwoLineages' gA/gB), not the sliders, which on these levels are
+# one genome twice. The two cards are drawn in different colours, so a whole-pixel
+# signature always differs; THUMB_SHAPE hashes only the alpha channel (the flower's
+# silhouette, colour-independent) - equal for one genome twice. Positive control:
+# both thumbnails carry ink.
+THUMB_SHAPE = """(id) => {
+  const c = document.getElementById(id);
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let h = 2166136261;
+  for (let i = 3; i < d.length; i += 4) h = Math.imul(h ^ d[i], 16777619) >>> 0;
+  return h;
+}"""
+
+
+def thumb_founder_checks(page, at):
+    src = page.evaluate("() => window.Sandbox.thumbSource ? window.Sandbox.thumbSource() : null")
+    a, b = page.evaluate(THUMB_SHAPE, "thumb1"), page.evaluate(THUMB_SHAPE, "thumb2")
+    ink = [page.evaluate(THUMB_INK, f"thumb{i}") for i in (1, 2)]
+    if not all(f > 0.02 for f in ink):
+        failures.append(f"{at}: control - thumbnail ink {ink}")
+    if a == b:
+        failures.append(f"{at}: #thumb1 and #thumb2 draw the same silhouette (thumbSource {src!r}) - not the run's two founders")
+    return f"thumbs {src}, silhouettes {'differ' if a != b else 'SAME'}"
+
+
+# Task 7c. Body-map labels fit (critic r1 findings 12, 13): the Task 5b recorder,
+# mirrored on #bodyMap - fillText wrapped to record {text, x, y, w, align}; a
+# clearRect on #bodyMap starts a new draw. Each label's box is [x0, x0 + w] x
+# [y - 10, y + 3] (12 px font). At 1400x900 and 800x900 after a level-3 run: every
+# box lies inside the canvas's logical W x H, and no two boxes intersect.
+# Positive control: both founder labels, the title and a region label were recorded.
+BODY_REC_ON = HEAT_REC_ON.replace("getElementById('heat')", "getElementById('bodyMap')").replace("__heatRec", "__bodyRec")
+BODY_REC_OFF = """() => {
+  const P = CanvasRenderingContext2D.prototype, R = window.__bodyRec;
+  P.fillText = R.fillText;
+  P.clearRect = R.clearRect;
+  delete window.__bodyRec;
+  const f = document.getElementById('bodyMap')._fit; // fitCanvas's logical size
+  return { rec: R.rec, W: f.w, H: f.h };
+}"""
+BODY_LABEL_NEED = ("lineage 1 founder", "lineage 2 founder", "rings:", "face")
+
+
+def _body_label_assert(m, at, failures):
+    W, H = m["W"], m["H"]
+    got = [t["text"] for t in m["rec"]]
+    for n in BODY_LABEL_NEED:
+        if not any(t.startswith(n) for t in got):
+            failures.append(f"{at}: control - no {n!r} label recorded (got {got[:8]})")
+    box = []
+    for t in m["rec"]:
+        x0 = t["x"] - t["w"] if t["align"] == "right" else t["x"] - t["w"] / 2 if t["align"] == "center" else t["x"]
+        box.append((x0, t["y"] - 10, x0 + t["w"], t["y"] + 3, t["text"]))
+    for x0, y0, x1, y1, text in box:
+        if x0 < -0.5 or x1 > W + 0.5 or y0 < -0.5 or y1 > H + 0.5:
+            failures.append(f"{at}: {text!r} box [{x0:.1f}, {x1:.1f}] x [{y0:.1f}, {y1:.1f}] outside {W}x{H}")
+    for i, a in enumerate(box):
+        for b in box[i + 1:]:
+            if a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]:
+                failures.append(f"{at}: {a[4]!r} overlaps {b[4]!r}")
+    return f"{W}x{H} {len(box)} labels"
+
+
+def body_label_checks(page, at):
+    notes = []
+    page.evaluate(BODY_REC_ON)
+    page.evaluate(SET_INPUT, ["scrub", None])
+    notes.append("1400 " + _body_label_assert(page.evaluate(BODY_REC_OFF), f"{at} body labels at 1400x900", failures))
+    w0 = page.evaluate("() => document.getElementById('bodyMap').clientWidth")
+    page.evaluate(BODY_REC_ON)
+    page.set_viewport_size({"width": 800, "height": 900})
+    try:  # the ResizeObserver refit is async
+        page.wait_for_function("(w0) => document.getElementById('bodyMap').clientWidth !== w0", arg=w0, timeout=3000)
+    except Exception:  # noqa: BLE001
+        failures.append(f"{at}: control - #bodyMap clientWidth stayed {w0} at 800x900 (no resize)")
+    page.wait_for_timeout(300)
+    notes.append("800 " + _body_label_assert(page.evaluate(BODY_REC_OFF), f"{at} body labels at 800x900", failures))
+    page.set_viewport_size({"width": 1400, "height": 900})
+    page.wait_for_timeout(300)
+    return "; ".join(notes)
+
+
 def sweep_checks(browser, name):
     """Level 1 loaded, levels 2, 3, 4 and 6 at seed 3 run, on one page."""
     page = browser.new_page()
@@ -906,6 +989,16 @@ def sweep_checks(browser, name):
         if r["error"]:
             failures.append(f"{name}: sweep L{lv} run errored: {r['error']}")
         sweep_state(page, name, f"L{lv}", errs, lv != 1)
+        if lv == 2:
+            sweep_notes["L2"] += ", " + thumb_founder_checks(page, f"{name}: sweep L2")
+        if lv == 3:
+            sweep_notes["L3"] += ", " + body_label_checks(page, f"{name}: sweep L3")
+            # the critic's 800 px shot (narrow-l3-full.png): level 3 seed 6, whose
+            # founder label rose into the title
+            r6 = page.evaluate(SWEEP_LEVEL, {"level": 3, "seed": 6, "run": True})
+            if r6["error"]:
+                failures.append(f"{name}: sweep L3 seed 6 run errored: {r6['error']}")
+            sweep_notes["L3"] += ", seed 6 " + body_label_checks(page, f"{name}: sweep L3 seed 6")
     page.close()
     return "sweep " + "; ".join(sweep_notes.get(t, f"{t} NOT MEASURED") for t in SWEEP_ORDER)
 

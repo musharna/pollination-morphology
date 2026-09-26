@@ -200,7 +200,14 @@
         border-radius: 6px;
         padding: 10px 12px;
       }
+      .linCard p:empty {
+        display: none;
+      }
+      .linCard .note {
+        margin: 0 0 6px;
+      }
       .linCard h2,
+      .linCard .note,
       .linCard .warn {
         grid-column: 1 / -1;
       }
@@ -724,6 +731,8 @@
         <div class="genes">
           <div class="linCard">
             <h2 id="h-lin1">lineage 1</h2>
+            <p class="note" id="thumbSrc1" hidden></p>
+            <p class="note warn" id="offBee1"></p>
             <canvas
               id="thumb1"
               width="220"
@@ -737,6 +746,8 @@
 
           <div class="linCard">
             <h2 id="h-lin2">lineage 2</h2>
+            <p class="note" id="thumbSrc2" hidden></p>
+            <p class="note warn" id="offBee2"></p>
             <canvas
               id="thumb2"
               width="220"
@@ -791,10 +802,10 @@
           </div>
           <div class="stats">
             <div class="stat">
-              <b id="sReal">—</b><span>realised separation</span>
+              <b id="sReal">—</b><span>sliders' separation (hand-set)</span>
               <span class="band" id="sRealBand"></span>
             </div>
-            <div class="stat tile-target">
+            <div class="stat tile-target" id="sTargetTile">
               <b id="sTarget">reach 8</b><span>level 1 target</span>
               <span class="band">the goal, not a measurement</span>
             </div>
@@ -1466,8 +1477,15 @@
           const val = document.createElement("span");
           val.className = "val";
           val.id = id + "_val";
+          /* the off-bee marker, beside the value; the sentence is in the card */
+          const off = document.createElement("span");
+          off.className = "warn";
+          off.id = id + "_off";
+          const vw = document.createElement("span");
+          vw.appendChild(val);
+          vw.appendChild(off);
           lab.appendChild(name);
-          lab.appendChild(val);
+          lab.appendChild(vw);
           /* ⚠️ A SLIDER THAT MOVES NOTHING MUST SAY SO. `curve` sweeps its whole
            * range without shifting the anther dot by a thousandth of a body
            * distance at this bee — measured, at three base genomes. A control
@@ -1516,7 +1534,20 @@
           ? JSON.stringify([bee.reach, bee.bodyLen])
           : JSON.stringify([LINEAGE, bee.reach, bee.bodyLen]);
       const OVERLAY_HIDDEN = "hidden: shapes changed since the run";
-      let BODY_LAYERS = { source: "sliders", founders: [null, null], dots: 0, overlay: "none" };
+      let BODY_LAYERS = { source: "sliders", founders: [null, null], dots: 0, overlay: "none", foundersStale: false };
+      /* A region's name, or its short form, or nothing: a label wider than its
+       * region less 6 px would run into the next one (critic r1 finding 13) */
+      const REGION_ABBR = { scutellum: "scut.", abdomen: "abd.", scutum: "sct." };
+      /* measured width; 0 on the node fake DOM's no-op context, which measures nothing */
+      const textW = (ctx, t) => {
+        const m = ctx.measureText(t);
+        return m && typeof m.width === "number" ? m.width : 0;
+      };
+      function regionLabel(ctx, name, room) {
+        for (const t of [name, REGION_ABBR[name] || name.slice(0, 3) + "."])
+          if (textW(ctx, t) <= room) return t;
+        return null;
+      }
 
       /* One body map, three layers: the bee's regions; the founders (the
        * sliders' contact clouds + mean anther sites, or the shown run's own
@@ -1527,8 +1558,11 @@
         sizeBody();
         const W = BODY_W,
           H = BODY_H;
-        const T = 14,
-          B = 28;
+        /* T: a title row above the plot that no ring, dot or label enters
+         * (critic r1 finding 12: the title collided with a founder's label) */
+        const T = 26,
+          B = 28,
+          TITLE_Y = 17;
         const X = (s) => BODY_X(s, W),
           Y = (phi) => T + ((phi + Math.PI) / TAU) * (H - T - B);
         bodyC.clearRect(0, 0, W, H);
@@ -1538,13 +1572,28 @@
           bodyC.fillStyle =
             i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.014)";
           bodyC.fillRect(X(r.s0), T, X(r.s1) - X(r.s0), H - T - B);
+          const lab = regionLabel(bodyC, r.name, X(r.s1) - X(r.s0) - 6);
+          if (!lab) return;
           bodyC.fillStyle = "#6a7078";
-          bodyC.fillText(r.name, X(r.s0) + 4, H - B + 17);
+          bodyC.fillText(lab, X(r.s0) + 4, H - B + 17);
         });
 
         const opts = sandboxOpts();
         const lines = [];
         const fromRun = !!(RESULT && RESULT.useD);
+        /* the bee has moved since the run: its founding sites sit on a bee
+         * that is no longer drawn (Task 5 minor M6), so the rings go dashed
+         * and faint, and say so */
+        const stale = fromRun && runKeyNow(RESULT.useD) !== RUN_KEY;
+        const ringStyle = (lw) => {
+          bodyC.lineWidth = lw;
+          bodyC.setLineDash(stale ? [4, 3] : []);
+          bodyC.globalAlpha = stale ? 0.4 : 1;
+        };
+        const ringDone = () => {
+          bodyC.setLineDash([]);
+          bodyC.globalAlpha = 1;
+        };
         const founders = [null, null];
         for (let li = 0; li < 2; li++) {
           const f = E.toFlower(LINEAGE[li]);
@@ -1600,27 +1649,57 @@
         if (fromRun) {
           /* the run's founders: foundTwoLineages chose them at target d, so
            * the hand-set sliders say nothing about this run */
+          const placed = [];
           [RESULT.p1, RESULT.p2].forEach((p, li) => {
             founders[li] = p;
             if (!p) return;
             bodyC.strokeStyle = LINEAGE_COL[li];
-            bodyC.lineWidth = 2.5;
+            ringStyle(2.5);
             bodyC.beginPath();
             bodyC.arc(X(p.s), Y(p.phi), 9, 0, TAU);
             bodyC.stroke();
-            /* above the ring, haloed: the generation's dots crowd the ring itself */
+            ringDone();
+            /* haloed, above the ring if it fits (the generation's dots crowd
+             * the ring itself), else below, right or left of it; clamped
+             * inside the plot and clear of the other founder's label */
             const lab = `lineage ${li + 1} founder`;
+            const w = textW(bodyC, lab);
+            const x0 = X(p.s),
+              y0 = Y(p.phi);
+            const fit = (x, y) => [
+              Math.max(2, Math.min(W - w - 2, x)),
+              Math.max(T + 12, Math.min(H - B - 3, y)),
+            ];
+            const hits = ([x, y]) =>
+              placed.some((q) => x < q[0] + q[2] + 4 && q[0] < x + w + 4 && y - 12 < q[1] && q[1] - 12 < y);
+            const tries = [
+              [x0 - 12, y0 - 16],
+              [x0 - 12, y0 + 26],
+              [x0 + 14, y0 + 4],
+              [x0 - 14 - w, y0 + 4],
+            ].map(([x, y]) => fit(x, y));
+            const [lx, ly] = tries.find((t) => !hits(t)) || tries[0];
+            placed.push([lx, ly, w]);
+            bodyC.globalAlpha = stale ? 0.4 : 1;
             bodyC.lineWidth = 4;
             bodyC.strokeStyle = "#101216";
-            bodyC.strokeText(lab, X(p.s) - 12, Y(p.phi) - 16);
+            bodyC.strokeText(lab, lx, ly);
             bodyC.fillStyle = LINEAGE_COL[li];
-            bodyC.fillText(lab, X(p.s) - 12, Y(p.phi) - 16);
+            bodyC.fillText(lab, lx, ly);
+            bodyC.globalAlpha = 1;
             lines.push(
-              `this run's founder ${li + 1} at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it`,
+              `this run's founder ${li + 1} at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it` +
+                (stale ? " (on the old bee)" : ""),
             );
           });
           bodyC.fillStyle = "#9aa0a8";
-          bodyC.fillText("rings: this run's founders (founded at target d)", 8, T + 12);
+          bodyC.fillText(
+            stale
+              ? "dashed rings: this run's founders (on the old bee)"
+              : "rings: this run's founders (founded at target d)",
+            8,
+            TITLE_Y,
+          );
         }
 
         let overlay = "none",
@@ -1642,7 +1721,7 @@
             overlay = OVERLAY_HIDDEN;
             bodyC.fillStyle = "#d9704f";
             bodyC.textAlign = "right";
-            bodyC.fillText("run overlay " + OVERLAY_HIDDEN, W - 8, T + 12);
+            bodyC.fillText("run overlay " + OVERLAY_HIDDEN, W - 8, TITLE_Y);
             bodyC.textAlign = "left";
             lines.push("run overlay " + OVERLAY_HIDDEN);
           }
@@ -1653,15 +1732,16 @@
           founders.forEach((p, li) => {
             if (!p) return;
             bodyC.strokeStyle = "#101216";
-            bodyC.lineWidth = 5;
+            ringStyle(5);
             bodyC.beginPath();
             bodyC.arc(X(p.s), Y(p.phi), 10, 0, TAU);
             bodyC.stroke();
             bodyC.strokeStyle = LINEAGE_COL[li];
             bodyC.lineWidth = 2.5;
             bodyC.stroke();
+            ringDone();
           });
-        BODY_LAYERS = { source: fromRun ? "run" : "sliders", founders, dots, overlay };
+        BODY_LAYERS = { source: fromRun ? "run" : "sliders", founders, dots, overlay, foundersStale: stale };
         $("bodyLive").textContent = lines.join(". ");
       }
 
@@ -1707,7 +1787,34 @@
           }
         return k;
       }
+      /* What the two thumbnails draw (critic r1 finding 6). A run founded at
+       * target d was founded from foundTwoLineages' two genomes, not the
+       * sliders — on these levels the sliders are one genome twice, which drew
+       * "the same flower in two colours" beside two different founders on the
+       * body map. While that run is shown and its key holds, the cards draw
+       * its founders; otherwise (no run, a hand-set run, a stale key) the
+       * sliders. */
+      const thumbSource = () =>
+        RESULT && RESULT.useD && RESULT.founders && runKeyNow(true) === RUN_KEY ? "run" : "sliders";
+      const THUMB_DRAWN = [null, null];
       function renderThumb(li) {
+        const fromRun = thumbSource() === "run";
+        const genome = fromRun ? RESULT.founders[li] : LINEAGE[li];
+        THUMB_DRAWN[li] = genome;
+        const n = li + 1;
+        $("h-lin" + n).textContent = fromRun
+          ? `lineage ${n} — this run's founder (founded at target d)`
+          : `lineage ${n}`;
+        const src = $("thumbSrc" + n);
+        src.textContent = fromRun ? "the sliders below did not found this run" : "";
+        if (fromRun) src.removeAttribute("hidden");
+        else src.setAttribute("hidden", "");
+        thumbEl[li].setAttribute(
+          "aria-label",
+          fromRun
+            ? `lineage ${n}'s founder in the shown run, founded at target d: its flower, drawn from that genome by the same model the field uses`
+            : `lineage ${n}'s flower, drawn from its genome by the same model the field uses`,
+        );
         const saved = {
           yaw,
           pitch,
@@ -1721,7 +1828,7 @@
           VIEW = THUMB_VIEW[li];
           items = [];
           VIEW.ctx.clearRect(0, 0, VIEW.w, VIEW.h);
-          const f = E.toFlower(LINEAGE[li]);
+          const f = E.toFlower(genome);
           const top = 3.6 + 0.9 * (f.axisLen - 1.8);
           const b = basis(vUnit([0, -1, 0]), [0, top, 0]);
           yaw = THUMB_CAM.yaw;
@@ -1761,19 +1868,45 @@
         if (!a || !b) return null;
         return I.dist(a, b);
       }
+      /* The off-bee sentence reads ONCE per card, above the sliders (critic
+       * r1 finding 16: on the stall fixture it repeated under every slider);
+       * each slider it applies to keeps a short marker carrying the sentence
+       * in its title and aria-label. */
+      const OFF_BEE = "a bound puts this flower off the bee";
       function sweepLabels(li) {
         const opts = sandboxOpts();
+        let off = 0;
         for (const k of GENE_ORDER) {
           const el = $("g" + (li + 1) + "_" + k + "_eff");
+          const mk = $("g" + (li + 1) + "_" + k + "_off");
           if (!el) continue;
           const d = sweepMagnitude(li, k, opts);
-          el.textContent =
-            d === null
-              ? "a bound puts this flower off the bee"
-              : d < SWEEP_EPS
-                ? "no effect at this bee"
-                : "";
+          el.textContent = d !== null && d < SWEEP_EPS ? "no effect at this bee" : "";
+          if (d === null) {
+            off++;
+            mk.textContent = " ⚠︎";
+            mk.setAttribute("title", OFF_BEE);
+            mk.setAttribute("aria-label", OFF_BEE);
+            mk.setAttribute("role", "img");
+          } else {
+            mk.textContent = "";
+            for (const a of ["title", "aria-label", "role"]) mk.removeAttribute(a);
+          }
         }
+        $("offBee" + (li + 1)).textContent = off
+          ? `${OFF_BEE}: ${off === 1 ? "one slider" : `${off} sliders`}, marked ⚠︎`
+          : "";
+      }
+
+      /* #sReal is the separation of the sliders' hand-set pair. When the shown
+       * run (this visitor's, or before one the example, founded at target d)
+       * was founded at target d, the sliders did not found it: a bare "not
+       * measured" beside it would read as a missing number, so it says why. */
+      function showSepBand(d) {
+        const b = separationBand(d);
+        const fromD = RESULT ? RESULT.useD : $("useD").checked;
+        $("sRealBand").textContent =
+          b === "not measured" && fromD ? "not measured: these sliders did not found the shown run" : b;
       }
 
       function refreshSandbox(only) {
@@ -1784,7 +1917,7 @@
           }
         const d = realisedSeparation();
         $("sReal").textContent = d === null ? "—" : d.toFixed(3);
-        $("sRealBand").textContent = separationBand(d);
+        showSepBand(d);
         if (only === undefined || only === 0) sweepLabels(0);
         if (only === undefined || only === 1) sweepLabels(1);
         const redrawn = only === undefined ? [0, 1] : [only];
@@ -1915,6 +2048,10 @@
           }
         }
         $("run").disabled = !!L.noRun;
+        /* level 1's goal, on level 1 only (critic r1 finding 5) */
+        for (const id of ["sTarget", "sTargetTile"])
+          if (L.id === "1") $(id).removeAttribute("hidden");
+          else $(id).setAttribute("hidden", "");
         $("levelBrief").textContent = L.brief;
         /* M3b: the level's option object is applied, into the controls */
         writeOptions(L.opts);
@@ -1949,6 +2086,7 @@
         $("sTarget").textContent = "reach " + LEVEL1_TARGET;
         $("useD").onchange = (e) => {
           $("d").disabled = !e.target.checked;
+          showSepBand(realisedSeparation());
         };
         $("level").onchange = (e) => loadLevel(e.target.value);
         $("loadWidthObj").onclick = () => {
@@ -2033,6 +2171,7 @@
           p2: main.p2,
           /* founded at target d: the founders are foundTwoLineages', not the sliders' */
           useD,
+          founders: main.founders,
           phenology: !!options.phenology,
         };
       }
@@ -2047,6 +2186,7 @@
         const srng = I.signalRng(seed);
 
         let found, realised, p1, p2;
+        let founders = null;
         if (useD) {
           const built = I.foundTwoLineages(n, rng, srng, d, opts);
           if (!built)
@@ -2057,6 +2197,8 @@
           realised = built.realised;
           p1 = placeOf(built.gA, opts);
           p2 = placeOf(built.gB, opts);
+          /* the two genomes this run was founded from; the sliders were not */
+          founders = [{ ...built.gA }, { ...built.gB }];
         } else {
           /* ⚠️ A FOUNDER THAT NEVER TOUCHES THE BEE BLOCKS THE RUN (spec §3
            * item 5): its placement is null, gapOccupancy with a null reference
@@ -2086,7 +2228,7 @@
          * own predicate and its strings verbatim, as the null tables read it
          * (tools/northstar-null-tables.js run()). */
         const fate = I.fateOf(out.final, v0, out.extinct, out.stalledGens > 0);
-        return { out, fate, v0, realised, p1, p2 };
+        return { out, fate, v0, realised, p1, p2, founders };
       }
 
       /* The ground and the flowers of one generation, shared by the bout
@@ -2558,6 +2700,9 @@
         GENS = [];
         frame = 0;
         RUN_KEY = null;
+        renderThumb(0);
+        renderThumb(1);
+        showSepBand(realisedSeparation());
         $("scrub").value = 0;
         $("scrub").max = 0;
         $("scrub").disabled = true;
@@ -2606,6 +2751,11 @@
             GENS = R.gens;
             RESULT = R;
             RUN_KEY = runKeyNow(R.useD);
+            renderThumb(0);
+            renderThumb(1);
+            if (thumbSource() === "run")
+              $("thumbLive").textContent = "lineage 1 and lineage 2 redrawn: this run's founders";
+            showSepBand(realisedSeparation());
             HEAT = window.AncestryHeat.heatModel(R.gens, R.final, R.v0);
             showResult(R);
             showWin();
@@ -2720,6 +2870,8 @@
         heatSize: () => ({ W: HEAT_W, H: HEAT_H, dpr: HEAT_DPR, backing: [heatEl.width, heatEl.height] }),
         result: () => RESULT,
         bodyLayers: () => ({ ...BODY_LAYERS, founders: [...BODY_LAYERS.founders] }),
+        thumbSource,
+        thumbGenome: (li) => (THUMB_DRAWN[li] ? { ...THUMB_DRAWN[li] } : null),
         lineage: (li) => ({ ...LINEAGE[li] }),
         bee: () => ({ reach: bee.reach, bodyLen: bee.bodyLen }),
         /* as the two bee sliders' oninput does */
