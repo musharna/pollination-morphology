@@ -337,6 +337,14 @@
         color: var(--ink-2);
         margin-right: 8px;
       }
+      #sFateBand {
+        display: block;
+      }
+      /* the backing store follows this displayed size x devicePixelRatio (sizeHeat) */
+      #heat {
+        width: 100%;
+        height: auto;
+      }
       .keyRow {
         display: flex;
         justify-content: space-between;
@@ -788,9 +796,45 @@
         ctx = cv.getContext("2d");
       const mapC = $("map").getContext("2d");
       const bodyC = $("bodyMap").getContext("2d");
-      const heatC = $("heat").getContext("2d");
-      const HEAT_W = 760,
-        HEAT_H = 420;
+      const heatEl = $("heat"),
+        heatC = heatEl.getContext("2d");
+      /* LOGICAL size (CSS px) the heat is drawn at; the backing store is this x dpr.
+       * 760x420 is the fallback when the canvas has no width (hidden, or node's fake DOM). */
+      let HEAT_W = 760,
+        HEAT_H = 420,
+        HEAT_DPR = 1;
+      /* Size the heat to its content-box width x devicePixelRatio, keeping the
+       * 760:420 aspect. Returns true when the logical size, dpr or backing store
+       * changed, so a resize redraws only then (no ResizeObserver loop). */
+      function sizeHeat() {
+        const cw = heatEl.clientWidth;
+        let W = 760,
+          H = 420,
+          dpr = 1;
+        if (cw > 0) {
+          W = cw;
+          H = Math.round((W * 420) / 760);
+          dpr = window.devicePixelRatio || 1;
+        }
+        const bw = Math.round(W * dpr),
+          bh = Math.round(H * dpr);
+        const changed =
+          W !== HEAT_W || H !== HEAT_H || dpr !== HEAT_DPR || heatEl.width !== bw || heatEl.height !== bh;
+        HEAT_W = W;
+        HEAT_H = H;
+        HEAT_DPR = dpr;
+        /* assigning width clears the canvas, even to the same value: only when it moved */
+        if (heatEl.width !== bw) heatEl.width = bw;
+        if (heatEl.height !== bh) heatEl.height = bh;
+        heatC.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return changed;
+      }
+      sizeHeat();
+      const onHeatResize = () => {
+        if (sizeHeat()) drawHeat();
+      };
+      if (window.ResizeObserver) new window.ResizeObserver(onHeatResize).observe(heatEl);
+      else if (window.addEventListener) window.addEventListener("resize", onHeatResize);
       let HEAT = null; // the heat model last built for the current run, or null
       /* ⚠️ A COPY, not DEFAULT_BEE itself. The two bee sliders set the run's
        * parameter object; writing through to the module's own object would
@@ -2289,6 +2333,7 @@
        * moving it; the tests and the smoke use this, a visitor never needs to. */
       window.Sandbox = {
         heat: () => HEAT,
+        heatSize: () => ({ W: HEAT_W, H: HEAT_H, dpr: HEAT_DPR, backing: [heatEl.width, heatEl.height] }),
         result: () => RESULT,
         setLineage(li, genome) {
           for (const k of GENE_ORDER)

@@ -135,7 +135,8 @@ M2_RUN = """async (s) => {
 # ------------------------------------------------------------ the heatmap (#heat)
 # The heat grid's OPAQUE pixel count (alpha 255, inside the grid rows from
 # AncestryHeat.layout) is compared with a BASELINE: AncestryHeat.drawEmpty with
-# the page's placeholder message, drawn on an offscreen 760x420 canvas. (A
+# the page's placeholder message, drawn on an offscreen canvas at the page's own
+# logical size and devicePixelRatio (Sandbox.heatSize()), so the counts compare. (A
 # distinct-colour count cannot fail here: anti-aliased placeholder text alone
 # saturates it on a transparent canvas. The baseline is offscreen because #heat
 # shows the labelled example on load, so #heat itself has no empty state.)
@@ -148,16 +149,21 @@ M2_RUN = """async (s) => {
 HEAT_INK = """(off) => {
   let c = document.getElementById('heat');
   if (!c) return -1;
+  const S = window.Sandbox.heatSize(), W = S.W, H = S.H, dpr = S.dpr;
   if (off) {
     c = document.createElement('canvas');
-    c.width = 760;
-    c.height = 420;
-    window.AncestryHeat.drawEmpty(c.getContext('2d'), 760, 420,
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    window.AncestryHeat.drawEmpty(g, W, H,
       "press Run: each column will be one generation's plants, sorted by ancestry");
   }
-  const lay = window.AncestryHeat.layout({ cols: [{ final: false }] }, 760, 420);
-  const x0 = Math.round(lay.xOf(0)), y0 = Math.round(lay.heatTop), y1 = Math.round(lay.heatBot);
-  const d = c.getContext('2d').getImageData(x0, y0, 760 - x0, y1 - y0).data;
+  /* layout is in logical px; getImageData reads backing px, so scale by dpr */
+  const lay = window.AncestryHeat.layout({ cols: [{ final: false }] }, W, H);
+  const x0 = Math.round(lay.xOf(0) * dpr), y0 = Math.round(lay.heatTop * dpr),
+    y1 = Math.round(lay.heatBot * dpr);
+  const d = c.getContext('2d').getImageData(x0, y0, c.width - x0, y1 - y0).data;
   let n = 0;
   for (let i = 3; i < d.length; i += 4) if (d[i] === 255) n++;
   return n;
@@ -168,14 +174,66 @@ HEAT_COL5 = """() => {
   c.scrollIntoView({ block: 'center' });
   const H = window.Sandbox.heat();
   if (!H) return null;
-  const lay = window.AncestryHeat.layout(H, 760, 420);
+  const S = window.Sandbox.heatSize();
+  const lay = window.AncestryHeat.layout(H, S.W, S.H);
   const r = c.getBoundingClientRect();
-  const k = c.clientWidth / 760;
+  const k = c.clientWidth / S.W;
   return {
     x: r.left + c.clientLeft + (lay.xOf(5) + lay.colW / 2) * k,
     y: r.top + c.clientTop + c.clientHeight / 2,
   };
 }"""
+
+
+# The heat's backing store follows its displayed size x devicePixelRatio. In a
+# device_scale_factor=2 context at 1400x900: canvas.width == round(2 x
+# clientWidth) (within 1 px), Sandbox.heatSize().W == clientWidth, and the heat
+# is displayed >= 500 px wide (positive control: it is on screen, so a 0-wide
+# canvas cannot pass). Then the viewport goes to 900x900, which stacks the hero:
+# clientWidth must change (control: the resize happened) and the backing width
+# must follow the new clientWidth x 2.
+HEAT_DPR = """() => {
+  const c = document.getElementById('heat');
+  const S = window.Sandbox && window.Sandbox.heatSize ? window.Sandbox.heatSize() : null;
+  return { cw: c.clientWidth, bw: c.width, bh: c.height, shown: c.getBoundingClientRect().width,
+           dpr: window.devicePixelRatio, S };
+}"""
+
+
+def heat_dpr_checks(browser, name, failures):
+    ctx = browser.new_context(viewport={"width": 1400, "height": 900}, device_scale_factor=2)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    seen = []
+    for vw in (1400, 900):
+        if vw != 1400:
+            page.set_viewport_size({"width": vw, "height": 900})
+            try:  # a ResizeObserver callback is async: wait for it, then measure regardless
+                page.wait_for_function(
+                    "(w0) => document.getElementById('heat').clientWidth !== w0 && "
+                    "Math.abs(document.getElementById('heat').width - "
+                    "2 * document.getElementById('heat').clientWidth) <= 1",
+                    arg=seen[0]["cw"], timeout=3000)
+            except Exception:  # noqa: BLE001
+                pass
+        m = page.evaluate(HEAT_DPR)
+        seen.append(m)
+        at = f"{name}: DPR 2 at {vw}x900"
+        if m["dpr"] != 2:
+            failures.append(f"{at}: devicePixelRatio {m['dpr']}, want 2 (the context is wrong)")
+        if abs(m["bw"] - round(2 * m["cw"])) > 1:
+            failures.append(f"{at}: #heat backing width {m['bw']} vs clientWidth {m['cw']} - want {round(2 * m['cw'])}")
+        if not m["S"] or m["S"]["W"] != m["cw"]:
+            failures.append(f"{at}: Sandbox.heatSize() {m['S']!r} - want W == clientWidth {m['cw']}")
+        elif abs(m["bh"] - round(2 * m["S"]["H"])) > 1:
+            failures.append(f"{at}: #heat backing height {m['bh']} vs logical H {m['S']['H']} - want {round(2 * m['S']['H'])}")
+    if seen[0]["shown"] < 500:
+        failures.append(f"{name}: control - #heat displayed {seen[0]['shown']:.0f} px wide at 1400x900, want >= 500")
+    if seen[1]["cw"] == seen[0]["cw"]:
+        failures.append(f"{name}: control - #heat clientWidth {seen[0]['cw']} did not change at 900x900 (no resize)")
+    ctx.close()
+    a, b = seen
+    return f"DPR2 backing/clientWidth {a['bw']}/{a['cw']} at 1400, {b['bw']}/{b['cw']} at 900"
 
 
 HEAT_STATE = """() => [document.getElementById('heatLive').textContent,
@@ -650,6 +708,7 @@ with sync_playwright() as p:
             note += "; M2 " + ", ".join(m2_notes)
             note += "; M3a " + ", ".join(m3a_checks(browser, name))
             note += "; M3b " + ", ".join(m3b_checks(browser, name))
+            note += "; " + heat_dpr_checks(browser, name, failures)
 
         if errors:
             failures.append(f"{name}: {len(errors)} console error(s): {errors[:3]}")
