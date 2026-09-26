@@ -219,7 +219,10 @@
     ctx.stroke();
     const fin = model.cols[last];
     if (fin.ancVar !== null) {
-      ctx.fillStyle = fin.ancVar > model.heldLine ? "#6fbf73" : "#d9704f";
+      /* keyed on the run's fate, not on the line: a STALLED run keeps its
+       * variance above the line and is not a win; no fate (the example
+       * state) gets the neutral ink */
+      ctx.fillStyle = !o.fate ? "#e8e6e1" : o.fate === "HELD" ? "#6fbf73" : "#d9704f";
       ctx.beginPath();
       ctx.arc(lay.xOf(last) + lay.colW / 2, yOf(fin.ancVar), 4, 0, TAU);
       ctx.fill();

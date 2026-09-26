@@ -31,12 +31,11 @@ test("level 2 seed 3: the thumbnails draw the run's two founders, which differ",
   );
   assert.deepEqual(plain(S.thumbGenome(0)), plain(R.founders[0]));
   assert.deepEqual(plain(S.thumbGenome(1)), plain(R.founders[1]));
-  assert.equal(doc.getElementById("h-lin1").textContent, "lineage 1 — this run's founder (founded at target d)");
-  assert.equal(doc.getElementById("h-lin2").textContent, "lineage 2 — this run's founder (founded at target d)");
+  /* Task 7d (M3): the founder heading is the thumbnail's caption; the
+   * sliders' own label says they did not found the run */
   for (const i of [1, 2]) {
-    const n = doc.getElementById("thumbSrc" + i);
-    assert.equal(n.textContent, "the sliders below did not found this run");
-    assert.equal(n.hasAttribute("hidden"), false);
+    assert.equal(doc.getElementById("thumbCap" + i).textContent, `lineage ${i} — this run's founder (founded at target d)`);
+    assert.equal(doc.getElementById("genesLab" + i).textContent, `hand-set lineage ${i} (sliders) — did not found this run`);
   }
   /* the sliders are unchanged and are not what is drawn */
   assert.notDeepEqual(plain(S.lineage(0)), plain(S.thumbGenome(0)));
@@ -51,8 +50,8 @@ test("a hand-set run and no run: the thumbnails draw the sliders", () => {
   assert.equal(S.result().founders, null);
   assert.deepEqual(plain(S.thumbGenome(0)), plain(S.lineage(0)));
   const doc = p.page.document;
-  assert.equal(doc.getElementById("h-lin1").textContent, "lineage 1");
-  assert.equal(doc.getElementById("thumbSrc1").hasAttribute("hidden"), true);
+  assert.equal(doc.getElementById("thumbCap1").textContent, "lineage 1 — from the sliders");
+  assert.equal(doc.getElementById("genesLab1").textContent, "hand-set lineage 1 (sliders)");
   const q = runPage({ noRun: true });
   assert.equal(q.page.Sandbox.thumbSource(), "sliders");
 });
@@ -66,7 +65,7 @@ test("target-d run, then a bee change: back to the sliders; restoring the bee: t
   assert.equal(S.bodyLayers().overlay, "hidden: shapes changed since the run");
   assert.equal(S.thumbSource(), "sliders");
   assert.deepEqual(plain(S.thumbGenome(0)), plain(S.lineage(0)));
-  assert.equal(p.page.document.getElementById("h-lin1").textContent, "lineage 1");
+  assert.equal(p.page.document.getElementById("thumbCap1").textContent, "lineage 1 — from the sliders");
   S.setBee({ reach });
   assert.equal(S.thumbSource(), "run");
 });
@@ -87,9 +86,9 @@ test("#sTarget shows on level 1 only; #sReal names the sliders", () => {
 test("target-d level: a 'not measured' separation band says why", () => {
   const d = runPage({ level: 2, noRun: true }).page.document;
   assert.equal(d.getElementById("sReal").textContent, "0.000", "control: identical sliders");
-  assert.equal(d.getElementById("sRealBand").textContent, "not measured: these sliders did not found the shown run");
+  assert.equal(d.getElementById("sRealBand").textContent, "the sliders' pair, not the run: not measured — these sliders did not found the shown run");
   const f = runPage({ noRun: true }).page.document; // free, hand-set founding
-  assert.equal(f.getElementById("sRealBand").textContent, "not measured", "control: hand-set founding");
+  assert.equal(f.getElementById("sRealBand").textContent, "the sliders' pair, not the run: not measured", "control: hand-set founding");
 });
 
 test("stale founder rings: flagged once the bee moves, cleared when it is restored", () => {

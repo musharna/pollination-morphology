@@ -11,7 +11,7 @@ scale 1.
 
   sandbox  the page default a visitor gets on arrival (free sandbox, seed 3):
            click #run, wait for #play to enable, move #scrub to its last
-           generation and wait for #sGen to read "<max> / <max>", then clip to
+           generation and wait for #sGen to read "<max> of <max>", then clip to
            the hero's two columns (.heroL verdict + heat, .heroR field) -
            not the scrubber, stats or bands below -> assets/sandbox-tile.jpg
   visit    load, wait 2.5 s, screenshot the main canvas #c
@@ -147,7 +147,7 @@ def main():
             )
             try:
                 page.wait_for_function(
-                    "(m) => document.getElementById('sGen').textContent.trim() === m + ' / ' + m",
+                    "(m) => document.getElementById('sGen').textContent.trim() === m + ' of ' + m",
                     arg=str(mx),
                     timeout=10000,
                 )
@@ -155,7 +155,7 @@ def main():
                 got = page.text_content("#sGen")
                 fail(
                     step,
-                    f"#sGen never read '{mx} / {mx}' after scrubbing (read {got!r})",
+                    f"#sGen never read '{mx} of {mx}' after scrubbing (read {got!r})",
                 )
             page.wait_for_timeout(500)
             size = save_tile(

@@ -152,6 +152,11 @@
         font-size: 12px;
         color: var(--ink-2);
       }
+      /* a tile's band on its own line under the label, so the label never
+       * runs on into it ("hybrids, this generation generations with ...") */
+      .stat .band {
+        display: block;
+      }
       .key {
         display: flex;
         gap: 18px;
@@ -166,6 +171,23 @@
         height: 9px;
         border-radius: 50%;
         margin-right: 5px;
+      }
+      /* a founder ring's swatch: the ring's colour as an outline */
+      .dot.ring {
+        box-sizing: border-box;
+        border: 2px solid;
+        background: transparent;
+      }
+      /* the body map's key: one item per kind of mark drawn */
+      .bodyLegend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 18px;
+        margin: 6px 0 0;
+        font-size: 12px;
+      }
+      .bodyLegend .dot + .dot {
+        margin-left: -2px;
       }
       #scrub {
         width: 100%;
@@ -206,10 +228,15 @@
       .linCard .note {
         margin: 0 0 6px;
       }
-      .linCard h2,
-      .linCard .note,
-      .linCard .warn {
+      .linCard > h2,
+      .linCard > .note,
+      .linCard > .warn {
         grid-column: 1 / -1;
+      }
+      /* the thumbnail's caption sits under it, in its column; the sliders'
+       * own label heads theirs (critic r2 M3) */
+      .linCard .thumbCol .note {
+        margin: 4px 0 0;
       }
       @media (max-width: 560px) {
         .linCard {
@@ -576,7 +603,7 @@
             width="1180"
             height="560"
             role="img"
-            aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold lineage 1, magenta lineage 2, white mixed), with the bee carrying pollen between them. Drag to orbit."
+            aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold lineage 1, magenta lineage 2, pale mixed), with the bee carrying pollen between them. Drag to orbit."
           ></canvas>
           <p id="fieldCaption" class="note"></p>
           <p id="fieldLive" class="visually-hidden" aria-live="polite">
@@ -584,11 +611,11 @@
           </p>
           <div class="keyRow">
             <div class="key">
-              <span><i class="dot" style="background: #e8b23a"></i>lineage 1</span>
-              <span><i class="dot" style="background: #cc6699"></i>lineage 2</span>
-              <span
-                ><i class="dot" style="background: #e8e6e1"></i>mixed ancestry</span
-              >
+              <!-- swatch colours are set at load from AncestryHeat.ancHex(0 / 0.5 / 1),
+                   the tint the field draws, so the key cannot drift from it -->
+              <span><i class="dot" id="keyL1"></i>lineage 1</span>
+              <span><i class="dot" id="keyL2"></i>lineage 2</span>
+              <span><i class="dot" id="keyMix"></i>mixed ancestry</span>
               <span
                 >drag to orbit · the pollen on the bee sits where the contact model
                 puts it</span
@@ -614,15 +641,24 @@
             aria-label="generation"
           />
           <div class="stats">
-            <div class="stat"><b id="sGen">—</b><span>generation</span></div>
+            <div class="stat">
+              <b id="sGen">—</b><span>generation</span>
+              <span class="band" id="sGenBand"></span>
+            </div>
             <div class="stat">
               <b id="sSep">—</b><span>cluster separation</span>
+              <!-- not the founders' units: sim/ibm.js twoClusterSeparation is a
+                   ratio, distance between medoids / mean within-cluster distance -->
+              <span class="band" id="sSepBand"
+                >how far apart this generation's two clusters sit, in multiples
+                of their own spread (a ratio, not the founders' distance)</span
+              >
             </div>
             <div class="stat">
               <b id="sAnc">—</b><span>ancestry variance</span>
             </div>
             <div class="stat">
-              <b id="sHyb">—</b><span>hybrid fraction</span>
+              <b id="sHyb">—</b><span>hybrids, this generation</span>
               <span class="band" id="sHybBand"></span>
             </div>
             <div class="stat">
@@ -731,31 +767,41 @@
         <div class="genes">
           <div class="linCard">
             <h2 id="h-lin1">lineage 1</h2>
-            <p class="note" id="thumbSrc1" hidden></p>
-            <p class="note warn" id="offBee1"></p>
-            <canvas
-              id="thumb1"
-              width="220"
-              height="180"
-              role="img"
-              aria-label="lineage 1's flower, drawn from its genome by the same model the field uses"
-            ></canvas>
-            <div id="genes1" role="group" aria-labelledby="h-lin1"></div>
+            <div class="thumbCol">
+              <canvas
+                id="thumb1"
+                width="220"
+                height="180"
+                role="img"
+                aria-label="lineage 1's flower, drawn from its genome by the same model the field uses"
+              ></canvas>
+              <p class="note" id="thumbCap1">lineage 1 — from the sliders</p>
+            </div>
+            <div class="sliderCol">
+              <p class="note" id="genesLab1">hand-set lineage 1 (sliders)</p>
+              <p class="note warn" id="offBee1"></p>
+              <div id="genes1" role="group" aria-labelledby="genesLab1"></div>
+            </div>
             <p class="note warn" id="touch1"></p>
           </div>
 
           <div class="linCard">
             <h2 id="h-lin2">lineage 2</h2>
-            <p class="note" id="thumbSrc2" hidden></p>
-            <p class="note warn" id="offBee2"></p>
-            <canvas
-              id="thumb2"
-              width="220"
-              height="180"
-              role="img"
-              aria-label="lineage 2's flower, drawn from its genome by the same model the field uses"
-            ></canvas>
-            <div id="genes2" role="group" aria-labelledby="h-lin2"></div>
+            <div class="thumbCol">
+              <canvas
+                id="thumb2"
+                width="220"
+                height="180"
+                role="img"
+                aria-label="lineage 2's flower, drawn from its genome by the same model the field uses"
+              ></canvas>
+              <p class="note" id="thumbCap2">lineage 2 — from the sliders</p>
+            </div>
+            <div class="sliderCol">
+              <p class="note" id="genesLab2">hand-set lineage 2 (sliders)</p>
+              <p class="note warn" id="offBee2"></p>
+              <div id="genes2" role="group" aria-labelledby="genesLab2"></div>
+            </div>
             <p class="note warn" id="touch2"></p>
           </div>
         </div>
@@ -768,6 +814,7 @@
           role="img"
           aria-label="The animal's body: position along the body left to right, around the body top to bottom, with the named regions shaded. On it: the founders (the two lineages' anther and stigma sites from the sliders, or the shown run's founding sites when it was founded at target d), and the shown generation's plants, one dot each coloured by ancestry."
         ></canvas>
+        <p class="note bodyLegend" id="bodyLegend"></p>
         <p id="bodyLive" class="visually-hidden" aria-live="polite"></p>
         <p class="note" id="bodyKey" style="margin: 6px 0 0">
           Three layers: the bee's named body regions (shaded bands); the
@@ -1532,6 +1579,39 @@
       };
       const BODY_Y = (phi, H) => 12 + ((phi + Math.PI) / TAU) * (H - 12 - 26);
       const LINEAGE_COL = ["#e8b23a", "#cc6699"];
+      const STIGMA_COL = "#8fd694";
+      /* The body map's key (critic r2 M6): drawBodyMap pushes one entry per
+       * kind of mark it drew, with the colours it drew it in, and this writes
+       * them under the canvas. One source: the draw and the key read the same
+       * constants at the same moment. `note` is a message that would not fit
+       * the canvas's title row (the overlay's, below ~620 px). */
+      function writeBodyKey(key, note) {
+        const host = $("bodyLegend");
+        host.textContent = "";
+        const add = (tag, cls, text) => {
+          const e = document.createElement(tag);
+          if (cls) e.className = cls;
+          if (text) e.textContent = text;
+          host.appendChild(e);
+          return e;
+        };
+        for (const k of key) {
+          const item = add("span", "", "");
+          if (k.ramp) item.setAttribute("data-ramp", "ancestry");
+          for (const c of k.colours) {
+            const dot = document.createElement("i");
+            dot.className = k.ring ? "dot ring" : "dot";
+            dot.setAttribute("data-colour", c);
+            if (k.ring) dot.style.borderColor = c;
+            else dot.style.background = c;
+            item.appendChild(dot);
+          }
+          const t = document.createElement("span");
+          t.textContent = k.label;
+          item.appendChild(t);
+        }
+        if (note) add("span", "warn", note);
+      }
 
       /* The shapes a run was made from, as one comparable string: for a run
        * founded at target d the sliders did not found it, so only the bee; for
@@ -1612,6 +1692,9 @@
         };
         const founders = [null, null];
         const missing = []; // a part that never touches, named in the title row
+        const key = []; // one entry per kind of mark drawn (writeBodyKey)
+        let stigmaDrawn = false;
+        let titleEnd = null; // right end of the left title-row text, measured
         for (let li = 0; li < 2; li++) {
           const f = E.toFlower(LINEAGE[li]);
           /* The same call sim/evolve.js:155-165 already makes. A distribution
@@ -1652,9 +1735,12 @@
             missing.push(`lineage ${li + 1}: ${miss} the bee`);
           }
           const col = LINEAGE_COL[li];
+          if (a.hits.length)
+            key.push({ colours: [col], label: `lineage ${li + 1}: anther contacts (faint), mean anther site (solid)` });
+          stigmaDrawn = stigmaDrawn || s.hits.length > 0;
           for (const [hits, r, fill] of [
             [a.hits, 2.2, col],
-            [s.hits, 1.8, "#8fd694"],
+            [s.hits, 1.8, STIGMA_COL],
           ]) {
             bodyC.fillStyle = fill;
             bodyC.globalAlpha = 0.35;
@@ -1678,9 +1764,12 @@
             );
           }
         }
+        if (stigmaDrawn) key.push({ colours: [STIGMA_COL], label: "stigma contacts" });
         if (missing.length) {
+          const t = missing.join(" · ");
           bodyC.fillStyle = "#d9704f";
-          bodyC.fillText(missing.join(" · "), 8, TITLE_Y);
+          bodyC.fillText(t, 8, TITLE_Y);
+          titleEnd = 8 + textW(bodyC, t);
         }
         if (fromRun) {
           /* the run's founders: foundTwoLineages chose them at target d, so
@@ -1727,19 +1816,19 @@
               `this run's founder ${li + 1} at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it` +
                 (stale ? " (on the old bee)" : ""),
             );
+            key.push({ colours: [LINEAGE_COL[li]], ring: true, label: `ring: this run's lineage ${li + 1} founder` });
           });
+          const t = stale
+            ? "dashed rings: this run's founders (on the old bee)"
+            : "rings: this run's founders (founded at target d)";
           bodyC.fillStyle = "#9aa0a8";
-          bodyC.fillText(
-            stale
-              ? "dashed rings: this run's founders (on the old bee)"
-              : "rings: this run's founders (founded at target d)",
-            8,
-            TITLE_Y,
-          );
+          bodyC.fillText(t, 8, TITLE_Y);
+          titleEnd = 8 + textW(bodyC, t);
         }
 
         let overlay = "none",
-          dots = 0;
+          dots = 0,
+          overlayNote = null;
         const G = RESULT ? GENS[frame] : null;
         if (G) {
           if (runKeyNow(RESULT.useD) === RUN_KEY) {
@@ -1753,13 +1842,27 @@
               dots++;
             });
             lines.push(`generation ${frame}: ${dots} plants drawn`);
+            if (dots)
+              key.push({
+                /* a continuous tint, ancHex(ancestry): three stops of it */
+                colours: [ancHex(0), ancHex(0.5), ancHex(1)],
+                ramp: true,
+                label: `generation ${frame}'s plants, by ancestry: lineage 1, shading through mixed, to lineage 2`,
+              });
           } else {
             overlay = OVERLAY_HIDDEN;
-            bodyC.fillStyle = "#d9704f";
-            bodyC.textAlign = "right";
-            bodyC.fillText("run overlay " + OVERLAY_HIDDEN, W - 8, TITLE_Y);
-            bodyC.textAlign = "left";
-            lines.push("run overlay " + OVERLAY_HIDDEN);
+            /* right-aligned in the title row, unless it would run into the
+             * left title text (measured; T7c re-review: they met below ~620
+             * px): then it is written in the key line under the canvas */
+            const t = "run overlay " + OVERLAY_HIDDEN;
+            if (titleEnd !== null && W - 8 - textW(bodyC, t) < titleEnd + 12) overlayNote = t;
+            else {
+              bodyC.fillStyle = "#d9704f";
+              bodyC.textAlign = "right";
+              bodyC.fillText(t, W - 8, TITLE_Y);
+              bodyC.textAlign = "left";
+            }
+            lines.push(t);
           }
         }
         /* the run's founder rings again, on top: the plants descended from
@@ -1777,7 +1880,8 @@
             bodyC.stroke();
             ringDone();
           });
-        BODY_LAYERS = { source: fromRun ? "run" : "sliders", founders, dots, overlay, foundersStale: stale };
+        BODY_LAYERS = { source: fromRun ? "run" : "sliders", founders, dots, overlay, foundersStale: stale, key, overlayNote };
+        writeBodyKey(key, overlayNote);
         $("bodyLive").textContent = lines.join(". ");
       }
 
@@ -1838,13 +1942,14 @@
         const genome = fromRun ? RESULT.founders[li] : LINEAGE[li];
         THUMB_DRAWN[li] = genome;
         const n = li + 1;
-        $("h-lin" + n).textContent = fromRun
+        /* the founder heading captions the thumbnail only; the sliders carry
+         * their own label (critic r2 M3: the heading sat above the sliders) */
+        $("thumbCap" + n).textContent = fromRun
           ? `lineage ${n} — this run's founder (founded at target d)`
-          : `lineage ${n}`;
-        const src = $("thumbSrc" + n);
-        src.textContent = fromRun ? "the sliders below did not found this run" : "";
-        if (fromRun) src.removeAttribute("hidden");
-        else src.setAttribute("hidden", "");
+          : `lineage ${n} — from the sliders`;
+        $("genesLab" + n).textContent = fromRun
+          ? `hand-set lineage ${n} (sliders) — did not found this run`
+          : `hand-set lineage ${n} (sliders)`;
         thumbEl[li].setAttribute(
           "aria-label",
           fromRun
@@ -1938,11 +2043,14 @@
        * run (this visitor's, or before one the example, founded at target d)
        * was founded at target d, the sliders did not found it: a bare "not
        * measured" beside it would read as a missing number, so it says why. */
+      /* Three separations on the page (critic r2 M2), each band says which:
+       * this one leads with "the sliders' pair, not the run". */
+      const SREAL_LEAD = "the sliders' pair, not the run: ";
       function showSepBand(d) {
         const b = separationBand(d);
         const fromD = RESULT ? RESULT.useD : $("useD").checked;
         $("sRealBand").textContent =
-          b === "not measured" && fromD ? "not measured: these sliders did not found the shown run" : b;
+          SREAL_LEAD + (b === "not measured" && fromD ? "not measured — these sliders did not found the shown run" : b);
       }
 
       function refreshSandbox(only) {
@@ -1974,6 +2082,22 @@
        * Loading a level clears the last run, so no card is left open from a
        * run made under another configuration. */
       let LEVEL = window.SandboxRun.levelOf("free");
+      /* the final offspring's labels, as #sFateBand prints them: lineage 1 at
+       * ancestry <= 0.15, lineage 2 at >= 0.85, mixed between */
+      function finalLabels(R) {
+        const fin = R.final.map((i) => (i.anc === undefined ? 0 : i.anc));
+        const lo = fin.filter((a) => a <= 0.15).length,
+          hi = fin.filter((a) => a >= 0.85).length;
+        return { lo, hi, mid: fin.length - lo - hi };
+      }
+      /* the fate word, and for "one lost" which lineage is gone (critic r2
+       * M10), read off those labels: the one with none left */
+      function fateWords(R) {
+        if (R.fate !== "one lost") return R.fate;
+        const { lo, hi } = finalLabels(R);
+        const gone = lo === 0 && hi > 0 ? 1 : hi === 0 && lo > 0 ? 2 : null;
+        return gone ? `one lost (lineage ${gone} gone)` : R.fate;
+      }
       function showWin() {
         const d = realisedSeparation();
         const st = window.SandboxRun.levelWin(LEVEL, {
@@ -1987,12 +2111,12 @@
             ? "— (the free sandbox has no win)"
             : st === "won"
               ? LEVEL.noRun
-                ? `won: realised separation ${d.toFixed(3)}, at or above ${LEVEL.target}`
+                ? `won: sliders' separation ${d.toFixed(3)}, at or above ${LEVEL.target}`
                 : "won: HELD"
               : st === "lost"
-                ? `lost: ${RESULT.fate}; only HELD wins`
+                ? `result: ${fateWords(RESULT)} — only HELD wins`
                 : LEVEL.noRun
-                  ? `not yet: realised separation ${d === null ? "—" : d.toFixed(3)}, target ${LEVEL.target}`
+                  ? `not yet: sliders' separation ${d === null ? "—" : d.toFixed(3)}, target ${LEVEL.target}`
                   : "run to play this level; only HELD wins";
         let note = LEVEL.noKnownWin || "";
         if (note && st === "lost")
@@ -2120,6 +2244,11 @@
           refreshSandbox();
         };
         $("sTarget").textContent = "reach " + LEVEL1_TARGET;
+        /* the field key, from the tint the field draws (critic r2 M1: a
+         * hard-coded white "mixed" swatch beside pale-pink fused plants) */
+        [["keyL1", 0], ["keyMix", 0.5], ["keyL2", 1]].forEach(([id, a]) => {
+          $(id).style.background = ancHex(a);
+        });
         $("useD").onchange = (e) => {
           $("d").disabled = !e.target.checked;
           showSepBand(realisedSeparation());
@@ -2609,10 +2738,7 @@
        * is the engine's (IBM.fateOf, five strings verbatim) on the FINAL
        * offspring; the page has no fate rule of its own. */
       function showResult(R) {
-        const fin = R.final.map((i) => (i.anc === undefined ? 0 : i.anc));
-        const lo = fin.filter((a) => a <= 0.15).length,
-          hi = fin.filter((a) => a >= 0.85).length,
-          mid = fin.length - lo - hi;
+        const { lo, hi, mid } = finalLabels(R);
         $("fieldCaption").textContent = R.phenology
           ? "bout not drawn: the sliced season does not log one (sim/ibm.js:1432-1438)"
           : "";
@@ -2630,7 +2756,7 @@
         const ratio =
           R.q.ratio === null ? "no generation held both" : R.q.ratio.toFixed(3);
         $("sHybBand").textContent =
-          `hybrids among the parents in ${R.q.hybGens} of ${GENS.length} generations · receipt ratio ${ratio}` +
+          `generations with any hybrid: ${R.q.hybGens} of ${GENS.length} (among the parents) · receipt ratio ${ratio}` +
           ` · "hybrids received less than the rest" below ${window.SandboxRun.CARD1_EDGE} (null edge, ${cfgLine(C.page)}, placement-mediated; grey at any other)` +
           ` · the experiment's 0.809 [0.706, 0.912] is a different statistic (both sex roles, docs/2026-08-02-hybrid-placement.md)`;
         $("sGapBand").textContent =
@@ -2673,7 +2799,9 @@
             H: HEAT_H,
             cursor: -1,
             fate: X.fate,
-            title: `example: level ${X.config.level}, seed ${X.config.seed} — press Run for yours`,
+            /* names its source (critic r2 M7): the field and the thumbnails
+             * beside it are the sliders, this is not */
+            title: `example run: level ${X.config.level}, seed ${X.config.seed} — press Run for yours`,
           });
           $("heatLive").textContent = `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own.`;
           return;
@@ -2693,14 +2821,18 @@
         frame = g;
         drawBodyMap();
         drawHeat();
-        $("sGen").textContent = `${g} / ${GENS.length - 1}`;
+        /* one count everywhere (critic r2 minor): N generations, numbered 0
+         * to N - 1, so the last reads "34 of 34" beside "35 generations" */
+        $("sGen").textContent = `${g} of ${GENS.length - 1}`;
+        $("sGenBand").textContent = `${GENS.length} generations, numbered 0–${GENS.length - 1}`;
         $("sSep").textContent = G.sep.toFixed(2);
         $("sAnc").textContent = G.ancVar.toFixed(4);
         const w = RESULT ? RESULT.fate : "—";
         const hyb =
           G.anc.filter(window.SandboxRun.isHybrid).length / G.anc.length;
-        $("sHyb").textContent =
-          hyb.toFixed(3) + (hyb > 0 ? " hybrids present" : "");
+        /* this generation's share (critic r2 M4): the band counts generations */
+        const pct = hyb * 100;
+        $("sHyb").textContent = `${Number.isInteger(pct) ? pct : pct.toFixed(1)}% of plants`;
         $("sGap").textContent =
           RESULT && RESULT.p1 && RESULT.p2
             ? I.gapOccupancy(G.places, RESULT.p1, RESULT.p2).gap.toFixed(3)
@@ -2744,6 +2876,7 @@
         $("scrub").disabled = true;
         $("play").disabled = true;
         for (const id of ["sGen", "sSep", "sAnc", "sHyb", "sGap"]) $(id).textContent = "—";
+        $("sGenBand").textContent = "";
         $("fieldLive").textContent = "No run yet. Set the inputs and press Run.";
         draw(performance.now());
         drawBodyMap();
@@ -2799,7 +2932,7 @@
             $("scrub").disabled = false;
             $("play").disabled = false;
             $("status").textContent =
-              `realised separation ${R.realised === null ? "never touches the bee" : R.realised.toFixed(3)}` +
+              `founders' separation ${R.realised === null ? "never touches the bee" : R.realised.toFixed(3)}` +
               ($("mode").value === "random" ? " · random-mating null" : "");
             const drawn = GENS.map((G) => G.places.filter(Boolean).length);
             const mis = GENS.filter(

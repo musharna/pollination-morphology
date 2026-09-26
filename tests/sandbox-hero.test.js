@@ -13,7 +13,7 @@ const fs = require("fs");
 const path = require("path");
 const { runPage } = require("../tools/sandbox-drive.js");
 
-test("a run ends on its last generation: #scrub at its max, #sGen 'max / max'", () => {
+test("a run ends on its last generation: #scrub at its max, #sGen 'max of max'", () => {
   const p = runPage({ level: 2, seed: 3 });
   assert.equal(p.error, null, p.error);
   const d = p.page.document;
@@ -22,7 +22,7 @@ test("a run ends on its last generation: #scrub at its max, #sGen 'max / max'", 
   assert.ok(max > 0, "control: the run has more than one generation");
   assert.equal(String(d.getElementById("scrub").max), String(max));
   assert.equal(d.getElementById("scrub").value, String(max));
-  assert.ok(d.getElementById("sGen").textContent.startsWith(`${max} /`),
+  assert.equal(d.getElementById("sGen").textContent, `${max} of ${max}`,
     `#sGen reads ${d.getElementById("sGen").textContent}`);
   // the tiles are the last generation's
   assert.equal(d.getElementById("sAnc").textContent, R.gens[max].ancVar.toFixed(4));
@@ -37,7 +37,7 @@ test("Play at the end replays from generation 0", () => {
   assert.equal(d.getElementById("scrub").value, String(max), "control: the run landed at the end");
   d.getElementById("play").onclick();
   assert.equal(d.getElementById("scrub").value, "0");
-  assert.ok(d.getElementById("sGen").textContent.startsWith("0 /"));
+  assert.ok(d.getElementById("sGen").textContent.startsWith("0 of "));
   d.getElementById("play").onclick(); // pause: stop the interval
 });
 

@@ -115,7 +115,7 @@ M2_RUN = """async (s) => {
     await new Promise((r) => setTimeout(r, 100));
   const band = $("sFateBand").textContent, hb = $("sHybBand").textContent;
   const st = /stalled generations: (none|\d+) of (\d+)/.exec(band);
-  const hy = /hybrids among the parents in (\d+) of (\d+) generations/.exec(hb);
+  const hy = /generations with any hybrid: (\d+) of (\d+)/.exec(hb);
   const ra = /receipt ratio (\S+)/.exec(hb);
   const cards = {};
   for (const c of ["card1", "card2", "card3", "card4", "card5", "card6"])
@@ -146,7 +146,7 @@ M2_RUN = """async (s) => {
 # REAL mouse click on column 5's centre - computed from AncestryHeat.layout on
 # the page's own model, scaled to the canvas's content box - moves the scrubber to generation 5.
 # Task 7b: a run ENDS on its last generation, so before the click #scrub reads
-# its own max and #sGen starts "<max> /" (seen failing on 97eebb6, which showed
+# its own max and #sGen reads "<max> of <max>" (seen failing on 97eebb6, which showed
 # generation 0); that is also the click's positive control, a scrubber already
 # at 5 cannot pass it (max is never 5 here).
 HEAT_INK = """(off) => {
@@ -419,7 +419,7 @@ def heat_label_checks(page, name, failures, example):
     """example=True: before #run (the example, title included), redrawn by resizes.
     example=False: after #run, redrawn by an 'input' on #scrub, then by a resize."""
     tag = "example" if example else "run"
-    need = HEAT_LABEL_NEED + (("example:",) if example else ())
+    need = HEAT_LABEL_NEED + (("example run:",) if example else ())
     notes = []
     if example:
         for vw in (700, 1400):
@@ -430,8 +430,12 @@ def heat_label_checks(page, name, failures, example):
     else:
         page.evaluate(HEAT_REC_ON)
         page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
-        notes.append("1400: " + _heat_label_assert(
-            page.evaluate(HEAT_REC_OFF), f"{name}: heat labels ({tag}) at 1400x900", need, failures))
+        m = page.evaluate(HEAT_REC_OFF)
+        notes.append("1400: " + _heat_label_assert(m, f"{name}: heat labels ({tag}) at 1400x900", need, failures))
+        # Task 7d (M7): after Run the heat's title is not the example's
+        ex = [t["text"] for t in m["rec"] if t["text"].startswith("example")]
+        if ex:
+            failures.append(f"{name}: after #run the heat still draws an example title: {ex}")
         page.evaluate(HEAT_REC_ON)
         _heat_resize(page, 700, failures, f"{name}: heat labels ({tag})")
         notes.append("700: " + _heat_label_assert(
@@ -506,6 +510,7 @@ FIELD_CAPTION_REC = """() => {
 
 def hero_load_checks(page, name, failures):
     fate, ex = page.evaluate(HERO_LOAD)
+    src_note = None
     if not fate.startswith("example:") or fate != f"example: {ex}":
         failures.append(f"{name}: #sFate on load reads {fate!r}, want 'example: {ex}'")
     fink = page.evaluate(THUMB_INK, "field")
@@ -519,7 +524,159 @@ def hero_load_checks(page, name, failures):
             pl["x"] <= t["x"] and pl["x"] + pl["w"] >= t["x"] + t["w"]
             and pl["y"] <= t["y"] - 9 and pl["y"] + pl["h"] >= t["y"] + 2):
         failures.append(f"{name}: #field caption {t['t']!r} at ({t['x']}, {t['y']}, w {t['w']:.0f}) has no dark plate under it (last rect {pl})")
-    return f"load #sFate {fate!r}, #field {fink:.1%} off-corner, caption plate {'yes' if t and pl else 'NO'}"
+    src_note = load_source_checks(page, name, failures, t["t"] if t else None)
+    src_note += ", " + body_key_check(page, f"{name}: load")
+    return f"{src_note}, load #sFate {fate!r}, #field {fink:.1%} off-corner, caption plate {'yes' if t and pl else 'NO'}"
+
+
+# Task 7d (critic r2 M1, M7). On load the field key's "mixed" swatch is the tint
+# the field draws for a fused plant: its computed background equals
+# AncestryHeat.ancHex(0.5) (BASE hard-coded #e8e6e1, a white the field never
+# draws). Positive control: the lineage 1 swatch equals ancHex(0), so a probe
+# that read every background as the same cannot pass. The load state names its
+# sources: both thumbnail captions and the field's canvas caption say "from the
+# sliders" (the heat's "example run" title is in heat_label_checks' need list).
+LOAD_KEY = """() => {
+  const H = window.AncestryHeat.ancHex;
+  const rgb = (h) => `rgb(${[1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(', ')})`;
+  const bg = (id) => { const e = document.getElementById(id); return e ? getComputedStyle(e).backgroundColor : null; };
+  const cap = (id) => { const e = document.getElementById(id); return e ? e.textContent : null; };
+  return { mix: bg('keyMix'), l1: bg('keyL1'), wantMix: rgb(H(0.5)), wantL1: rgb(H(0)),
+           caps: [cap('thumbCap1'), cap('thumbCap2')] };
+}"""
+
+
+def load_source_checks(page, name, failures, field_caption):
+    k = page.evaluate(LOAD_KEY)
+    if k["l1"] != k["wantL1"]:
+        failures.append(f"{name}: control - the lineage 1 key swatch is {k['l1']}, want ancHex(0) {k['wantL1']}")
+    if k["mix"] != k["wantMix"]:
+        failures.append(f"{name}: the field key's mixed swatch is {k['mix']}, the field draws ancHex(0.5) {k['wantMix']}")
+    for i, c in enumerate(k["caps"], 1):
+        if not c or "from the sliders" not in c:
+            failures.append(f"{name}: on load thumbnail {i}'s caption reads {c!r}, want 'from the sliders'")
+    if not field_caption or "from the sliders" not in field_caption:
+        failures.append(f"{name}: on load the field caption reads {field_caption!r}, want 'from the sliders'")
+    return f"key mixed {k['mix']} (ancHex(0.5) {k['wantMix']}), captions {k['caps']}"
+
+
+# Task 7d (critic r2 M4). After a run the hybrid tile is this generation's
+# share and says so; the band counts generations. The tile must parse as
+# "<p>% of plants" and equal the shown generation's hybrid share (recomputed
+# from Sandbox.result() with SandboxRun.isHybrid), its label must contain
+# "this generation", and the band must parse as "generations with any hybrid:
+# k of N" with N the run's generation count. Positive control: the run has
+# generations (N > 0), so an empty result cannot pass.
+HYB_TILE = """() => {
+  const $ = (id) => document.getElementById(id);
+  const R = window.Sandbox.result();
+  const g = +$('scrub').value;
+  const G = R ? R.gens[g] : null;
+  return { tile: $('sHyb').textContent, label: $('sHyb').nextElementSibling.textContent,
+           band: $('sHybBand').textContent, n: R ? R.gens.length : 0,
+           share: G ? 100 * G.anc.filter(window.SandboxRun.isHybrid).length / G.anc.length : null };
+}"""
+
+
+def hyb_tile_check(page, at):
+    h = page.evaluate(HYB_TILE)
+    m = re.match(r"^(\d+(?:\.\d)?)% of plants$", h["tile"])
+    b = re.match(r"^generations with any hybrid: (\d+) of (\d+)", h["band"])
+    if not h["n"]:
+        failures.append(f"{at}: control - no run to read the hybrid tile of")
+    if not m or h["share"] is None or abs(float(m.group(1)) - h["share"]) > 0.05:
+        failures.append(f"{at}: #sHyb reads {h['tile']!r}, this generation's hybrid share is {h['share']}")
+    if "this generation" not in h["label"]:
+        failures.append(f"{at}: the hybrid tile's label reads {h['label']!r}, want 'this generation'")
+    if not b or int(b.group(2)) != h["n"] or int(b.group(1)) > h["n"]:
+        failures.append(f"{at}: #sHybBand reads {h['band'][:60]!r}, want 'generations with any hybrid: k of {h['n']}'")
+    return f"hyb tile {h['tile']!r} / band {h['band'][:40]!r}"
+
+
+# Task 7d (critic r2 M6). The body map has a key: every colour the map fills a
+# mark with, and every ring colour it strokes, has a swatch in #bodyLegend (the
+# key is written from the same constants the draw uses). The plants are a
+# continuous tint (ancHex of each plant's ancestry): when the key carries the
+# ancestry ramp entry, a fill equal to ancHex(a) for a plant of the shown
+# generation is covered by it, and only then. fill()/stroke() on
+# #bodyMap are recorded with the fillStyle/strokeStyle current at the call
+# around one redraw (Sandbox.setBee with the bee's own values - it changes
+# nothing, so a shown run stays shown); the ring halo (#101216, the canvas's
+# background) is not a mark. The key must be displayed (height > 0). Positive
+# control: at least one fill recorded. Seen failing on BASE (no key at all).
+BODY_KEY = """() => {
+  const c = document.getElementById('bodyMap');
+  const P = CanvasRenderingContext2D.prototype, f0 = P.fill, s0 = P.stroke;
+  const fill = new Set(), stroke = new Set();
+  P.fill = function () { if (this.canvas === c) fill.add(String(this.fillStyle)); return f0.apply(this, arguments); };
+  P.stroke = function () { if (this.canvas === c) stroke.add(String(this.strokeStyle)); return s0.apply(this, arguments); };
+  try { window.Sandbox.setBee(window.Sandbox.bee()); } finally { P.fill = f0; P.stroke = s0; }
+  const L = document.getElementById('bodyLegend');
+  const dots = L ? Array.from(L.querySelectorAll('i.dot')) : [];
+  const R = window.Sandbox.result();
+  const G = R ? R.gens[+document.getElementById('scrub').value] : null;
+  const ramp = !!(L && L.querySelector('[data-ramp="ancestry"]')) && G
+    ? [...new Set(G.anc.map(window.AncestryHeat.ancHex))] : [];
+  return { fill: [...fill], stroke: [...stroke].filter((s) => s !== '#101216'),
+           key: dots.filter((d) => !d.classList.contains('ring')).map((d) => d.getAttribute('data-colour')),
+           rings: dots.filter((d) => d.classList.contains('ring')).map((d) => d.getAttribute('data-colour')),
+           ramp, shown: !!L && L.getBoundingClientRect().height > 0 };
+}"""
+
+
+def body_key_check(page, at):
+    k = page.evaluate(BODY_KEY)
+    if not k["fill"]:
+        failures.append(f"{at}: control - no filled mark recorded on #bodyMap")
+    miss = [c for c in k["fill"] if c not in k["key"] and c not in k["ramp"]]
+    miss_r = [c for c in k["stroke"] if c not in k["rings"]]
+    if miss or miss_r or not k["shown"]:
+        failures.append(f"{at}: body-map key {k['key']} rings {k['rings']} (shown {k['shown']}) lacks fills {miss}, rings {miss_r}")
+    return f"body key {len(k['key'])}+{len(k['rings'])} swatches cover {len(k['fill'])} fills, {len(k['stroke'])} rings"
+
+
+# Task 7d (T7c re-review). The body map's title row carries a left text (the
+# missing-part note, or the founder-rings title) and, once the bee moves after
+# a run, "run overlay hidden: ..." right-aligned; below ~620 px they met. At a
+# 600 px viewport the bee is moved (reach + 0.1, which hides the overlay) with
+# the Task 5b fillText recorder on #bodyMap; no two recorded label boxes may
+# intersect. Positive controls: the left title text was recorded, and the
+# overlay message is on the page - on the canvas or in #bodyLegend. Seen
+# failing on BASE (both drawn in the title row, overlapping). Bee and viewport
+# are restored after.
+def body_title_overlap(page, at, left):
+    vp = page.viewport_size or {"width": 1280, "height": 720}
+    w0 = page.evaluate("() => document.getElementById('bodyMap').clientWidth")
+    page.set_viewport_size({"width": 600, "height": 900})
+    try:
+        page.wait_for_function("(w0) => document.getElementById('bodyMap').clientWidth !== w0", arg=w0, timeout=3000)
+    except Exception:  # noqa: BLE001
+        failures.append(f"{at}: control - #bodyMap clientWidth stayed {w0} at 600x900 (no resize)")
+    page.wait_for_timeout(300)
+    bee = page.evaluate("() => window.Sandbox.bee()")
+    page.evaluate(BODY_REC_ON)
+    page.evaluate("(b) => window.Sandbox.setBee({ reach: b.reach + 0.1 })", bee)
+    m = page.evaluate(BODY_REC_OFF)
+    legend = page.evaluate("() => (document.getElementById('bodyLegend') || {}).textContent || ''")
+    page.evaluate("(b) => window.Sandbox.setBee(b)", bee)
+    page.set_viewport_size(vp)
+    page.wait_for_timeout(300)
+    got = [t["text"] for t in m["rec"]]
+    if not any(left in t for t in got):
+        failures.append(f"{at}: control - no {left!r} title recorded (got {got[:6]})")
+    over = "run overlay hidden"
+    if not (any(t.startswith(over) for t in got) or over in legend):
+        failures.append(f"{at}: control - the overlay message is neither on the canvas nor in the key")
+    box = []
+    for t in m["rec"]:
+        x0 = t["x"] - t["w"] if t["align"] == "right" else t["x"] - t["w"] / 2 if t["align"] == "center" else t["x"]
+        box.append((x0, t["y"] - 10, x0 + t["w"], t["y"] + 3, t["text"]))
+    for i, a in enumerate(box):
+        for b in box[i + 1:]:
+            if a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]:
+                failures.append(f"{at}: at 600 px {a[4]!r} [{a[0]:.0f}, {a[2]:.0f}] overlaps {b[4]!r} [{b[0]:.0f}, {b[2]:.0f}]")
+    where = "canvas" if any(t.startswith(over) for t in got) else "key line"
+    return f"600px title row W {m['W']}: {len(box)} labels, overlay in {where}"
 
 
 def heat_load_checks(page, name, failures):
@@ -552,9 +709,9 @@ def heat_checks(page, name, failures, ink_empty, ink_load):
     before, mx, gen = page.evaluate(
         "() => ['value', 'max'].map((k) => document.getElementById('scrub')[k])"
         ".concat(document.getElementById('sGen').textContent)")
-    if before != mx or before == "5" or not gen.startswith(f"{mx} /"):
+    if before != mx or before == "5" or gen != f"{mx} of {mx}":
         failures.append(f"{name}: after #run #scrub read {before!r} of max {mx!r}, #sGen {gen!r} "
-                        f"(want the last generation, '{mx} / ...', and not 5)")
+                        f"(want the last generation, '{mx} of {mx}', and not 5)")
     pt = page.evaluate(HEAT_COL5)
     if pt is None:
         failures.append(f"{name}: Sandbox.heat() is null after #run - nothing to click")
@@ -564,9 +721,9 @@ def heat_checks(page, name, failures, ink_empty, ink_load):
     after = page.evaluate(
         "() => [document.getElementById('scrub').value, document.getElementById('sGen').textContent]"
     )
-    if after[0] != "5" or not after[1].startswith("5 /"):
+    if after[0] != "5" or after[1] != f"5 of {mx}":
         failures.append(
-            f"{name}: clicked #heat column 5 - #scrub {after[0]!r}, #sGen {after[1]!r} (want 5, '5 / ...')"
+            f"{name}: clicked #heat column 5 - #scrub {after[0]!r}, #sGen {after[1]!r} (want 5, '5 of {mx}')"
         )
     return f"heat opaque baseline {ink_empty}, load {ink_load}, run {ink}, scrub {before}->{after[0]} on column-5 click"
 
@@ -607,6 +764,8 @@ def m2_checks(browser, name):
     notes.append(f"stall {r['fate']} {r['stalled']}/35")
     sweep_state(page, name, "stall", errs, True)
     sweep_notes["stall"] += ", " + body_marks_inside(page, f"{name}: sweep stall")
+    sweep_notes["stall"] += ", " + body_key_check(page, f"{name}: sweep stall")
+    sweep_notes["stall"] += ", " + body_title_overlap(page, f"{name}: sweep stall", "lineage 1: stigma never touches")
     r = run({**LEVEL, "lineages": 0.80})
     if r["fate"] != "FUSED" or r["stalled"] != 0:
         failures.append(f"{name}: M2 stall control antherT 0.80 read {r}")
@@ -1057,6 +1216,9 @@ def sweep_checks(browser, name):
         sweep_state(page, name, f"L{lv}", errs, lv != 1)
         if lv == 2:
             sweep_notes["L2"] += ", " + thumb_founder_checks(page, f"{name}: sweep L2")
+            sweep_notes["L2"] += ", " + hyb_tile_check(page, f"{name}: sweep L2")
+            sweep_notes["L2"] += ", " + body_key_check(page, f"{name}: sweep L2")
+            sweep_notes["L2"] += ", " + body_title_overlap(page, f"{name}: sweep L2", "rings:")
         if lv == 3:
             sweep_notes["L3"] += ", " + body_label_checks(page, f"{name}: sweep L3")
             # the critic's 800 px shot (narrow-l3-full.png): level 3 seed 6, whose
@@ -1232,6 +1394,8 @@ with sync_playwright() as p:
                 heat_note = heat_checks(page, name, failures, heat_base, heat_load)
                 heat_note += ", " + heat_label_checks(page, name, failures, False)
                 view_note = run_view_checks(page, name, failures)
+                view_note += ", " + hyb_tile_check(page, f"{name}: after #run")
+                view_note += ", " + body_key_check(page, f"{name}: after #run")
             n3, changed3, _ = (0, 0, 0)
             if completed:
                 page.click("#play")

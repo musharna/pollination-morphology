@@ -112,11 +112,9 @@ function runPage(settings) {
   const fateBand = text("sFateBand") || "";
   const hybBand = text("sHybBand") || "";
   const stalled = /stalled generations: (none|\d+) of (\d+)/.exec(fateBand);
-  const hyb = /hybrids among the parents in (\d+) of (\d+) generations/.exec(
-    hybBand,
-  );
+  const hyb = /generations with any hybrid: (\d+) of (\d+)/.exec(hybBand);
   const ratio = /receipt ratio (\S+)/.exec(hybBand);
-  const realised = /realised separation (\S+)/.exec(text("status") || "");
+  const realised = /founders' separation (\S+)/.exec(text("status") || "");
   return {
     status: text("status"),
     error: doc.getElementById("status").getAttribute("data-error"),

@@ -343,5 +343,5 @@ test("a flower whose anthers never touch the bee says so, and the separation is 
     "—",
     "a realised separation was printed with only one lineage on the bee",
   );
-  assert.equal(doc.getElementById("sRealBand").textContent, "not measured");
+  assert.equal(doc.getElementById("sRealBand").textContent, "the sliders' pair, not the run: not measured");
 });

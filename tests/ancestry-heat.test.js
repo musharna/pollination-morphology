@@ -432,3 +432,27 @@ test("7b fix 1: no filled rect covers the variance strip; the HELD key is below 
     assert.ok(sw, `W=${W}: no 18 px swatch before the HELD key`);
   }
 });
+
+/* Task 7d (visual critic r2, M5): the final variance dot is keyed on the
+ * run's fate, not on the line. A STALLED run keeps its variance high (the
+ * founders are handed back each generation), so a line-keyed dot painted it
+ * the HELD green. Seen failing on e0ac728. Controls: HELD still gets green,
+ * and no fate (the example state) gets the neutral ink. */
+test("7d: the final variance dot's colour comes from the fate, not the HELD line", () => {
+  const frames = Array.from({ length: 12 }, () => frame([0, 0, 1, 1]));
+  const m = H.heatModel(frames, [0, 0, 1, 1].map(ind), frames[0].ancVar);
+  assert.ok(m.cols.at(-1).ancVar > m.heldLine, "control - the final variance is above the HELD line");
+  const dotFill = (fate) => {
+    const r = recordAll();
+    H.drawHeat(r.ctx, m, { W: 760, H: 420, cursor: 0, fate });
+    const lay = H.layout(m, 760, 420);
+    const x = lay.xOf(m.cols.length - 1) + lay.colW / 2;
+    const arcs = r.calls.filter((c) => c.k === "arc" && c.a[0] === x && c.a[2] === 4);
+    assert.equal(arcs.length, 1, `fate ${fate}: one final dot`);
+    return arcs[0].fill;
+  };
+  assert.equal(dotFill("HELD"), "#6fbf73");
+  for (const f of ["STALLED", "one lost", "FUSED", "EXTINCT"])
+    assert.equal(dotFill(f), "#d9704f", `fate ${f}: dot must not be the HELD green`);
+  assert.equal(dotFill(undefined), "#e8e6e1");
+});
