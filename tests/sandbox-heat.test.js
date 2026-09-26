@@ -40,6 +40,7 @@ test("stall fixture: 35 stalled columns and STALLED; control antherT 0.80 has no
 
 test("loading a level clears the heat; the run before it had one", () => {
   const p = runPage({ level: 2, seed: 3, thenLevel: 3 });
+  assert.equal(p.error, null, p.error); // a thrown run must not pass as "cleared"
   assert.equal(p.page.Sandbox.heat(), null);
   assert.ok(runPage({ level: 2, seed: 3 }).page.Sandbox.heat()); // control
 });

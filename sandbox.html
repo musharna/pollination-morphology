@@ -2086,8 +2086,10 @@
       /* click a column to show that generation */
       $("heat").onpointerdown = (e) => {
         if (!HEAT || !GENS.length) return;
-        const r = $("heat").getBoundingClientRect();
-        const x = ((e.clientX - r.left) / r.width) * HEAT_W;
+        /* the content box: the canvas's 1px CSS border is not drawing surface */
+        const cvH = $("heat"),
+          r = cvH.getBoundingClientRect();
+        const x = ((e.clientX - r.left - cvH.clientLeft) / cvH.clientWidth) * HEAT_W;
         const i = window.AncestryHeat.colAt(HEAT, x, HEAT_W, HEAT_H);
         if (i < 0) return;
         stopPlay();

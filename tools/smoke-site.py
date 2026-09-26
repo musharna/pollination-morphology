@@ -133,21 +133,23 @@ M2_RUN = """async (s) => {
 
 
 # ------------------------------------------------------------ the heatmap (#heat)
-# After #run: the heat canvas carries the run (> 8 distinct colours), and a REAL
-# mouse click on column 5's centre - computed from AncestryHeat.layout on the
-# page's own model, scaled to the canvas's CSS box - moves the scrubber to
-# generation 5. Positive control: #scrub reads 0 before the click, so a
-# scrubber already at 5 cannot pass it.
-HEAT_COLOURS = """() => {
+# After #run: the heat grid carries the run - its OPAQUE pixel count (alpha 255,
+# inside the grid rows from AncestryHeat.layout) clearly exceeds the same count
+# on the empty placeholder measured before #run. (A distinct-colour count cannot
+# fail here: anti-aliased placeholder text alone saturates it on a transparent
+# canvas.) Then a REAL mouse click on column 5's centre - computed from
+# AncestryHeat.layout on the page's own model, scaled to the canvas's content
+# box - moves the scrubber to generation 5. Positive control: #scrub reads 0
+# before the click, so a scrubber already at 5 cannot pass it.
+HEAT_INK = """() => {
   const c = document.getElementById('heat');
   if (!c) return -1;
-  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-  const seen = new Set();
-  for (let i = 0; i + 3 < d.length; i += 4 * 7) {
-    seen.add((d[i] << 24) | (d[i + 1] << 16) | (d[i + 2] << 8) | d[i + 3]);
-    if (seen.size > 64) break;
-  }
-  return seen.size;
+  const lay = window.AncestryHeat.layout({ cols: [{ final: false }] }, 760, 420);
+  const x0 = Math.round(lay.xOf(0)), y0 = Math.round(lay.heatTop), y1 = Math.round(lay.heatBot);
+  const d = c.getContext('2d').getImageData(x0, y0, 760 - x0, y1 - y0).data;
+  let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] === 255) n++;
+  return n;
 }"""
 
 HEAT_COL5 = """() => {
@@ -157,22 +159,28 @@ HEAT_COL5 = """() => {
   if (!H) return null;
   const lay = window.AncestryHeat.layout(H, 760, 420);
   const r = c.getBoundingClientRect();
-  const k = r.width / 760;
-  return { x: r.left + (lay.xOf(5) + lay.colW / 2) * k, y: r.top + r.height / 2 };
+  const k = c.clientWidth / 760;
+  return {
+    x: r.left + c.clientLeft + (lay.xOf(5) + lay.colW / 2) * k,
+    y: r.top + c.clientTop + c.clientHeight / 2,
+  };
 }"""
 
 
-def heat_checks(page, name, failures):
-    ncol = page.evaluate(HEAT_COLOURS)
-    if ncol <= 8:
-        failures.append(f"{name}: #heat carries {ncol} distinct colours after #run (need > 8)")
+def heat_checks(page, name, failures, ink_empty):
+    ink = page.evaluate(HEAT_INK)
+    if ink_empty < 0 or ink <= 5 * ink_empty:
+        failures.append(
+            f"{name}: #heat grid has {ink} opaque pixels after #run vs {ink_empty} on the "
+            f"empty placeholder (need > 5x)"
+        )
     before = page.evaluate("() => document.getElementById('scrub').value")
     if before != "0":
         failures.append(f"{name}: #scrub read {before!r} before the heat click (control expects '0')")
     pt = page.evaluate(HEAT_COL5)
     if pt is None:
         failures.append(f"{name}: Sandbox.heat() is null after #run - nothing to click")
-        return f"heat {ncol} colours, no model"
+        return f"heat opaque {ink_empty}->{ink}, no model"
     page.mouse.click(pt["x"], pt["y"])
     page.wait_for_timeout(300)
     after = page.evaluate(
@@ -182,7 +190,7 @@ def heat_checks(page, name, failures):
         failures.append(
             f"{name}: clicked #heat column 5 - #scrub {after[0]!r}, #sGen {after[1]!r} (want 5, '5 / ...')"
         )
-    return f"heat {ncol} colours, scrub {before}->{after[0]} on column-5 click"
+    return f"heat opaque {ink_empty}->{ink}, scrub {before}->{after[0]} on column-5 click"
 
 
 def m2_checks(browser, name):
@@ -550,6 +558,7 @@ with sync_playwright() as p:
                 )
 
             pre = page.evaluate(SHOT)
+            heat_empty = page.evaluate(HEAT_INK)
             page.click("#run")
             try:
                 page.wait_for_selector("#play:not([disabled])", timeout=60000)
@@ -563,7 +572,7 @@ with sync_playwright() as p:
                 failures.append(f"{name}: #run completed but the canvas never changed - nothing was drawn")
             heat_note = "heat not checked (run incomplete)"
             if completed:
-                heat_note = heat_checks(page, name, failures)
+                heat_note = heat_checks(page, name, failures, heat_empty)
             n3, changed3, _ = (0, 0, 0)
             if completed:
                 page.click("#play")
