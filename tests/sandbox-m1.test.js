@@ -318,7 +318,9 @@ test("the page's own script still parses and the loop is not inline", () => {
  * nothing, and the realised separation must go to "not measured" rather than
  * to a number computed from one lineage. Configuration found by search, then
  * driven through the page's own sliders. */
-test("a flower that never touches the bee says so, and the separation is not measured", () => {
+/* Task 7c fix: the sentence is by part. This configuration's stigma touches
+ * (placementDistribution hits > 0) and its anthers never do, so it cannot found. */
+test("a flower whose anthers never touch the bee says so, and the separation is not measured", () => {
   const { document: doc } = load();
   const set = (id, v) => setSlider(doc, id, v);
   set("reach", 0.4);
@@ -328,8 +330,8 @@ test("a flower that never touches the bee says so, and the separation is not mea
 
   assert.equal(
     doc.getElementById("touch2").textContent,
-    "this flower never touches the bee",
-    "the panel does not report a flower that misses the animal entirely",
+    "this flower's anthers never touch the bee: it cannot found",
+    "the panel does not report a flower whose anthers miss the animal",
   );
   assert.equal(
     antherOf(doc, 2),

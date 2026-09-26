@@ -1519,7 +1519,17 @@
       }
 
       /* ------------------------------------------------------ the body map */
-      const BODY_X = (s, W) => 46 + ((s + 0.08) / 1.16) * (W - 46 - 12);
+      /* ⚠️ The along-body axis starts at the head's forward cap, not at -0.08:
+       * a contact on the cap reports s = -r0 * ahead / bodyLen, down to
+       * -r0 / bodyLen (sim/placement.js:311-316; -0.171 at the default bee,
+       * -0.30 at body length 1). A fixed -0.08 put every cap contact left of
+       * the canvas: the stall genome's anther sites (s = -0.158) and its whole
+       * population were drawn off the plot. */
+      const bodySMin = () => -bee.regions[0].r0 / bee.bodyLen - 0.02;
+      const BODY_X = (s, W) => {
+        const s0 = bodySMin();
+        return 46 + ((s - s0) / (1.08 - s0)) * (W - 46 - 12);
+      };
       const BODY_Y = (phi, H) => 12 + ((phi + Math.PI) / TAU) * (H - 12 - 26);
       const LINEAGE_COL = ["#e8b23a", "#cc6699"];
 
@@ -1563,19 +1573,25 @@
         const T = 26,
           B = 28,
           TITLE_Y = 17;
+        /* RING: a founder ring's reach, radius 10 + half its 5 px halo stroke,
+         * rounded up: the plot's y-range is inset by it so a ring at phi = -pi
+         * or +pi stays out of the title row and off the region labels */
+        const RING = 13;
         const X = (s) => BODY_X(s, W),
-          Y = (phi) => T + ((phi + Math.PI) / TAU) * (H - T - B);
+          Y = (phi) => T + RING + ((phi + Math.PI) / TAU) * (H - T - B - 2 * RING);
         bodyC.clearRect(0, 0, W, H);
         bodyC.font = "12px system-ui";
         bodyC.textAlign = "left";
         bee.regions.forEach((r, i) => {
           bodyC.fillStyle =
             i % 2 ? "rgba(255,255,255,0.030)" : "rgba(255,255,255,0.014)";
-          bodyC.fillRect(X(r.s0), T, X(r.s1) - X(r.s0), H - T - B);
-          const lab = regionLabel(bodyC, r.name, X(r.s1) - X(r.s0) - 6);
+          /* the first region's band takes in the forward cap ahead of it */
+          const x0 = i === 0 ? X(bodySMin()) : X(r.s0);
+          bodyC.fillRect(x0, T, X(r.s1) - x0, H - T - B);
+          const lab = regionLabel(bodyC, r.name, X(r.s1) - x0 - 6);
           if (!lab) return;
           bodyC.fillStyle = "#6a7078";
-          bodyC.fillText(lab, X(r.s0) + 4, H - B + 17);
+          bodyC.fillText(lab, x0 + 4, H - B + 17);
         });
 
         const opts = sandboxOpts();
@@ -1595,6 +1611,7 @@
           bodyC.globalAlpha = 1;
         };
         const founders = [null, null];
+        const missing = []; // a part that never touches, named in the title row
         for (let li = 0; li < 2; li++) {
           const f = E.toFlower(LINEAGE[li]);
           /* The same call sim/evolve.js:155-165 already makes. A distribution
@@ -1610,14 +1627,29 @@
             seed: 1001,
             part: "stigma",
           });
-          const touches = a.hits.length > 0 && s.hits.length > 0;
-          $("touch" + (li + 1)).textContent = touches
-            ? ""
-            : "this flower never touches the bee";
+          /* by part: the founding needs the anther (placeOf is anther-only),
+           * pollen receipt needs the stigma. The stall genome's anther touches
+           * and its stigma never does: it founds, and "never touches" was false. */
+          const onA = a.hits.length > 0,
+            onS = s.hits.length > 0;
+          $("touch" + (li + 1)).textContent =
+            onA && onS
+              ? ""
+              : onA
+                ? "this flower's stigma never touches the bee: it can shed pollen but never receive any"
+                : onS
+                  ? "this flower's anthers never touch the bee: it cannot found"
+                  : "this flower never touches the bee";
           if (fromRun) continue; // the founders layer is the run's, below
-          if (!touches) {
+          if (!onA && !onS) {
             lines.push(`lineage ${li + 1} never touches the bee`);
+            missing.push(`lineage ${li + 1} never touches the bee`);
             continue;
+          }
+          if (!onA || !onS) {
+            const miss = onA ? "stigma never touches" : "anthers never touch";
+            lines.push(`lineage ${li + 1}'s ${miss} the bee`);
+            missing.push(`lineage ${li + 1}: ${miss} the bee`);
           }
           const col = LINEAGE_COL[li];
           for (const [hits, r, fill] of [
@@ -1645,6 +1677,10 @@
               `lineage ${li + 1} anther at ${p.s.toFixed(3)} along the body, ${p.phi.toFixed(3)} around it`,
             );
           }
+        }
+        if (missing.length) {
+          bodyC.fillStyle = "#d9704f";
+          bodyC.fillText(missing.join(" · "), 8, TITLE_Y);
         }
         if (fromRun) {
           /* the run's founders: foundTwoLineages chose them at target d, so

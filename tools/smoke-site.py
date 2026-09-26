@@ -606,6 +606,7 @@ def m2_checks(browser, name):
         failures.append(f"{name}: M2 stall fixture read {r}")
     notes.append(f"stall {r['fate']} {r['stalled']}/35")
     sweep_state(page, name, "stall", errs, True)
+    sweep_notes["stall"] += ", " + body_marks_inside(page, f"{name}: sweep stall")
     r = run({**LEVEL, "lineages": 0.80})
     if r["fate"] != "FUSED" or r["stalled"] != 0:
         failures.append(f"{name}: M2 stall control antherT 0.80 read {r}")
@@ -958,6 +959,71 @@ def _body_label_assert(m, at, failures):
     return f"{W}x{H} {len(box)} labels"
 
 
+# Task 7c fix round 1 (M1): no founder ring enters the title row [0, T]. The run's
+# founders are moved to the plot's top and bottom edges (phi = -pi on founder 1,
+# +pi on founder 2, restored after) and the body map redrawn; every ring arc
+# (radius >= 9: the 9 px ring and the 10 px halo; dots are <= 6) is recorded with
+# its lineWidth, and its box top y - r - lineWidth / 2 must be >= T. Positive
+# control: at least four ring arcs recorded (two per founder).
+BODY_TITLE_ROW = 26  # sandbox.html drawBodyMap's T
+RING_REC_ON = """() => {
+  const c = document.getElementById('bodyMap');
+  const P = CanvasRenderingContext2D.prototype;
+  const R = (window.__ringRec = { rec: [], arc: P.arc, clearRect: P.clearRect });
+  P.clearRect = function () {
+    if (this.canvas === c) R.rec = [];
+    return R.clearRect.apply(this, arguments);
+  };
+  P.arc = function (x, y, r) {
+    if (this.canvas === c) R.rec.push({ x, y, r, lw: this.lineWidth });
+    return R.arc.apply(this, arguments);
+  };
+}"""
+RING_REC_OFF = """() => {
+  const P = CanvasRenderingContext2D.prototype, R = window.__ringRec;
+  P.arc = R.arc;
+  P.clearRect = R.clearRect;
+  delete window.__ringRec;
+  return R.rec;
+}"""
+
+
+def ring_title_check(page, at):
+    was = page.evaluate("() => { const R = window.Sandbox.result(); return [R.p1.phi, R.p2.phi]; }")
+    page.evaluate("() => { const R = window.Sandbox.result(); R.p1.phi = -Math.PI; R.p2.phi = Math.PI; }")
+    page.evaluate(RING_REC_ON)
+    page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+    rec = [a for a in page.evaluate(RING_REC_OFF) if a["r"] >= 9]
+    page.evaluate("(w) => { const R = window.Sandbox.result(); R.p1.phi = w[0]; R.p2.phi = w[1]; }", was)
+    page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+    if len(rec) < 4:
+        failures.append(f"{at}: control - {len(rec)} ring arcs recorded (need >= 4)")
+    top = min((a["y"] - a["r"] - a["lw"] / 2 for a in rec), default=None)
+    for a in rec:
+        if a["y"] - a["r"] - a["lw"] / 2 < BODY_TITLE_ROW:
+            failures.append(f"{at}: ring at y {a['y']:.1f} r {a['r']} lw {a['lw']} enters the title row [0, {BODY_TITLE_ROW}]")
+    return f"{len(rec)} rings, top {top if top is None else round(top, 1)} vs title row {BODY_TITLE_ROW}"
+
+
+# Task 7c fix round 1: every mark on the body map is drawn ON the canvas. The
+# stall genome's anther sites sit on the head's forward cap (s = -0.158); a fixed
+# -0.08 left edge put them and the whole population off the plot while the live
+# mirror said "24 plants drawn". Every arc on one redraw (#scrub input) is
+# recorded; each centre must lie in [0, W] x [0, H]. Positive control: at least
+# one arc (the stall state draws two anther clouds, two sites and the plants).
+def body_marks_inside(page, at):
+    page.evaluate(RING_REC_ON)
+    page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+    rec = page.evaluate(RING_REC_OFF)
+    f = page.evaluate("() => document.getElementById('bodyMap')._fit")
+    out = [a for a in rec if not (0 <= a["x"] <= f["w"] and 0 <= a["y"] <= f["h"])]
+    if not rec:
+        failures.append(f"{at}: control - no arcs recorded on #bodyMap")
+    if out:
+        failures.append(f"{at}: {len(out)} of {len(rec)} body-map marks off the canvas, e.g. {out[0]}")
+    return f"body marks {len(rec) - len(out)}/{len(rec)} on canvas"
+
+
 def body_label_checks(page, at):
     notes = []
     page.evaluate(BODY_REC_ON)
@@ -999,6 +1065,7 @@ def sweep_checks(browser, name):
             if r6["error"]:
                 failures.append(f"{name}: sweep L3 seed 6 run errored: {r6['error']}")
             sweep_notes["L3"] += ", seed 6 " + body_label_checks(page, f"{name}: sweep L3 seed 6")
+            sweep_notes["L3"] += ", edge " + ring_title_check(page, f"{name}: sweep L3 edge rings")
     page.close()
     return "sweep " + "; ".join(sweep_notes.get(t, f"{t} NOT MEASURED") for t in SWEEP_ORDER)
 

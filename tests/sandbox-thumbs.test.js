@@ -73,10 +73,12 @@ test("target-d run, then a bee change: back to the sliders; restoring the bee: t
 
 test("#sTarget shows on level 1 only; #sReal names the sliders", () => {
   const one = runPage({ level: 1, noRun: true }).page.document;
-  assert.equal(one.getElementById("sTarget").hasAttribute("hidden"), false, "level 1 hides its own target");
+  /* the TILE carries the hidden attribute: `.stat b { display: block }`
+   * overrides [hidden] on #sTarget itself, so only the tile's hides anything */
+  assert.equal(one.getElementById("sTargetTile").hasAttribute("hidden"), false, "level 1's target tile is hidden on level 1");
   for (const lv of [2, "free"]) {
     const d = runPage({ level: lv, noRun: true }).page.document;
-    assert.equal(d.getElementById("sTarget").hasAttribute("hidden"), true, `level ${lv} shows level 1's target`);
+    assert.equal(d.getElementById("sTargetTile").hasAttribute("hidden"), true, `level 1's target tile is not hidden on level ${lv}`);
   }
   const html = require("fs").readFileSync(require("path").join(__dirname, "..", "sandbox.html"), "utf8");
   assert.match(html, /id="sReal">—<\/b><span>sliders' separation \(hand-set\)<\/span>/);
@@ -135,4 +137,26 @@ test("stall fixture: the off-bee warning reads once per card; each slider carrie
   /* control: at load no bound is off the bee, so no card warning */
   const q = runPage({ noRun: true }).page.document;
   assert.equal(q.getElementById("offBee1").textContent, "");
+});
+
+/* Task 7c fix round 1 (I1): the stall genome's anther touches the bee (it
+ * founds) and its stigma never does. The card names the stigma, and the body
+ * map draws the anther's contact rather than blanking. Seen failing on c36f93c:
+ * "this flower never touches the bee", no anther site drawn. */
+test("stall genome: the card names the stigma; the body map shows the anther's contact", () => {
+  const E = require("../sim/evolve.js");
+  const g = { ...E.randomGenome(E.makeRng(4)), antherT: 0.825 };
+  const { page } = runPage({ seed: 1, n: 30, gens: 35, siteN: 160, useD: false, noRun: true, lineages: [g, { ...g }] });
+  const doc = page.document;
+  for (const li of [1, 2]) {
+    assert.equal(
+      doc.getElementById("touch" + li).textContent,
+      "this flower's stigma never touches the bee: it can shed pollen but never receive any",
+    );
+    assert.match(doc.getElementById("bodyLive").textContent, new RegExp(`lineage ${li} anther at -?[\\d.]+ along the body`));
+    assert.match(doc.getElementById("bodyLive").textContent, new RegExp(`lineage ${li}'s stigma never touches the bee`));
+  }
+  assert.ok(page.Sandbox.bodyLayers().founders.every(Boolean), "the anther founding sites are not drawn");
+  /* control: at load both parts touch, so no sentence */
+  assert.equal(runPage({ noRun: true }).page.document.getElementById("touch1").textContent, "");
 });
