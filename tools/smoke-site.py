@@ -181,6 +181,32 @@ HEAT_COL5 = """() => {
 HEAT_STATE = """() => [document.getElementById('heatLive').textContent,
   window.Sandbox.heat() === null]"""
 
+# First screen at 1400x900, on load, before any scroll: the run controls, the
+# verdict and both views are above the fold, and the Advanced drawer is shut.
+# Positive control: #selfcheck (the page's last element) is measured BELOW the
+# fold, so a probe that read every top as 0 cannot pass.
+FIRST_SCREEN = """() => {
+  const top = (id) => { const e = document.getElementById(id);
+    return e ? Math.round(e.getBoundingClientRect().top) : null; };
+  const adv = document.getElementById('advanced');
+  return { tops: Object.fromEntries(['run', 'level', 'sFate', 'heat', 'field', 'selfcheck']
+             .map((id) => [id, top(id)])),
+           advOpen: adv ? adv.open : null, scrollY: window.scrollY };
+}"""
+
+
+def first_screen_checks(page, name, failures):
+    fs = page.evaluate(FIRST_SCREEN)
+    t = fs["tops"]
+    for k in ["run", "level", "sFate", "heat", "field"]:
+        if t[k] is None or t[k] >= 900:
+            failures.append(f"{name}: #{k} top {t[k]} on load at 1400x900 - not on the first screen")
+    if t["selfcheck"] is None or t["selfcheck"] < 900:
+        failures.append(f"{name}: control - #selfcheck top {t['selfcheck']}, want below the fold (>= 900)")
+    if fs["advOpen"] is not False:
+        failures.append(f"{name}: #advanced open is {fs['advOpen']!r} on load, want False (a closed drawer)")
+    return f"first screen tops {t}, advanced open {fs['advOpen']}"
+
 
 def heat_load_checks(page, name, failures):
     """Before #run: the labelled example, not a run. Returns (baseline, ink on load)."""
@@ -482,6 +508,8 @@ with sync_playwright() as p:
     browser = p.chromium.launch()
     for name, mode in SPEC:
         page = browser.new_page()
+        if mode == "click":
+            page.set_viewport_size({"width": 1400, "height": 900})
         errors, pageerrors = [], []
         page.on(
             "console",
@@ -548,6 +576,7 @@ with sync_playwright() as p:
             pass
             if changed:
                 failures.append(f"{name}: animated BEFORE #run was clicked ({changed})")
+            fs_note = first_screen_checks(page, name, failures)
 
             # M1 acceptance, asserted in a REAL browser before anything is clicked:
             # eight sliders per lineage whose min/max come from Evolve.GENE_BOUNDS
@@ -615,7 +644,7 @@ with sync_playwright() as p:
                 n3, changed3, _ = sample(page, 600, 2200)
                 if changed3 == 0:
                     failures.append(f"{name}: clicked #play and NOTHING animated - playback does not run")
-            note = (f"idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
+            note = (f"{fs_note}, idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
                     f"{heat_note}, #play animating {changed3}/{n3}")
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)

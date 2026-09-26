@@ -178,17 +178,6 @@
       .warn {
         color: var(--bad);
       }
-      .side {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 14px;
-        align-items: start;
-      }
-      @media (max-width: 860px) {
-        .side {
-          grid-template-columns: 1fr;
-        }
-      }
       .genes {
         display: grid;
         grid-template-columns: 1fr 1.25fr 1fr;
@@ -234,7 +223,7 @@
       }
       .cards {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 10px;
         margin-top: 12px;
       }
@@ -248,6 +237,115 @@
       }
       .card[data-state="open"] {
         border-color: var(--bad);
+        background: rgba(217, 112, 79, 0.12);
+      }
+      .card[data-state="closed"] {
+        border-color: var(--ok);
+      }
+      .card summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      .card summary::-webkit-details-marker {
+        display: none;
+      }
+      .card .num {
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .card .st {
+        display: block;
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .card[data-state="open"] .st::after {
+        content: " · applies to this run";
+      }
+      .card[data-state="closed"] .st::after {
+        content: " · measured, does not apply";
+      }
+      .card[data-state="grey"] .st::after {
+        content: " · outside this card's measured configuration";
+      }
+      details > summary {
+        color: var(--ink-2);
+        cursor: pointer;
+        font-size: 13px;
+      }
+      details > summary:hover {
+        color: var(--ink);
+      }
+      .card details > summary {
+        color: var(--ink);
+        font-size: 14px;
+      }
+      header .lede {
+        margin: 0 0 4px;
+      }
+      header details p {
+        margin: 6px 0 12px;
+      }
+      .bar {
+        padding: 10px 14px;
+      }
+      .bar .row {
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+      }
+      .bar p {
+        margin: 6px 0 0;
+      }
+      .bar .win {
+        margin-left: auto;
+      }
+      #advanced {
+        margin-top: 8px;
+      }
+      #advanced > .row,
+      #advanced > p {
+        margin-top: 10px;
+      }
+      #hero {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+      @media (max-width: 1000px) {
+        #hero {
+          grid-template-columns: 1fr;
+        }
+      }
+      #hero .heroFoot {
+        grid-column: 1 / -1;
+      }
+      #hero .heroFoot .stats {
+        margin-top: 8px;
+      }
+      .verdict {
+        margin-bottom: 8px;
+      }
+      #sFate {
+        display: block;
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1.15;
+      }
+      .verdict span {
+        font-size: 12px;
+        color: var(--ink-2);
+        margin-right: 8px;
+      }
+      .keyRow {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .keyRow select {
+        width: auto;
       }
       .card[data-state="grey"] {
         opacity: 0.55;
@@ -257,66 +355,25 @@
   <body>
     <main id="wrap">
       <header>
-        <h1>
-          The field — a population of flowers, one bee, and a split that fails
-        </h1>
-        <p>
-          Every flower here is drawn from <em>its own genome</em>, through the
-          same contact model the experiments use — the shape you see is the
-          shape that decides where its pollen lands. Two lineages start a chosen
-          distance apart on the animal's body. Watch the field across
-          generations: if the split held, the flowers would stay visibly two
-          kinds.
+        <h1>Two lineages, one bee — do they stay two kinds?</h1>
+        <p class="lede">
+          Pick a level and press Run: the heatmap shows, generation by
+          generation, whether the two founding lineages stay apart or blend.
         </p>
+        <details id="about">
+          <summary>about this page</summary>
+          <p>
+            Every flower here is drawn from <em>its own genome</em>, through the
+            same contact model the experiments use — the shape you see is the
+            shape that decides where its pollen lands. Two lineages start a chosen
+            distance apart on the animal's body. Watch the field across
+            generations: if the split held, the flowers would stay visibly two
+            kinds.
+          </p>
+        </details>
       </header>
 
-      <section class="panel" aria-label="Controls">
-        <div class="row">
-          <div class="ctl">
-            <label for="seed">seed</label
-            ><input type="number" id="seed" value="3" />
-          </div>
-          <div class="ctl">
-            <label for="useD">found at target d</label
-            ><input type="checkbox" id="useD" />
-          </div>
-          <div class="ctl">
-            <label for="d">separation d</label
-            ><input type="number" id="d" value="8" step="1" disabled />
-          </div>
-          <div class="ctl">
-            <label for="n">flowers</label
-            ><input type="number" id="n" value="18" />
-          </div>
-          <div class="ctl">
-            <label for="gens">generations</label
-            ><input type="number" id="gens" value="24" />
-          </div>
-          <div class="ctl">
-            <label for="siteN">contact sites per flower (siteN)</label
-            ><input type="number" id="siteN" value="90" />
-          </div>
-          <div class="ctl">
-            <label for="mode">mating</label>
-            <select id="mode">
-              <option value="real">placement-mediated</option>
-              <option value="random">random (the null)</option>
-            </select>
-          </div>
-          <div class="ctl">
-            <label for="cam">camera</label>
-            <select id="cam">
-              <option value="patch">the patch — which lineage wins</option>
-              <option value="follow">follow the bee — where pollen goes</option>
-            </select>
-          </div>
-          <button id="run">Run</button>
-          <button id="play" disabled>Play</button>
-          <span id="status" class="note" aria-live="polite"></span>
-        </div>
-      </section>
-
-      <section class="panel" aria-label="Level">
+      <section class="panel bar" aria-label="Controls">
         <div class="row">
           <div class="ctl">
             <label for="level">level</label>
@@ -330,84 +387,293 @@
               <option value="6">level 6, the open northstar</option>
             </select>
           </div>
-          <p id="levelBrief" class="note" style="margin: 0"></p>
+          <div class="ctl">
+            <label for="seed">seed</label
+            ><input type="number" id="seed" value="3" />
+          </div>
+          <button id="run">Run</button>
+          <button id="play" disabled>Play</button>
+          <span id="status" class="note" aria-live="polite"></span>
+          <span class="note win"
+            >win:
+            <b id="levelWin" data-state="none" role="status" aria-live="polite"
+              >—</b
+            ></span
+          >
         </div>
+        <p id="levelBrief" class="note"></p>
         <p id="levelOpts" class="band"></p>
         <p id="levelNote" class="note"></p>
-        <p class="note">
-          win:
-          <b id="levelWin" data-state="none" role="status" aria-live="polite"
-            >—</b
-          >
-        </p>
+        <details id="advanced">
+          <summary>Advanced: population, founding, mating, options</summary>
+          <div class="row">
+            <div class="ctl">
+              <label for="n">flowers</label
+              ><input type="number" id="n" value="18" />
+            </div>
+            <div class="ctl">
+              <label for="gens">generations</label
+              ><input type="number" id="gens" value="24" />
+            </div>
+            <div class="ctl">
+              <label for="siteN">contact sites per flower (siteN)</label
+              ><input type="number" id="siteN" value="90" />
+            </div>
+            <div class="ctl">
+              <label for="mode">mating</label>
+              <select id="mode">
+                <option value="real">placement-mediated</option>
+                <option value="random">random (the null)</option>
+              </select>
+            </div>
+            <div class="ctl">
+              <label for="useD">found at target d</label
+              ><input type="checkbox" id="useD" />
+            </div>
+            <div class="ctl">
+              <label for="d">separation d</label
+              ><input type="number" id="d" value="8" step="1" disabled />
+            </div>
+          </div>
+          <p class="note" style="margin-top: 0">
+            <strong>Options</strong>, the engine's own, set for the run. A blank
+            field leaves the option unset (<code>IBM.DEFAULTS</code>). A level
+            loads its object here; every control stays live.
+          </p>
+          <div class="row">
+            <div class="ctl">
+              <label for="allocExponent">rare bias a (allocExponent; blank = none)</label
+              ><input type="number" id="allocExponent" step="0.05" />
+            </div>
+            <div class="ctl">
+              <label for="visitsPerPlant">visits per plant (blank = default)</label
+              ><input type="number" id="visitsPerPlant" step="50" />
+            </div>
+          </div>
+          <div class="row" role="group" aria-label="selfing floor">
+            <div class="ctl">
+              <label for="selfRate">selfing rate (blank = no floor)</label
+              ><input type="number" id="selfRate" step="0.1" />
+            </div>
+            <div class="ctl">
+              <label for="selfCost">selfing cost</label
+              ><input type="number" id="selfCost" step="0.05" />
+            </div>
+            <div class="ctl">
+              <label for="selfCover">cover q (blank = flat floor)</label
+              ><input type="number" id="selfCover" step="0.01" />
+            </div>
+          </div>
+          <div class="row" role="group" aria-label="phenology">
+            <div class="ctl">
+              <label for="phenOn">phenology (sliced season)</label
+              ><input type="checkbox" id="phenOn" />
+            </div>
+            <div class="ctl">
+              <label for="phenSlices">slices</label
+              ><input type="number" id="phenSlices" step="1" />
+            </div>
+            <div class="ctl">
+              <label for="phenWidth">fixed width (blank = none)</label
+              ><input type="number" id="phenWidth" step="0.01" />
+            </div>
+            <div class="ctl">
+              <label for="phenWidthLocus">width locus (heritable width)</label
+              ><input type="checkbox" id="phenWidthLocus" />
+            </div>
+            <div class="ctl">
+              <label for="phenWidthMut">width mutation (blank = mutRate)</label
+              ><input type="number" id="phenWidthMut" step="0.01" />
+            </div>
+            <div class="ctl">
+              <label for="phenConserve">conserve display</label
+              ><input type="checkbox" id="phenConserve" />
+            </div>
+            <div class="ctl">
+              <label for="phenPropVisits">visits proportional to display (off = the registered rule)</label
+              ><input type="checkbox" id="phenPropVisits" />
+              <span class="band" id="phenPropBand"
+                >HELD 0.289 under the registered rule against 0.026 proportional
+                (docs/FINDINGS.md:97-98; N 30, 35 generations, siteN 160)</span
+              >
+            </div>
+            <button id="loadWidthObj" type="button">
+              load the width-locus object
+            </button>
+          </div>
+        </details>
       </section>
 
-      <section class="panel" aria-label="Options">
-        <p class="note" style="margin-top: 0">
-          <strong>Options</strong>, the engine's own, set for the run. A blank
-          field leaves the option unset (<code>IBM.DEFAULTS</code>). A level
-          loads its object here; every control stays live.
-        </p>
-        <div class="row">
-          <div class="ctl">
-            <label for="allocExponent">rare bias a (allocExponent; blank = none)</label
-            ><input type="number" id="allocExponent" step="0.05" />
+      <section id="hero" class="panel" aria-label="Result">
+        <div class="heroL">
+          <div class="verdict">
+            <b id="sFate">—</b><span>fate (the run's last offspring)</span>
+            <span class="band" id="sFateBand"></span>
           </div>
-          <div class="ctl">
-            <label for="visitsPerPlant">visits per plant (blank = default)</label
-            ><input type="number" id="visitsPerPlant" step="50" />
+          <canvas
+            id="heat"
+            width="760"
+            height="420"
+            role="img"
+            aria-label="Ancestry over generations: one column per generation's plants, lineage 1 at the top, lineage 2 at the bottom, mixed ancestry between; the last column is the final offspring the fate is read on. Below, ancestry variance against the HELD line. Click a column to show that generation."
+          ></canvas>
+          <p id="heatLive" class="visually-hidden" aria-live="polite">No run yet.</p>
+          <p class="band" id="sAncBand"></p>
+        </div>
+        <div class="heroR">
+          <canvas
+            id="field"
+            width="1180"
+            height="560"
+            role="img"
+            aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold A, magenta B, white mixed), with the bee carrying pollen between them. Drag to orbit."
+          ></canvas>
+          <p id="fieldCaption" class="note"></p>
+          <p id="fieldLive" class="visually-hidden" aria-live="polite">
+            No run yet. Set the inputs and press Run.
+          </p>
+          <div class="keyRow">
+            <div class="key">
+              <span><i class="dot" style="background: #e8b23a"></i>lineage A</span>
+              <span><i class="dot" style="background: #cc6699"></i>lineage B</span>
+              <span
+                ><i class="dot" style="background: #e8e6e1"></i>mixed ancestry</span
+              >
+              <span
+                >drag to orbit · the pollen on the bee sits where the contact model
+                puts it</span
+              >
+            </div>
+            <div class="ctl">
+              <label for="cam">camera</label>
+              <select id="cam">
+                <option value="patch">the patch — which lineage wins</option>
+                <option value="follow">follow the bee — where pollen goes</option>
+              </select>
+            </div>
           </div>
         </div>
-        <div class="row" role="group" aria-label="selfing floor">
-          <div class="ctl">
-            <label for="selfRate">selfing rate (blank = no floor)</label
-            ><input type="number" id="selfRate" step="0.1" />
-          </div>
-          <div class="ctl">
-            <label for="selfCost">selfing cost</label
-            ><input type="number" id="selfCost" step="0.05" />
-          </div>
-          <div class="ctl">
-            <label for="selfCover">cover q (blank = flat floor)</label
-            ><input type="number" id="selfCover" step="0.01" />
+        <div class="heroFoot">
+          <input
+            type="range"
+            id="scrub"
+            min="0"
+            max="0"
+            value="0"
+            disabled
+            aria-label="generation"
+          />
+          <div class="stats">
+            <div class="stat"><b id="sGen">—</b><span>generation</span></div>
+            <div class="stat">
+              <b id="sSep">—</b><span>cluster separation</span>
+            </div>
+            <div class="stat">
+              <b id="sAnc">—</b><span>ancestry variance</span>
+            </div>
+            <div class="stat">
+              <b id="sHyb">—</b><span>hybrid fraction</span>
+              <span class="band" id="sHybBand"></span>
+            </div>
+            <div class="stat">
+              <b id="sGap">—</b><span>gap occupancy</span>
+              <span class="band" id="sGapBand"></span>
+            </div>
           </div>
         </div>
-        <div class="row" role="group" aria-label="phenology">
-          <div class="ctl">
-            <label for="phenOn">phenology (sliced season)</label
-            ><input type="checkbox" id="phenOn" />
-          </div>
-          <div class="ctl">
-            <label for="phenSlices">slices</label
-            ><input type="number" id="phenSlices" step="1" />
-          </div>
-          <div class="ctl">
-            <label for="phenWidth">fixed width (blank = none)</label
-            ><input type="number" id="phenWidth" step="0.01" />
-          </div>
-          <div class="ctl">
-            <label for="phenWidthLocus">width locus (heritable width)</label
-            ><input type="checkbox" id="phenWidthLocus" />
-          </div>
-          <div class="ctl">
-            <label for="phenWidthMut">width mutation (blank = mutRate)</label
-            ><input type="number" id="phenWidthMut" step="0.01" />
-          </div>
-          <div class="ctl">
-            <label for="phenConserve">conserve display</label
-            ><input type="checkbox" id="phenConserve" />
-          </div>
-          <div class="ctl">
-            <label for="phenPropVisits">visits proportional to display (off = the registered rule)</label
-            ><input type="checkbox" id="phenPropVisits" />
-            <span class="band" id="phenPropBand"
-              >HELD 0.289 under the registered rule against 0.026 proportional
-              (docs/FINDINGS.md:97-98; N 30, 35 generations, siteN 160)</span
-            >
-          </div>
-          <button id="loadWidthObj" type="button">
-            load the width-locus object
-          </button>
+      </section>
+
+      <section aria-label="Why you failed" id="cards" class="cards">
+        <h2 class="visually-hidden">Why you failed</h2>
+        <div
+          class="card"
+          id="card1"
+          data-state="grey"
+          role="status"
+          aria-label="card 1, hybrids pay from geometry"
+        >
+          <details>
+          <summary>
+            <span class="num">1</span> hybrids pay from geometry
+            <span class="st" id="card1State">grey</span>
+          </summary>
+          <p id="card1Text" class="band">run to read this card</p>
+        </details>
+        </div>
+        <div
+          class="card"
+          id="card4"
+          data-state="grey"
+          role="status"
+          aria-label="card 4, secondary contact excludes"
+        >
+          <details>
+          <summary>
+            <span class="num">4</span> secondary contact excludes
+            <span class="st" id="card4State">grey</span>
+          </summary>
+          <p id="card4Text" class="band">run to read this card</p>
+        </details>
+        </div>
+        <div
+          class="card"
+          id="card2"
+          data-state="grey"
+          role="status"
+          aria-label="card 2, the shared pollinator is the bridge"
+        >
+          <details>
+          <summary>
+            <span class="num">2</span> the shared pollinator is the bridge
+            <span class="st" id="card2State">grey</span>
+          </summary>
+          <p id="card2Text" class="band">run to read this card</p>
+        </details>
+        </div>
+        <div
+          class="card"
+          id="card3"
+          data-state="grey"
+          role="status"
+          aria-label="card 3, preferring the rare defeats itself"
+        >
+          <details>
+          <summary>
+            <span class="num">3</span> preferring the rare defeats itself
+            <span class="st" id="card3State">grey</span>
+          </summary>
+          <p id="card3Text" class="band">run to read this card</p>
+        </details>
+        </div>
+        <div
+          class="card"
+          id="card5"
+          data-state="grey"
+          role="status"
+          aria-label="card 5, a floor spread thin is worse than a flat one"
+        >
+          <details>
+          <summary>
+            <span class="num">5</span> a floor spread thin is worse than a flat one
+            <span class="st" id="card5State">grey</span>
+          </summary>
+          <p id="card5Text" class="band">run to read this card</p>
+        </details>
+        </div>
+        <div
+          class="card"
+          id="card6"
+          data-state="grey"
+          role="status"
+          aria-label="card 6, flowering width evolves wide"
+        >
+          <details>
+          <summary>
+            <span class="num">6</span> flowering width evolves wide
+            <span class="st" id="card6State">grey</span>
+          </summary>
+          <p id="card6Text" class="band">run to read this card</p>
+        </details>
         </div>
       </section>
 
@@ -471,153 +737,18 @@
             <p class="note warn" id="touch2"></p>
           </div>
         </div>
-        <p class="note" id="herkNote">
-          There is no stigma control: the model derives it from the anther.
-          <code>toFlower</code> sets <code>stigmaT</code> to
-          <code>Math.min(0.92, antherT + HERKOGAMY)</code> with
-          <code>HERKOGAMY</code> 0.05 (<code>sim/evolve.js:139</code>) — the
-          clamp at 0.92 included — and <code>stigmaTheta</code> to
-          <code>antherTheta</code>. There is no placement control of any kind:
-          placement is an outcome of two geometries meeting, never a setting.
-        </p>
-      </section>
-
-      <canvas
-        id="heat"
-        width="760"
-        height="420"
-        role="img"
-        aria-label="Ancestry over generations: one column per generation's plants, lineage 1 at the top, lineage 2 at the bottom, mixed ancestry between; the last column is the final offspring the fate is read on. Below, ancestry variance against the HELD line. Click a column to show that generation."
-      ></canvas>
-      <p id="heatLive" class="visually-hidden" aria-live="polite">No run yet.</p>
-
-      <canvas
-        id="field"
-        width="1180"
-        height="560"
-        role="img"
-        aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold A, magenta B, white mixed), with the bee carrying pollen between them. Drag to orbit."
-      ></canvas>
-      <p id="fieldCaption" class="note"></p>
-      <p id="fieldLive" class="visually-hidden" aria-live="polite">
-        No run yet. Set the inputs and press Run.
-      </p>
-      <div class="key">
-        <span><i class="dot" style="background: #e8b23a"></i>lineage A</span>
-        <span><i class="dot" style="background: #cc6699"></i>lineage B</span>
-        <span
-          ><i class="dot" style="background: #e8e6e1"></i>mixed ancestry</span
-        >
-        <span
-          >drag to orbit · the pollen on the bee sits where the contact model
-          puts it</span
-        >
-      </div>
-
-      <section class="panel" aria-label="Playback">
-        <input
-          type="range"
-          id="scrub"
-          min="0"
-          max="0"
-          value="0"
-          disabled
-          aria-label="generation"
-        />
-        <div class="stats" style="margin-top: 10px">
-          <div class="stat"><b id="sGen">—</b><span>generation</span></div>
-          <div class="stat">
-            <b id="sSep">—</b><span>cluster separation</span>
-          </div>
-          <div class="stat">
-            <b id="sAnc">—</b><span>ancestry variance</span>
-          </div>
-          <div class="stat">
-            <b id="sHyb">—</b><span>hybrid fraction</span>
-            <span class="band" id="sHybBand"></span>
-          </div>
-          <div class="stat">
-            <b id="sGap">—</b><span>gap occupancy</span>
-            <span class="band" id="sGapBand"></span>
-          </div>
-          <div class="stat">
-            <b id="sFate">—</b><span>fate (the run's last offspring)</span>
-            <span class="band" id="sFateBand"></span>
-          </div>
-        </div>
-        <p class="band" id="sAncBand"></p>
-        <section aria-label="Why you failed" id="cards" class="cards">
-          <h2 class="visually-hidden">Why you failed</h2>
-          <div
-            class="card"
-            id="card1"
-            data-state="grey"
-            role="status"
-            aria-label="card 1, hybrids pay from geometry"
-          >
-            <b>1. hybrids pay from geometry</b>
-            <span id="card1State">grey</span>
-            <p id="card1Text" class="band">run to read this card</p>
-          </div>
-          <div
-            class="card"
-            id="card4"
-            data-state="grey"
-            role="status"
-            aria-label="card 4, secondary contact excludes"
-          >
-            <b>4. secondary contact excludes</b>
-            <span id="card4State">grey</span>
-            <p id="card4Text" class="band">run to read this card</p>
-          </div>
-          <div
-            class="card"
-            id="card2"
-            data-state="grey"
-            role="status"
-            aria-label="card 2, the shared pollinator is the bridge"
-          >
-            <b>2. the shared pollinator is the bridge</b>
-            <span id="card2State">grey</span>
-            <p id="card2Text" class="band">run to read this card</p>
-          </div>
-          <div
-            class="card"
-            id="card3"
-            data-state="grey"
-            role="status"
-            aria-label="card 3, preferring the rare defeats itself"
-          >
-            <b>3. preferring the rare defeats itself</b>
-            <span id="card3State">grey</span>
-            <p id="card3Text" class="band">run to read this card</p>
-          </div>
-          <div
-            class="card"
-            id="card5"
-            data-state="grey"
-            role="status"
-            aria-label="card 5, a floor spread thin is worse than a flat one"
-          >
-            <b>5. a floor spread thin is worse than a flat one</b>
-            <span id="card5State">grey</span>
-            <p id="card5Text" class="band">run to read this card</p>
-          </div>
-          <div
-            class="card"
-            id="card6"
-            data-state="grey"
-            role="status"
-            aria-label="card 6, flowering width evolves wide"
-          >
-            <b>6. flowering width evolves wide</b>
-            <span id="card6State">grey</span>
-            <p id="card6Text" class="band">run to read this card</p>
-          </div>
-        </section>
-      </section>
-
-      <div class="side">
+        <details>
+          <summary>why there is no stigma control</summary>
+          <p class="note" id="herkNote">
+            There is no stigma control: the model derives it from the anther.
+            <code>toFlower</code> sets <code>stigmaT</code> to
+            <code>Math.min(0.92, antherT + HERKOGAMY)</code> with
+            <code>HERKOGAMY</code> 0.05 (<code>sim/evolve.js:139</code>) — the
+            clamp at 0.92 included — and <code>stigmaTheta</code> to
+            <code>antherTheta</code>. There is no placement control of any kind:
+            placement is an outcome of two geometries meeting, never a setting.
+          </p>
+        </details>
         <canvas
           id="map"
           width="760"
@@ -625,7 +756,8 @@
           role="img"
           aria-label="Pollen placement map on the animal's body: position along the body left to right, around the body top to bottom; one dot per flower coloured by lineage."
         ></canvas>
-        <div>
+        <details>
+          <summary>what the body map and the bee show</summary>
           <p class="note" style="margin-top: 0">
             <strong>Where the pollen actually goes.</strong> The same
             population, plotted on the animal's body: along the body left to
@@ -638,8 +770,8 @@
             showing them literally is impossible, so this is a
             <em>sample</em> of the bout, not the bout.
           </p>
-        </div>
-      </div>
+        </details>
+      </section>
       <p id="selfcheck" class="note"></p>
     </main>
 
