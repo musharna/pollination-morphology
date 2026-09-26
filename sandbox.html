@@ -483,6 +483,15 @@
       </section>
 
       <canvas
+        id="heat"
+        width="760"
+        height="420"
+        role="img"
+        aria-label="Ancestry over generations: one column per generation's plants, lineage 1 at the top, lineage 2 at the bottom, mixed ancestry between; the last column is the final offspring the fate is read on. Below, ancestry variance against the HELD line. Click a column to show that generation."
+      ></canvas>
+      <p id="heatLive" class="visually-hidden" aria-live="polite">No run yet.</p>
+
+      <canvas
         id="field"
         width="1180"
         height="560"
@@ -646,6 +655,10 @@
         ctx = cv.getContext("2d");
       const mapC = $("map").getContext("2d");
       const bodyC = $("bodyMap").getContext("2d");
+      const heatC = $("heat").getContext("2d");
+      const HEAT_W = 760,
+        HEAT_H = 420;
+      let HEAT = null; // the heat model last built for the current run, or null
       /* ⚠️ A COPY, not DEFAULT_BEE itself. The two bee sliders set the run's
        * parameter object; writing through to the module's own object would
        * change the bee for every other consumer of the bundle in the page. */
@@ -1492,6 +1505,7 @@
         };
         $("level").value = "free";
         loadLevel("free");
+        drawHeat();
       }
 
       /* DOM reads, the founding, and the call. The loop itself lives in
@@ -1921,9 +1935,38 @@
         }
       }
 
+      /* The ancestry heatmap (ancestry-heat.js): the run's frames plus its
+       * final offspring, the cursor on the shown generation. Task 3 extends it. */
+      function drawHeat() {
+        const A = window.AncestryHeat;
+        if (HEAT) {
+          A.drawHeat(heatC, HEAT, {
+            W: HEAT_W,
+            H: HEAT_H,
+            cursor: frame,
+            fate: RESULT ? RESULT.fate : null,
+          });
+          const fin = HEAT.cols[HEAT.cols.length - 1];
+          const k = HEAT.cols.filter((c) => c.stalled).length;
+          $("heatLive").textContent =
+            `Ancestry over ${HEAT.cols.length - 1} generations and the final offspring. ` +
+            `Final: ${fin.n} plants, ${fin.hyb} hybrids, fate ${RESULT ? RESULT.fate : "—"}. ` +
+            `${k} generations recruited nothing. Showing generation ${frame}.`;
+          return;
+        }
+        A.drawEmpty(
+          heatC,
+          HEAT_W,
+          HEAT_H,
+          "press Run: each column will be one generation's plants, sorted by ancestry",
+        );
+        $("heatLive").textContent = "No run yet.";
+      }
+
       function show(g) {
         frame = g;
         drawMap(g);
+        drawHeat();
         const G = GENS[g];
         $("sGen").textContent = `${g} / ${GENS.length - 1}`;
         $("sSep").textContent = G.sep.toFixed(2);
@@ -1979,6 +2022,8 @@
           $(k + "State").textContent = "grey";
           $(k + "Text").textContent = "run to read this card";
         }
+        HEAT = null;
+        drawHeat();
         showWin();
       }
 
@@ -1993,6 +2038,7 @@
             const R = buildRun();
             GENS = R.gens;
             RESULT = R;
+            HEAT = window.AncestryHeat.heatModel(R.gens, R.final, R.v0);
             showResult(R);
             showWin();
             $("scrub").max = GENS.length - 1;
@@ -2018,6 +2064,8 @@
             $("status").setAttribute("data-error", err.message);
             GENS = [];
             RESULT = null;
+            HEAT = null;
+            drawHeat();
           } finally {
             $("run").disabled = false;
           }
@@ -2033,6 +2081,18 @@
           pitch = 0.62;
         }
         if (!playing) show(frame);
+      };
+
+      /* click a column to show that generation */
+      $("heat").onpointerdown = (e) => {
+        if (!HEAT || !GENS.length) return;
+        const r = $("heat").getBoundingClientRect();
+        const x = ((e.clientX - r.left) / r.width) * HEAT_W;
+        const i = window.AncestryHeat.colAt(HEAT, x, HEAT_W, HEAT_H);
+        if (i < 0) return;
+        stopPlay();
+        /* the final column is the offspring, which has no field of its own: it shows the last generation */
+        show(Math.min(i, GENS.length - 1));
       };
 
       $("scrub").oninput = (e) => {
@@ -2080,6 +2140,8 @@
        * stall fixture, spec §3) cannot be entered slider by slider without
        * moving it; the tests and the smoke use this, a visitor never needs to. */
       window.Sandbox = {
+        heat: () => HEAT,
+        result: () => RESULT,
         setLineage(li, genome) {
           for (const k of GENE_ORDER)
             if (k in genome) {

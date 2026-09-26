@@ -132,6 +132,59 @@ M2_RUN = """async (s) => {
 }"""
 
 
+# ------------------------------------------------------------ the heatmap (#heat)
+# After #run: the heat canvas carries the run (> 8 distinct colours), and a REAL
+# mouse click on column 5's centre - computed from AncestryHeat.layout on the
+# page's own model, scaled to the canvas's CSS box - moves the scrubber to
+# generation 5. Positive control: #scrub reads 0 before the click, so a
+# scrubber already at 5 cannot pass it.
+HEAT_COLOURS = """() => {
+  const c = document.getElementById('heat');
+  if (!c) return -1;
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  const seen = new Set();
+  for (let i = 0; i + 3 < d.length; i += 4 * 7) {
+    seen.add((d[i] << 24) | (d[i + 1] << 16) | (d[i + 2] << 8) | d[i + 3]);
+    if (seen.size > 64) break;
+  }
+  return seen.size;
+}"""
+
+HEAT_COL5 = """() => {
+  const c = document.getElementById('heat');
+  c.scrollIntoView({ block: 'center' });
+  const H = window.Sandbox.heat();
+  if (!H) return null;
+  const lay = window.AncestryHeat.layout(H, 760, 420);
+  const r = c.getBoundingClientRect();
+  const k = r.width / 760;
+  return { x: r.left + (lay.xOf(5) + lay.colW / 2) * k, y: r.top + r.height / 2 };
+}"""
+
+
+def heat_checks(page, name, failures):
+    ncol = page.evaluate(HEAT_COLOURS)
+    if ncol <= 8:
+        failures.append(f"{name}: #heat carries {ncol} distinct colours after #run (need > 8)")
+    before = page.evaluate("() => document.getElementById('scrub').value")
+    if before != "0":
+        failures.append(f"{name}: #scrub read {before!r} before the heat click (control expects '0')")
+    pt = page.evaluate(HEAT_COL5)
+    if pt is None:
+        failures.append(f"{name}: Sandbox.heat() is null after #run - nothing to click")
+        return f"heat {ncol} colours, no model"
+    page.mouse.click(pt["x"], pt["y"])
+    page.wait_for_timeout(300)
+    after = page.evaluate(
+        "() => [document.getElementById('scrub').value, document.getElementById('sGen').textContent]"
+    )
+    if after[0] != "5" or not after[1].startswith("5 /"):
+        failures.append(
+            f"{name}: clicked #heat column 5 - #scrub {after[0]!r}, #sGen {after[1]!r} (want 5, '5 / ...')"
+        )
+    return f"heat {ncol} colours, scrub {before}->{after[0]} on column-5 click"
+
+
 def m2_checks(browser, name):
     notes = []
     page = browser.new_page()
@@ -508,6 +561,9 @@ with sync_playwright() as p:
             drew = sum(1 for a, b in zip(pre, post) if a != b)
             if completed and drew == 0:
                 failures.append(f"{name}: #run completed but the canvas never changed - nothing was drawn")
+            heat_note = "heat not checked (run incomplete)"
+            if completed:
+                heat_note = heat_checks(page, name, failures)
             n3, changed3, _ = (0, 0, 0)
             if completed:
                 page.click("#play")
@@ -515,7 +571,7 @@ with sync_playwright() as p:
                 if changed3 == 0:
                     failures.append(f"{name}: clicked #play and NOTHING animated - playback does not run")
             note = (f"idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
-                    f"#play animating {changed3}/{n3}")
+                    f"{heat_note}, #play animating {changed3}/{n3}")
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)
             note += "; M3a " + ", ".join(m3a_checks(browser, name))
