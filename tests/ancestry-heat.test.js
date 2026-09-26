@@ -79,6 +79,25 @@ test("extinction: an empty or single-plant final builds, variance null", () => {
     assert.equal(m.cols.at(-1).ancVar, null);
     assert.equal(m.cols.at(-1).n, final.length);
   }
+  // drawHeat must not throw on an extinct run, and with a null final variance
+  // there is nothing to plot the final-variance dot at: zero arc() calls.
+  const record = () => {
+    const calls = [];
+    const ctx = new Proxy({}, {
+      get: (t, k) => (k in t ? t[k] : (...a) => calls.push([k, ...a])),
+      set: (t, k, v) => ((t[k] = v), true),
+    });
+    return { ctx, calls };
+  };
+  const mEmptyFinal = H.heatModel([frame([0, 1])], [], 0.25);
+  const r1 = record();
+  assert.doesNotThrow(() => H.drawHeat(r1.ctx, mEmptyFinal, { W: 760, H: 420 }));
+  assert.equal(r1.calls.filter((c) => c[0] === "arc").length, 0);
+
+  const mNoFrames = H.heatModel([], [], 0.25);
+  const r2 = record();
+  assert.doesNotThrow(() => H.drawHeat(r2.ctx, mNoFrames, { W: 760, H: 420 }));
+  assert.equal(r2.calls.filter((c) => c[0] === "arc").length, 0);
 });
 
 test("colAt inverts layout for every column; outside the plot is -1", () => {
@@ -91,23 +110,41 @@ test("colAt inverts layout for every column; outside the plot is -1", () => {
 });
 
 test("drawHeat always writes the declared labels; hatch only when stalled", () => {
+  /* ctx.strokeStyle is a property SET, not a method call, so the recorder
+   * must log sets too. The hatch block (ancestry-heat.js: the stalled-column
+   * branch inside the cells loop) is the only code that ever sets strokeStyle
+   * to "rgba(217,112,79,0.8)" before calling stroke() — replaying the call
+   * log in order and counting stroke()s made while that colour is active
+   * catches the hatch marks themselves, not merely the legend caption that
+   * happens to be gated by the same stalled flag. */
   const record = () => {
     const calls = [];
     const ctx = new Proxy({}, {
       get: (t, k) => (k in t ? t[k] : (...a) => calls.push([k, ...a])),
-      set: (t, k, v) => ((t[k] = v), true),
+      set: (t, k, v) => (calls.push(["set:" + k, v]), (t[k] = v), true),
     });
-    return { ctx, calls, text: () => calls.filter((c) => c[0] === "fillText").map((c) => c[1]).join(" | ") };
+    const text = () => calls.filter((c) => c[0] === "fillText").map((c) => c[1]).join(" | ");
+    const hatchStrokes = () => {
+      let cur = null, n = 0;
+      for (const c of calls) {
+        if (c[0] === "set:strokeStyle") cur = c[1];
+        else if (c[0] === "stroke" && cur === "rgba(217,112,79,0.8)") n++;
+      }
+      return n;
+    };
+    return { ctx, calls, text, hatchStrokes };
   };
   const plain = H.heatModel([frame([0, 1]), frame([0, 1])], [0, 1].map(ind), 0.25);
   const r1 = record();
   H.drawHeat(r1.ctx, plain, { W: 760, H: 420, cursor: 0, fate: "HELD" });
   assert.match(r1.text(), /HELD line/);
   assert.match(r1.text(), /hybrid band/);
-  assert.match(r1.text(), /final/);
+  assert.match(r1.text(), /final: HELD/);
   assert.doesNotMatch(r1.text(), /recruited nothing/);
+  assert.equal(r1.hatchStrokes(), 0, "no column is stalled — the hatch must not be drawn");
   const stalled = H.heatModel([frame([0, 1], 0), frame([0, 1], 0)], [0, 1].map(ind), 0.25);
   const r2 = record();
   H.drawHeat(r2.ctx, stalled, { W: 760, H: 420, cursor: 1, fate: "STALLED" });
   assert.match(r2.text(), /recruited nothing/);
+  assert.ok(r2.hatchStrokes() > 0, "both columns are stalled — the hatch must be drawn");
 });
