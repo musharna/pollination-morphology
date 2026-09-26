@@ -111,7 +111,7 @@ function runPage(settings) {
   }
   const fateBand = text("sFateBand") || "";
   const hybBand = text("sHybBand") || "";
-  const stalled = /(\d+) of (\d+) generations recruited nothing/.exec(fateBand);
+  const stalled = /stalled generations: (none|\d+) of (\d+)/.exec(fateBand);
   const hyb = /hybrids among the parents in (\d+) of (\d+) generations/.exec(
     hybBand,
   );
@@ -121,7 +121,7 @@ function runPage(settings) {
     status: text("status"),
     error: doc.getElementById("status").getAttribute("data-error"),
     fate: text("sFate"),
-    stalledGens: stalled ? +stalled[1] : null,
+    stalledGens: !stalled ? null : stalled[1] === "none" ? 0 : +stalled[1],
     gensRun: stalled ? +stalled[2] : null,
     hybGens: hyb ? +hyb[1] : null,
     hybOf: hyb ? +hyb[2] : null,

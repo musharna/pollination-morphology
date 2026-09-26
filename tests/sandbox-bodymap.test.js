@@ -27,7 +27,8 @@ test("a run founded at target d draws that run's founders and its plants", () =>
   assert.deepEqual(plain(L.founders), plain([R.p1, R.p2]));
   assert.ok(R.p1 && R.p2, "control: the run has two founders");
   assert.equal(L.overlay, "shown");
-  assert.equal(L.dots, R.gens[0].places.filter(Boolean).length);
+  /* a run ends on its last generation (Task 7b): the body map shows its plants */
+  assert.equal(L.dots, R.gens.at(-1).places.filter(Boolean).length);
 });
 
 test("hand-set run: moving a lineage hides the plants; restoring it shows them", () => {

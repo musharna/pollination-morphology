@@ -114,7 +114,7 @@ M2_RUN = """async (s) => {
   while ($("status").textContent === "running…" && performance.now() - t0 < 90000)
     await new Promise((r) => setTimeout(r, 100));
   const band = $("sFateBand").textContent, hb = $("sHybBand").textContent;
-  const st = /(\d+) of (\d+) generations recruited nothing/.exec(band);
+  const st = /stalled generations: (none|\d+) of (\d+)/.exec(band);
   const hy = /hybrids among the parents in (\d+) of (\d+) generations/.exec(hb);
   const ra = /receipt ratio (\S+)/.exec(hb);
   const cards = {};
@@ -124,7 +124,7 @@ M2_RUN = """async (s) => {
     status: $("status").textContent,
     error: $("status").getAttribute("data-error"),
     fate: $("sFate").textContent,
-    stalled: st ? +st[1] : null,
+    stalled: !st ? null : st[1] === "none" ? 0 : +st[1],
     hyb: hy ? +hy[1] : null,
     ratio: ra ? ra[1] : null,
     cards,
@@ -144,8 +144,11 @@ M2_RUN = """async (s) => {
 # Sandbox.heat() is null (it is an example, not a run). After #run: > 5x
 # baseline, Sandbox.heat() non-null, #heatLive no longer the example. Then a
 # REAL mouse click on column 5's centre - computed from AncestryHeat.layout on
-# the page's own model, scaled to the canvas's content box - moves the scrubber to generation 5. Positive control: #scrub reads 0
-# before the click, so a scrubber already at 5 cannot pass it.
+# the page's own model, scaled to the canvas's content box - moves the scrubber to generation 5.
+# Task 7b: a run ENDS on its last generation, so before the click #scrub reads
+# its own max and #sGen starts "<max> /" (seen failing on 97eebb6, which showed
+# generation 0); that is also the click's positive control, a scrubber already
+# at 5 cannot pass it (max is never 5 here).
 HEAT_INK = """(off) => {
   let c = document.getElementById('heat');
   if (!c) return -1;
@@ -471,6 +474,54 @@ def run_view_checks(page, name, failures):
     return f"bodyMap scrub0 vs 10 {'differ' if b0 != b10 else 'SAME'}, field {fink:.1%} off-corner, field across a thumb render {'identical' if f0 == f1 else 'CHANGED'}"
 
 
+# Task 7b, before #run: the headline names the example (#sFate starts
+# "example:", the heat's own example fate after it), and the 3D field shows the
+# sliders' two founders - THUMB_INK on #field > 2% (0 on 97eebb6, an empty box).
+# The field's caption sits on a plate: fillRect/fillText on #field are recorded
+# around one redraw (Sandbox.setLineage with the lineage's own genome, which
+# redraws the founders), and the last fillRect before the caption's first line
+# must be a dark translucent plate covering that line. Positive control: the
+# caption was recorded. Seen failing on a mutant with the plate's fillRect removed.
+HERO_LOAD = """() => [document.getElementById('sFate').textContent,
+  window.ExampleHeat ? window.ExampleHeat.fate : null]"""
+FIELD_CAPTION_REC = """() => {
+  const c = document.getElementById('field');
+  const P = CanvasRenderingContext2D.prototype, ft = P.fillText, fr = P.fillRect;
+  const rec = [];
+  P.fillText = function (t, x, y) {
+    if (this.canvas === c) rec.push({ k: 'text', t: String(t), x, y, w: this.measureText(t).width });
+    return ft.apply(this, arguments);
+  };
+  P.fillRect = function (x, y, w, h) {
+    if (this.canvas === c) rec.push({ k: 'rect', x, y, w, h, fill: String(this.fillStyle) });
+    return fr.apply(this, arguments);
+  };
+  try { window.Sandbox.setLineage(0, window.Sandbox.lineage(0)); }
+  finally { P.fillText = ft; P.fillRect = fr; }
+  const i = rec.findIndex((r) => r.k === 'text' && r.t.startsWith('the two founders'));
+  const plate = i < 0 ? null : rec.slice(0, i).reverse().find((r) => r.k === 'rect');
+  return { text: i < 0 ? null : rec[i], plate };
+}"""
+
+
+def hero_load_checks(page, name, failures):
+    fate, ex = page.evaluate(HERO_LOAD)
+    if not fate.startswith("example:") or fate != f"example: {ex}":
+        failures.append(f"{name}: #sFate on load reads {fate!r}, want 'example: {ex}'")
+    fink = page.evaluate(THUMB_INK, "field")
+    if not fink > 0.02:
+        failures.append(f"{name}: #field has {fink:.2%} of pixels off its corner colour on load (need > 2%: the founders are not drawn)")
+    cap = page.evaluate(FIELD_CAPTION_REC)
+    t, pl = cap["text"], cap["plate"]
+    if not t:
+        failures.append(f"{name}: control - no founders caption recorded on #field on a redraw")
+    elif not pl or not pl["fill"].startswith("rgba(16, 18, 22") or not (
+            pl["x"] <= t["x"] and pl["x"] + pl["w"] >= t["x"] + t["w"]
+            and pl["y"] <= t["y"] - 9 and pl["y"] + pl["h"] >= t["y"] + 2):
+        failures.append(f"{name}: #field caption {t['t']!r} at ({t['x']}, {t['y']}, w {t['w']:.0f}) has no dark plate under it (last rect {pl})")
+    return f"load #sFate {fate!r}, #field {fink:.1%} off-corner, caption plate {'yes' if t and pl else 'NO'}"
+
+
 def heat_load_checks(page, name, failures):
     """Before #run: the labelled example, not a run. Returns (baseline, ink on load)."""
     base = page.evaluate(HEAT_INK, True)
@@ -498,9 +549,12 @@ def heat_checks(page, name, failures, ink_empty, ink_load):
     live, _ = page.evaluate(HEAT_STATE)
     if live.startswith("Example"):
         failures.append(f"{name}: #heatLive still reads the example after #run: {live[:60]!r}")
-    before = page.evaluate("() => document.getElementById('scrub').value")
-    if before != "0":
-        failures.append(f"{name}: #scrub read {before!r} before the heat click (control expects '0')")
+    before, mx, gen = page.evaluate(
+        "() => ['value', 'max'].map((k) => document.getElementById('scrub')[k])"
+        ".concat(document.getElementById('sGen').textContent)")
+    if before != mx or before == "5" or not gen.startswith(f"{mx} /"):
+        failures.append(f"{name}: after #run #scrub read {before!r} of max {mx!r}, #sGen {gen!r} "
+                        f"(want the last generation, '{mx} / ...', and not 5)")
     pt = page.evaluate(HEAT_COL5)
     if pt is None:
         failures.append(f"{name}: Sandbox.heat() is null after #run - nothing to click")
@@ -677,10 +731,10 @@ M3B_RUN = """async (s) => {
     cards[c] = $(c).getAttribute("data-state");
     text[c] = $(c + "Text").textContent;
   }
-  const st = /(\d+) of (\d+) generations recruited nothing/.exec($("sFateBand").textContent);
+  const st = /stalled generations: (none|\d+) of (\d+)/.exec($("sFateBand").textContent);
   return {
     ms: performance.now() - t0, error: $("status").getAttribute("data-error"),
-    fate: $("sFate").textContent, stalled: st ? +st[1] : null, cards, text,
+    fate: $("sFate").textContent, stalled: !st ? null : st[1] === "none" ? 0 : +st[1], cards, text,
     caption: $("fieldCaption").textContent,
   };
 }"""
@@ -996,6 +1050,7 @@ with sync_playwright() as p:
                     f"at load (read {m1['target']!r})"
                 )
 
+            hero_note = hero_load_checks(page, name, failures)
             thumb_note = thumb_checks(page, name, failures)
             label_note = heat_label_checks(page, name, failures, True)
             pre = page.evaluate(SHOT)
@@ -1024,7 +1079,7 @@ with sync_playwright() as p:
                 if changed3 == 0:
                     failures.append(f"{name}: clicked #play and NOTHING animated - playback does not run")
             note = (f"{fs_note}, idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
-                    f"{heat_note}, {label_note}, {thumb_note}, {view_note}, #play animating {changed3}/{n3}")
+                    f"{heat_note}, {label_note}, {hero_note}, {thumb_note}, {view_note}, #play animating {changed3}/{n3}")
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)
             note += "; M3a " + ", ".join(m3a_checks(browser, name))

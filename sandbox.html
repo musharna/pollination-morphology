@@ -569,7 +569,7 @@
             width="1180"
             height="560"
             role="img"
-            aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold A, magenta B, white mixed), with the bee carrying pollen between them. Drag to orbit."
+            aria-label="3D view of the flower patch: flowers drawn from their own genomes, coloured by lineage (gold lineage 1, magenta lineage 2, white mixed), with the bee carrying pollen between them. Drag to orbit."
           ></canvas>
           <p id="fieldCaption" class="note"></p>
           <p id="fieldLive" class="visually-hidden" aria-live="polite">
@@ -577,8 +577,8 @@
           </p>
           <div class="keyRow">
             <div class="key">
-              <span><i class="dot" style="background: #e8b23a"></i>lineage A</span>
-              <span><i class="dot" style="background: #cc6699"></i>lineage B</span>
+              <span><i class="dot" style="background: #e8b23a"></i>lineage 1</span>
+              <span><i class="dot" style="background: #cc6699"></i>lineage 2</span>
               <span
                 ><i class="dot" style="background: #e8e6e1"></i>mixed ancestry</span
               >
@@ -1789,6 +1789,8 @@
         if (only === undefined || only === 1) sweepLabels(1);
         const redrawn = only === undefined ? [0, 1] : [only];
         for (const li of redrawn) renderThumb(li);
+        /* no run: the field shows the sliders' founders, so it follows them */
+        if (!GENS.length && !playing) draw(performance.now());
         $("thumbLive").textContent = redrawn.map((li) => `lineage ${li + 1}`).join(" and ") + " redrawn";
         drawBodyMap();
         showWin();
@@ -2122,11 +2124,60 @@
 
       }
 
+      /* No run yet: the two founders the sliders set, side by side (lineage 1
+       * on the left), each drawn by the thumbnails' flower path (drawFlower,
+       * tinted ancHex(0) / ancHex(1)) into the field, standing on a patch of
+       * ground with a stem (scene dressing, as drawPatch). The camera keeps the
+       * field's yaw and pitch, so a drag still orbits; its target and distance
+       * are saved and restored, since the run's field reads the same globals. */
+      const FOUNDER_CAM = { dist: 12, gap: 1.9 };
+      function drawFounders() {
+        const saved = { camDist, t: [camTarget[0], camTarget[1], camTarget[2]], near: FOLLOW.near };
+        try {
+          items = [];
+          const fl = [0, 1].map((li) => E.toFlower(LINEAGE[li]));
+          const tops = fl.map((f) => 3.6 + 0.9 * (f.axisLen - 1.8));
+          camTarget[0] = 0;
+          camTarget[1] = 0.5 * Math.max(...tops);
+          camTarget[2] = 0;
+          camDist = FOUNDER_CAM.dist;
+          FOLLOW.near = -Infinity;
+          const right = [Math.cos(yaw), 0, Math.sin(yaw)];
+          for (let i = 0; i < 16; i++) {
+            const a0 = (i / 16) * TAU,
+              a1 = ((i + 1) / 16) * TAU;
+            poly(
+              [
+                [0, 0, 0],
+                [Math.cos(a0) * 3.4, 0, Math.sin(a0) * 3.4],
+                [Math.cos(a1) * 3.4, 0, Math.sin(a1) * 3.4],
+              ],
+              "#20281c",
+              { z: 1e9 },
+            );
+          }
+          fl.forEach((f, li) => {
+            const o = vMul(right, (li ? 1 : -1) * FOUNDER_CAM.gap);
+            const b = basis(vUnit([0, -1, 0]), [o[0], tops[li], o[2]]);
+            stemUnder(b.origin, Math.max(0.4, b.origin[1] - f.axisLen * 0.92));
+            drawFlower(f, b, ancHex(li));
+          });
+          flush();
+        } finally {
+          camDist = saved.camDist;
+          camTarget[0] = saved.t[0];
+          camTarget[1] = saved.t[1];
+          camTarget[2] = saved.t[2];
+          FOLLOW.near = saved.near;
+        }
+        fieldCaption([["the two founders, from the sliders — press Run to grow a field", "#9aa0a8"]]);
+      }
+
       // ----------------------------------------------------------- rendering
       function draw(ts) {
         const G = GENS[frame];
         ctx.clearRect(0, 0, FIELD_VIEW.w, FIELD_VIEW.h);
-        if (!G) return;
+        if (!G) return drawFounders();
         /* ONE CLOCK: t0 is taken from the first timestamp draw() itself is
          * handed, never from a separate performance.now(). A rAF timestamp is
          * the frame's START, which can precede a now() taken just before the
@@ -2325,6 +2376,16 @@
           }
           if (line) rows.push([line, col]);
         }
+        /* a semi-opaque dark plate behind the block, so the caption reads over
+         * stems and petals (measured widths; none on a fake DOM's ctx) */
+        const widest = Math.max(0, ...rows.map(([t]) => {
+          const m = ctx.measureText(t);
+          return m && typeof m.width === "number" ? m.width : 0;
+        }));
+        if (rows.length && widest > 0) {
+          ctx.fillStyle = "rgba(16,18,22,0.78)";
+          ctx.fillRect(8, FIELD_VIEW.h - 13 - 16 * (rows.length - 1) - 13, widest + 12, 16 * (rows.length - 1) + 19);
+        }
         rows.forEach(([t, col], i) => {
           ctx.fillStyle = col;
           ctx.fillText(t, 14, FIELD_VIEW.h - 13 - 16 * (rows.length - 1 - i));
@@ -2371,7 +2432,7 @@
         $("sFate").textContent = R.fate;
         $("sFate").style.color = R.fate === "HELD" ? "var(--ok)" : "var(--bad)";
         $("sFateBand").textContent =
-          `${R.stalledGens} of ${GENS.length} generations recruited nothing` +
+          `stalled generations: ${R.stalledGens || "none"} of ${GENS.length}` +
           ` · labels: ${lo} lineage 1, ${hi} lineage 2, ${mid} mixed` +
           ` · HELD needs ancestry variance above 0.4 x founding (sim/ibm.js fateOf)`;
         $("sAncBand").textContent =
@@ -2415,7 +2476,7 @@
           $("heatLive").textContent =
             `Ancestry over ${HEAT.cols.length - 1} generations and the final offspring. ` +
             `Final: ${fin.n} plants, ${fin.hyb} hybrids, fate ${RESULT ? RESULT.fate : "—"}. ` +
-            `${k} generations recruited nothing. Showing generation ${frame}.`;
+            `Stalled generations: ${k || "none"} of ${HEAT.cols.length - 1}. Showing generation ${frame}.`;
           return;
         }
         const X = window.ExampleHeat;
@@ -2497,10 +2558,16 @@
         draw(performance.now());
         drawBodyMap();
         $("fieldCaption").textContent = "";
-        $("sFate").textContent = "—";
-        $("sFate").style.color = "";
+        /* no run: the headline names the example the heat shows, in the
+         * muted ink, never the fate colour (it is not this visitor's run) */
+        const X = window.ExampleHeat;
+        $("sFate").textContent = X ? `example: ${X.fate}` : "—";
+        $("sFate").style.color = X ? "var(--ink-2)" : "";
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])
           $(id).textContent = "";
+        if (X)
+          $("sFateBand").textContent =
+            `an example run (level ${X.config.level}, seed ${X.config.seed}) — press Run for yours`;
         for (const k of [
           "card1",
           "card2",
@@ -2550,7 +2617,11 @@
                 ? ` · <span class="warn">${mis} generations misaligned</span>`
                 : " · placement/ancestry aligned throughout");
             t0 = null;
-            show(0);
+            /* the run ENDS on its last generation: the tiles, the field and
+             * the heat cursor describe the moment the verdict is read on (the
+             * final offspring's parents), not the founding. Play replays
+             * from generation 0. */
+            show(GENS.length - 1);
           } catch (err) {
             /* the whole run state, not just the verdict: no scrub, play,
              * RUN_KEY or body-map dots left live beside the error */
@@ -2594,6 +2665,8 @@
       $("play").onclick = () => {
         if (!GENS.length) return;
         if (playing) return stopPlay();
+        /* at the end (where a run lands): replay from the founding */
+        if (frame >= GENS.length - 1) show(0);
         playing = true;
         $("play").textContent = "Pause";
         t0 = null;
