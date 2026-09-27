@@ -2859,22 +2859,32 @@
         return t + " · ";
       }
 
+      /* #fieldCaption, authored per case (critic r1 #1, #2; 3b fix round 1):
+       * a STALLED run's field shows plants carried forward, which looks like
+       * HELD unless it says so. Every generation stalled (k = N): they are
+       * the founders. Only some (k < N): step() handed back that
+       * generation's parents, not the founders (as stallSentence words it).
+       * The level-5 note keeps its source as hover provenance. */
+      function fieldCaptionFor(fate, k, N, phenology) {
+        if (fate === "STALLED")
+          return k === N
+            ? { text: "No new plants were made: these are the first generation's plants, carried forward unchanged.", title: null }
+            : { text: "Some generations made no new plants; in those, the plants were carried forward unchanged.", title: null };
+        if (phenology)
+          return {
+            text: "No bee path shown: this level's flowering-season model doesn't record one.",
+            title: "sim/ibm.js:1432-1438: the sliced season logs no bout",
+          };
+        return { text: "", title: null };
+      }
+
       function showResult(R) {
         const { lo, hi, mid } = finalLabels(R);
-        /* authored per case (critic r1 #1, #2): a STALLED run's field shows
-         * the founders carried forward, which looks like HELD unless it says
-         * so; the level-5 note keeps its source as hover provenance */
         const fc = $("fieldCaption");
-        if (R.fate === "STALLED") {
-          fc.textContent = "No new plants were made: these are the first generation's plants, carried forward unchanged.";
-          fc.removeAttribute("title");
-        } else if (R.phenology) {
-          fc.textContent = "No bee path shown: this level's flowering-season model doesn't record one.";
-          fc.setAttribute("title", "sim/ibm.js:1432-1438: the sliced season logs no bout");
-        } else {
-          fc.textContent = "";
-          fc.removeAttribute("title");
-        }
+        const cap = fieldCaptionFor(R.fate, R.stalledGens, GENS.length, !!R.phenology);
+        fc.textContent = cap.text;
+        if (cap.title) fc.setAttribute("title", cap.title);
+        else fc.removeAttribute("title");
         $("sFate").textContent = R.fate;
         /* the page's question answered for this run, in story()'s authored
          * caption; the fate itself is the engine's (fateOf) */
@@ -3201,6 +3211,7 @@
         heatSize: () => ({ W: HEAT_W, H: HEAT_H, dpr: HEAT_DPR, backing: [heatEl.width, heatEl.height] }),
         result: () => RESULT,
         stallSentence,
+        fieldCaptionFor,
         bodyLayers: () => ({ ...BODY_LAYERS, founders: [...BODY_LAYERS.founders] }),
         thumbSource,
         thumbGenome: (li) => (THUMB_DRAWN[li] ? { ...THUMB_DRAWN[li] } : null),

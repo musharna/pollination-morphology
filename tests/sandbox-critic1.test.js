@@ -49,6 +49,30 @@ test("MAJOR 1: a STALLED run's field caption says the plants are the first gener
     "control: a phenology run that recruits keeps its own note");
 });
 
+/* 3b fix round 1 (I1): STALLED means ANY generation recruited nothing
+ * (sim/ibm.js fateOf), so only k = N shows the founders; k < N gets its own
+ * authored line. No page fixture stalls partway, so the page's caption
+ * function is tested directly, as Sandbox.stallSentence is (7e). */
+test("I1: the STALLED field caption words k = N and k < N apart", () => {
+  const f = STALL.page.Sandbox.fieldCaptionFor;
+  assert.equal(typeof f, "function", "the page exposes Sandbox.fieldCaptionFor");
+  assert.equal(f("STALLED", 35, 35, false).text,
+    "No new plants were made: these are the first generation's plants, carried forward unchanged.");
+  assert.equal(f("STALLED", 10, 35, false).text,
+    "Some generations made no new plants; in those, the plants were carried forward unchanged.");
+  assert.equal(f("STALLED", 1, 24, true).text,
+    "Some generations made no new plants; in those, the plants were carried forward unchanged.");
+  /* spread: the page object is from the page's realm (vm context) */
+  assert.deepEqual({ ...f("HELD", 0, 35, true) }, {
+    text: "No bee path shown: this level's flowering-season model doesn't record one.",
+    title: "sim/ibm.js:1432-1438: the sliced season logs no bout",
+  });
+  assert.deepEqual({ ...f("FUSED", 0, 35, false) }, { text: "", title: null });
+  /* the page's own call agrees: the stall fixture is k = N */
+  assert.equal(STALL.stalledGens, 35);
+  assert.equal(STALL.fieldCaption, f("STALLED", 35, 35, false).text);
+});
+
 test("MAJOR 2: no source-file reference in first-screen text; each is kept as a title", () => {
   const ids = ["sFate", "sFateSub", "sFateBand", "fieldCaption", "levelBrief", "levelNote", "status", "levelWin"];
   const REF = /sim\/|docs\/|\.js\b|\.md\b/;
@@ -94,6 +118,11 @@ test("MINOR: the answer caption's rule is the main ink and larger than the detai
   const sub = rule(".verdict #sFateSub");
   assert.match(sub, /color:\s*var\(--ink\);/);
   const px = (r) => +/font-size:\s*(\d+(?:\.\d+)?)px/.exec(r)[1];
-  assert.equal(px(rule(".band")), 12, "control: the band is 12px");
-  assert.ok(px(sub) >= 1.1 * 12, `caption ${px(sub)}px`);
+  /* #sFateBand's size comes from `.verdict span` (it beats `.band` on
+   * specificity), so the caption is compared with that rule, not a constant
+   * (3b fix round 1, M1). tools/smoke-site.py answer_style_check compares the
+   * computed sizes in Chromium, the real guard; this is the fast proxy. */
+  const band = px(rule(".verdict span"));
+  assert.ok(band > 0, "control: the band's rule has a size");
+  assert.ok(px(sub) >= 1.1 * band, `caption ${px(sub)}px vs band ${band}px`);
 });

@@ -275,3 +275,25 @@ test("every row's plate clears both dashed band lines by >= 2 px", () => {
     assert.ok(yOf("bottom").y >= lines[1], "bottom is in the lineage 2 zone");
   }
 });
+
+/* 3b fix round 1 (M2): the line guard. Two top-row marks on one column: the
+ * second moves down 14 px, which puts its plate on the first dashed line at
+ * the hero size, so it must be dropped, not drawn across the line. */
+test("a top mark moved down onto a dashed band line is dropped", () => {
+  const [W, Ht] = [566, Math.round((566 * 420) / 760)];
+  const model = plainModel();
+  const lay = H.layout(model, W, Ht);
+  const line1 = lay.heatTop + 3 * lay.rowH;
+  const marks = [
+    { col: 4, row: "top", text: "first hybrids" },
+    { col: 4, row: "top", text: "lineage 1 gone" },
+  ];
+  const r = recorder();
+  const out = H.drawHeat(r.ctx, model, { W, H: Ht, cursor: -1, marks });
+  const [p1] = markPlates(r.calls, [marks[0]]);
+  assert.ok(p1 && p1.y + p1.h <= line1 - 2, "control: the first mark is drawn clear of line 1");
+  /* control: the moved-down slot really does cross line 1 */
+  assert.ok(p1.y + 14 < line1 + 2 && p1.y + 14 + p1.h > line1 - 2, "control: the moved slot straddles line 1");
+  assert.equal(out.marks, 1, "the second mark is dropped");
+  assert.ok(!texts(r.calls).includes("lineage 1 gone"));
+});
