@@ -87,6 +87,14 @@
     AXIS_DY = 7,
     KEY_DY = 16; // the HELD key's baseline below stripBot, inside PAD.B (24)
   const GUTTER_X = 6;
+  /* story marks (sandbox intro, 2026-09-27) are drawn only when the plot,
+   * W - padL - PAD.R, is at least this wide. Measured in headless Chromium
+   * (default launch, 2026-09-27), 11px system-ui: "stalled: no new plants"
+   * 121.1 px is the widest mark ("lineage 1/2 gone" 81.8, "first hybrids"
+   * 65.7); two marks side by side plus their ticks, offsets and the final
+   * column need >= 360 px of plot. The phone hero (~300 px heat, ~200 px of
+   * plot) gets none; the caption carries the story there. */
+  const MARKS_MIN_W = 360;
   const FINAL_GAP = 12;
   function layout(model, W, H, padL = PAD.L) {
     const n = model.cols.length;
@@ -309,6 +317,63 @@
       const est = (s, w) => (w === null ? 6.2 * s.length : w);
       if (gx - est(gN, wN) > lay.xOf(0) + est(gen0, w0) + 8) plated(gN, gx, ay, "right");
     }
+    /* story marks: a tick at the column's centre down the heat, and a plated
+     * label beside it in the mark's row. Placed first, all of them, so every
+     * tick is drawn under every label. A label that would overlap one already
+     * placed moves down 14 px once; if it still overlaps, or leaves the heat,
+     * the mark (tick and label) is dropped. */
+    let drawnMarks = 0;
+    if (Array.isArray(o.marks) && o.marks.length && W - lay.padL - PAD.R >= MARKS_MIN_W) {
+      const MARK_INK = "#e8e6e1";
+      const rowY = {
+        top: lay.heatTop + 26, // below the "lineage 1" gutter row's baseline
+        mid: (lay.heatTop + lay.heatBot) / 2 - 16, // above the "hybrid band" gutter label
+        bottom: lay.heatBot - 18,
+      };
+      /* the plate plated() draws for (s, x, y, align) */
+      const plateOf = (s, x, y, align) => {
+        const m = widthOf(ctx, s);
+        const w = m === null ? 6.2 * s.length : m;
+        return { x: (align === "right" ? x - w : x) - 2, y: y - 10, w: w + 4, h: 13 };
+      };
+      const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      const inHeat = (r) => r.x >= lay.padL && r.x + r.w <= W - PAD.R && r.y >= lay.heatTop && r.y + r.h <= lay.heatBot;
+      const placed = [];
+      for (const mk of o.marks) {
+        if (!(mk.col >= 0 && mk.col < model.cols.length) || !(mk.row in rowY))
+          throw new Error(`drawHeat: bad mark ${JSON.stringify(mk)}`);
+        const tx = Math.round(lay.xOf(mk.col) + lay.colW / 2) + 0.5;
+        let x = tx + 4,
+          align = "left",
+          y = rowY[mk.row];
+        const r0 = plateOf(mk.text, x, y, align);
+        if (r0.x + r0.w - 2 > sepX - 4) {
+          /* the label's right edge would pass the separator: hang it left */
+          x = tx - 4;
+          align = "right";
+        }
+        let r = plateOf(mk.text, x, y, align);
+        if (placed.some((p) => hit(r, p.r))) {
+          y += 14;
+          r = plateOf(mk.text, x, y, align);
+        }
+        if (placed.some((p) => hit(r, p.r)) || !inHeat(r)) continue;
+        placed.push({ mk, tx, x, y, align, r });
+      }
+      ctx.strokeStyle = MARK_INK;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.6;
+      for (const p of placed) {
+        ctx.beginPath();
+        ctx.moveTo(p.tx, lay.heatTop);
+        ctx.lineTo(p.tx, lay.heatBot);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = MARK_INK;
+      for (const p of placed) plated(p.mk.text, p.x, p.y, p.align);
+      drawnMarks = placed.length;
+    }
     /* the hatch key, in the gap between the heat and the strip (the cursor
      * is not drawn there), right-aligned to end before the separator: away
      * from the "lineage 2" gutter label it must not read as a caption of */
@@ -348,6 +413,7 @@
     ctx.fillStyle = INK2;
     if (dwEst <= room) ctx.fillText(dotText, lay.padL, ky);
     else if (room >= 0.6 * dwEst) ctx.fillText(dotText, lay.padL, ky, room);
+    return { marks: drawnMarks };
   }
 
   /* ---- the run's story (sandbox intro, 2026-09-27). The page's question is
@@ -398,7 +464,7 @@
     return { answer: fate === "HELD" ? "Yes" : "No", caption, marks: marks.slice(0, 3) };
   }
 
-  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex, story, lostLineage };
+  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex, story, lostLineage, MARKS_MIN_W };
   global.AncestryHeat = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
