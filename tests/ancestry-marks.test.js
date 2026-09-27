@@ -16,6 +16,7 @@ require("../example-heat.js");
 const X = globalThis.ExampleHeat;
 
 const PLATE = "#101216";
+const MARK_INK = "#e8e6e1"; // a mark's plate (3b: solid light plate, dark text)
 const recorder = () => {
   const calls = [];
   const st = { textAlign: "left", fillStyle: "#000", strokeStyle: "#000", lineWidth: 1, globalAlpha: 1, font: "" };
@@ -42,7 +43,7 @@ const markPlates = (calls, marks) => {
     const i = calls.findIndex((c) => c.fn === "fillText" && c.args[0] === m.text);
     if (i < 0) continue;
     let j = i - 1;
-    while (j >= 0 && !(calls[j].fn === "fillRect" && calls[j].fillStyle === PLATE)) j--;
+    while (j >= 0 && !(calls[j].fn === "fillRect" && calls[j].fillStyle === MARK_INK)) j--;
     assert.ok(j >= 0, `no plate before ${m.text}`);
     const [x, y, w, h] = calls[j].args;
     out.push({ x, y, w, h });
@@ -179,9 +180,11 @@ test("a mark whose slot and moved-down slot are both taken is dropped, and not c
 });
 
 test("a second mark on the same slot moves down 14 px", () => {
+  /* the mid row: a top or bottom mark moved 14 px would cross a band line
+   * and is dropped (3b) */
   const marks = [
-    { col: 4, row: "top", text: "first hybrids" },
-    { col: 4, row: "top", text: "lineage 1 gone" },
+    { col: 4, row: "mid", text: "first hybrids" },
+    { col: 4, row: "mid", text: "lineage 1 gone" },
   ];
   const r = recorder();
   const out = H.drawHeat(r.ctx, plainModel(), { W: 566, H: 420, cursor: -1, marks });
@@ -208,4 +211,67 @@ test("a mark near the separator hangs left of its tick (right-aligned)", () => {
   const r2 = recorder();
   H.drawHeat(r2.ctx, model, { W: 566, H: 420, cursor: -1, marks: [{ ...marks[0], col: 2 }] });
   assert.equal(r2.calls.find((k) => k.fn === "fillText" && k.args[0] === marks[0].text).textAlign, "left");
+});
+
+/* ---- 3b (critic r1 #9, #8) ------------------------------------------- */
+/* the page's heat is 760x420 scaled to its width: W 566 is the 1400 px hero,
+ * W 462 the narrowest plot that still draws marks (MARKS_MIN_W + padL + PAD.R) */
+const SIZES = [[566, Math.round((566 * 420) / 760)], [462, Math.round((462 * 420) / 760)], [566, 420]];
+
+test("a mark's label sits on a solid light plate with dark text, drawn over the hatch", () => {
+  assert.equal(H.layout(stallModel(), 462, 255).padL + 360 + 16, 462, "control: 462 is the narrowest width with marks");
+  for (const [W, Ht] of SIZES) {
+    const model = stallModel();
+    const marks = H.story(model, "STALLED").marks;
+    const r = recorder();
+    const out = H.drawHeat(r.ctx, model, { W, H: Ht, cursor: -1, fate: "STALLED", marks });
+    assert.ok(out.marks >= 1, `control: a mark is drawn at ${W}x${Ht}`);
+    const lastHatch = r.calls.map((c) => c.strokeStyle === "rgba(217,112,79,0.8)" && c.fn === "stroke").lastIndexOf(true);
+    assert.ok(lastHatch > 0, "control: the hatch was drawn");
+    for (const m of marks) {
+      const i = r.calls.findIndex((c) => c.fn === "fillText" && c.args[0] === m.text);
+      if (i < 0) continue;
+      const plate = r.calls[i - 1];
+      assert.equal(plate.fn, "fillRect", `${m.text}: the plate is drawn right before the label`);
+      assert.equal(plate.fillStyle, MARK_INK, `${m.text}: the plate is the light ink, not the canvas background`);
+      assert.equal(plate.globalAlpha, 1, "the plate is opaque");
+      assert.equal(r.calls[i].fillStyle, PLATE, `${m.text}: dark text on the light plate`);
+      assert.ok(i - 1 > lastHatch, "the plate is drawn after every hatch stroke");
+      const [px, py, pw, ph] = plate.args;
+      const [, tx, ty] = r.calls[i].args;
+      const tw = 6.2 * m.text.length;
+      const x0 = r.calls[i].textAlign === "right" ? tx - tw : tx;
+      assert.ok(px <= x0 - 2 && px + pw >= x0 + tw + 2 && py <= ty - 10 && py + ph >= ty + 3, `${m.text}: the plate covers the text`);
+    }
+  }
+});
+
+test("every row's plate clears both dashed band lines by >= 2 px", () => {
+  const gap = H.MARK_LINE_GAP;
+  assert.ok(gap >= 2);
+  for (const [W, Ht] of SIZES) {
+    const model = plainModel();
+    const lay = H.layout(model, W, Ht);
+    const lines = [3, 17].map((b) => lay.heatTop + b * lay.rowH);
+    for (const row of ["top", "mid", "bottom"]) {
+      const marks = [{ col: 4, row, text: "stalled: no new plants" }];
+      const r = recorder();
+      const out = H.drawHeat(r.ctx, model, { W, H: Ht, cursor: -1, marks });
+      assert.equal(out.marks, 1, `control: the ${row} mark is drawn at ${W}x${Ht}`);
+      const [p] = markPlates(r.calls, marks);
+      for (const L of lines)
+        assert.ok(p.y + p.h <= L - 2 || p.y >= L + 2,
+          `${row} at ${W}x${Ht}: plate ${p.y.toFixed(1)}-${(p.y + p.h).toFixed(1)} vs line ${L.toFixed(1)}`);
+      assert.ok(p.y >= lay.heatTop && p.y + p.h <= lay.heatBot, "inside the heat");
+    }
+    /* the rows stay in their zones: top above line 1, bottom below line 2 */
+    const yOf = (row) => {
+      const marks = [{ col: 4, row, text: "first hybrids" }];
+      const r = recorder();
+      H.drawHeat(r.ctx, model, { W, H: Ht, cursor: -1, marks });
+      return markPlates(r.calls, marks)[0];
+    };
+    assert.ok(yOf("top").y + yOf("top").h <= lines[0], "top is in the lineage 1 zone");
+    assert.ok(yOf("bottom").y >= lines[1], "bottom is in the lineage 2 zone");
+  }
 });

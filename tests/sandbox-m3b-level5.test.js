@@ -23,12 +23,13 @@ for (const [seed, fate] of Object.entries(EXPECT))
     assert.equal(p.fate, fate);
     assert.equal(p.stalledGens, 0);
     assert.equal(p.win, fate === "HELD" ? "won" : "lost");
-    assert.match(p.fieldCaption || "", /bout not drawn: the sliced season does not log one/);
+    assert.equal(p.fieldCaption, "No bee path shown: this level's flowering-season model doesn't record one.");
+    assert.equal(p.page.document.getElementById("fieldCaption").getAttribute("title"), "sim/ibm.js:1432-1438: the sliced season logs no bout");
   });
 
 test("control: a run without phenology carries no no-log caption", () => {
   const p = runPage({ level: 2, seed: 1, useD: true, d: 8 });
-  assert.doesNotMatch(p.fieldCaption || "", /bout not drawn/);
+  assert.doesNotMatch(p.fieldCaption || "", /No bee path shown/);
 });
 
 test("the width-locus button loads card 6's exact object", () => {

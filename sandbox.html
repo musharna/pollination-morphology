@@ -415,6 +415,15 @@
       #sFateBand {
         display: block;
       }
+      /* the answer is what the eye lands on (critic r1 #4): main ink, and
+       * larger than the 12px detail band below it */
+      .verdict #sFateSub {
+        display: block;
+        font-size: 15px;
+        line-height: 1.35;
+        color: var(--ink);
+        margin: 2px 0 4px;
+      }
       .keyRow {
         display: flex;
         justify-content: space-between;
@@ -483,8 +492,13 @@
           >
         </div>
         <p id="levelBrief" class="note"></p>
-        <p id="levelOpts" class="band"></p>
-        <p id="levelNote" class="note"></p>
+        <!-- the level's detail, collapsed (critic r1 #3): its options and its
+             known-win note; hidden when the level has neither -->
+        <details id="levelMore" hidden>
+          <summary>about this level</summary>
+          <p id="levelOpts" class="band"></p>
+          <p id="levelNote" class="note"></p>
+        </details>
         <details id="advanced">
           <summary>Advanced: population, founding, mating, options</summary>
           <div class="row">
@@ -2141,6 +2155,16 @@
           throw new Error(`fate "one lost" but the final mean ancestry ${m} is inside the hybrid band`);
         return `one lost (lineage ${m < 0.5 ? 2 : 1} gone)`;
       }
+      /* a level's note as the page prints it, authored here where the level's
+       * own text (population-run.js noKnownWin) carries a repo path: the path
+       * goes to the element's title, the words stay (critic r1 #2, #3).
+       * tests/sandbox-critic1.test.js checks it against noKnownWin. */
+      const LEVEL_NOTE = {
+        2: {
+          text: "No win from placement alone (the sliders, no option) is known here: HELD 0 of 5 at every target d from 0.5 to 8 (N 30, 35 generations, siteN 160). If you find one, note the seed and settings.",
+          source: "docs/2026-08-04-secondary-contact.md:36-40",
+        },
+      };
       function showWin() {
         const d = realisedSeparation();
         const st = window.SandboxRun.levelWin(LEVEL, {
@@ -2161,7 +2185,10 @@
                 : LEVEL.noRun
                   ? `not yet: sliders' separation ${d === null ? "—" : d.toFixed(3)}, target ${LEVEL.target}`
                   : "run to play this level; only HELD wins";
-        let note = LEVEL.noKnownWin || "";
+        const own = LEVEL_NOTE[LEVEL.id];
+        let note = own ? own.text : LEVEL.noKnownWin || "";
+        if (own) $("levelNote").setAttribute("title", own.source);
+        else $("levelNote").removeAttribute("title");
         if (note && st === "lost")
           note +=
             ` This run: seed ${$("seed").value}, N ${$("n").value}, ` +
@@ -2169,6 +2196,11 @@
             ($("useD").checked ? `, found at target d ${$("d").value}` : "") +
             `, ${$("mode").value === "random" ? "random mating" : "placement-mediated"}.`;
         $("levelNote").textContent = note;
+        showLevelMore();
+      }
+      /* "about this level" is shown only when it holds something */
+      function showLevelMore() {
+        $("levelMore").hidden = !($("levelOpts").textContent || $("levelNote").textContent);
       }
       /* ============================================================ M3b: the
        * option controls. The option object is READ from the controls at Run
@@ -2268,6 +2300,7 @@
         $("levelOpts").textContent = L.options
           ? `This level's option: ${L.options}. Loaded into the option controls below.`
           : "";
+        showLevelMore();
         refreshSandbox();
       }
 
@@ -2828,9 +2861,20 @@
 
       function showResult(R) {
         const { lo, hi, mid } = finalLabels(R);
-        $("fieldCaption").textContent = R.phenology
-          ? "bout not drawn: the sliced season does not log one (sim/ibm.js:1432-1438)"
-          : "";
+        /* authored per case (critic r1 #1, #2): a STALLED run's field shows
+         * the founders carried forward, which looks like HELD unless it says
+         * so; the level-5 note keeps its source as hover provenance */
+        const fc = $("fieldCaption");
+        if (R.fate === "STALLED") {
+          fc.textContent = "No new plants were made: these are the first generation's plants, carried forward unchanged.";
+          fc.removeAttribute("title");
+        } else if (R.phenology) {
+          fc.textContent = "No bee path shown: this level's flowering-season model doesn't record one.";
+          fc.setAttribute("title", "sim/ibm.js:1432-1438: the sliced season logs no bout");
+        } else {
+          fc.textContent = "";
+          fc.removeAttribute("title");
+        }
         $("sFate").textContent = R.fate;
         /* the page's question answered for this run, in story()'s authored
          * caption; the fate itself is the engine's (fateOf) */
@@ -2841,7 +2885,8 @@
           stallWhy(R) +
           `stalled generations: ${R.stalledGens || "none"} of ${GENS.length}` +
           ` · labels: ${lo} lineage 1, ${hi} lineage 2, ${mid} mixed` +
-          ` · HELD needs every generation to recruit AND ancestry variance above 0.4 × founding (sim/ibm.js fateOf)`;
+          ` · HELD needs every generation to recruit AND ancestry variance above 0.4 × founding`;
+        $("sFateBand").setAttribute("title", "sim/ibm.js fateOf");
         /* no "fused or lost at 0.000" (critic r3 #7): the HELD line is the
          * only threshold; FUSED and one lost are told apart by the mean */
         $("sAncBand").textContent =
@@ -2992,6 +3037,7 @@
         draw(performance.now());
         drawBodyMap();
         $("fieldCaption").textContent = "";
+        $("fieldCaption").removeAttribute("title");
         /* no run: the headline names the example the heat shows, in the
          * muted ink, never the fate colour (it is not this visitor's run) */
         const X = window.ExampleHeat;
@@ -3003,9 +3049,8 @@
         $("statsHint").hidden = false;
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])
           $(id).textContent = "";
-        if (X)
-          $("sFateBand").textContent =
-            `an example run (level ${X.config.level}, seed ${X.config.seed}) — press Run for yours`;
+        /* no example line here: the heat's title names the example (critic r1 #7) */
+        $("sFateBand").removeAttribute("title");
         for (const k of [
           "card1",
           "card2",

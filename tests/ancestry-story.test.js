@@ -27,16 +27,16 @@ test("HELD answers Yes; no marks when nothing happened", () => {
 test("one lost names the lost lineage and marks where it was last seen", () => {
   const s = H.story(model([col(0, 15, 0, 15), col(1, 20, 0, 10), col(2, 30, 0, 0), col(3, 30, 0, 0, { final: true })]), "one lost");
   assert.equal(s.answer, "No");
-  assert.equal(s.caption, "No — lineage 2 was lost: the last plants' ancestry is over 85% lineage 1.");
+  assert.equal(s.caption, "No — lineage\u00a02 was lost: the last plants' ancestry is over 85% lineage\u00a01.");
   assert.deepEqual(s.marks, [{ col: 2, row: "bottom", text: "lineage 2 gone" }]);
   const t = H.story(model([col(0, 15, 0, 15), col(1, 0, 0, 30), col(2, 0, 0, 30, { final: true })]), "one lost");
-  assert.equal(t.caption, "No — lineage 1 was lost: the last plants' ancestry is over 85% lineage 2.");
+  assert.equal(t.caption, "No — lineage\u00a01 was lost: the last plants' ancestry is over 85% lineage\u00a02.");
   assert.deepEqual(t.marks, [{ col: 1, row: "top", text: "lineage 1 gone" }]);
 });
 
 test("one lost with a straggler to the end: named, but not marked gone", () => {
   const s = H.story(model([col(0, 15, 0, 15), col(1, 29, 0, 1), col(2, 29, 0, 1, { final: true })]), "one lost");
-  assert.equal(s.caption, "No — lineage 2 was lost: the last plants' ancestry is over 85% lineage 1.");
+  assert.equal(s.caption, "No — lineage\u00a02 was lost: the last plants' ancestry is over 85% lineage\u00a01.");
   assert.deepEqual(s.marks, []);
 });
 

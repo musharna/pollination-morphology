@@ -43,7 +43,7 @@ test("the header states the premise and the question before any run", () => {
 test("on load the caption answers for the example, and the stats say they wait for Run", () => {
   const p = runPage({ noRun: true });
   assert.equal($(p, "sFateSub").textContent,
-    "example run's answer: No — lineage 2 was lost: the last plants' ancestry is over 85% lineage 1.");
+    "example run's answer: No — lineage\u00a02 was lost: the last plants' ancestry is over 85% lineage\u00a01.");
   assert.equal($(p, "statsHint").hidden, false);
   assert.equal(staticText(/<p id="statsHint" class="note">([^<]*)<\/p>/), "These fill in when you press Run.");
   assert.ok(SRC.indexOf('id="statsHint"') < SRC.indexOf('<div class="stats">'), "the hint sits before the tiles");
@@ -122,5 +122,5 @@ test("the heat's live text carries the caption", () => {
   assert.match($(STALL, "heatLive").textContent, /No — it stalled/);
   assert.match($(CTRL, "heatLive").textContent, /No — they blended/);
   const p = runPage({ noRun: true });
-  assert.match($(p, "heatLive").textContent, /No — lineage 2 was lost/);
+  assert.match($(p, "heatLive").textContent, /No — lineage\u00a02 was lost/);
 });

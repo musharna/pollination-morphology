@@ -508,6 +508,25 @@ FIELD_CAPTION_REC = """() => {
 }"""
 
 
+# 3b (critic r1 #4): the answer caption is what the eye lands on - the page's
+# main ink and >= 1.1x the detail band's computed font size. Computed styles
+# need a real browser; the node tests cannot see CSS. Seen failing on the
+# pre-3b build (both 12px, caption in --ink-2).
+ANSWER_STYLE = """() => { const cs = (id) => getComputedStyle(document.getElementById(id));
+  const probe = document.createElement('span'); probe.style.color = 'var(--ink)';
+  document.body.appendChild(probe); const ink = getComputedStyle(probe).color; probe.remove();
+  return { sub: parseFloat(cs('sFateSub').fontSize), band: parseFloat(cs('sFateBand').fontSize),
+    color: cs('sFateSub').color, ink }; }"""
+
+
+def answer_style_check(page, name, failures):
+    a = page.evaluate(ANSWER_STYLE)
+    if not a["sub"] >= 1.1 * a["band"] or a["color"] != a["ink"]:
+        failures.append(f"{name}: #sFateSub {a['sub']}px {a['color']} vs #sFateBand {a['band']}px, ink {a['ink']} "
+                        f"(want >= 1.1x the band, in the main ink)")
+    return f"answer {a['sub']:.0f}px/{a['band']:.0f}px"
+
+
 def hero_load_checks(page, name, failures):
     fate, ex = page.evaluate(HERO_LOAD)
     src_note = None
@@ -526,6 +545,7 @@ def hero_load_checks(page, name, failures):
         failures.append(f"{name}: #field caption {t['t']!r} at ({t['x']}, {t['y']}, w {t['w']:.0f}) has no dark plate under it (last rect {pl})")
     src_note = load_source_checks(page, name, failures, t["t"] if t else None)
     src_note += ", " + body_key_check(page, f"{name}: load")
+    src_note += ", " + answer_style_check(page, name, failures)
     return f"{src_note}, load #sFate {fate!r}, #field {fink:.1%} off-corner, caption plate {'yes' if t and pl else 'NO'}"
 
 
@@ -961,7 +981,7 @@ def m3b_checks(browser, name):
     for seed, fate in exp5.items():
         r = run({"level": 5, "seed": seed}, f"L5 s{seed}")
         got5.append(r["fate"])
-        if r["fate"] != fate or r["stalled"] != 0 or "bout not drawn" not in r["caption"]:
+        if r["fate"] != fate or r["stalled"] != 0 or "No bee path shown" not in r["caption"]:
             failures.append(f"{name}: M3b level 5 seed {seed} read {r['fate']} stalled {r['stalled']} caption {r['caption']!r}")
         if seed == 3:
             sweep_state(page, name, "L5", errs, True)

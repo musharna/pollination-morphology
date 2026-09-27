@@ -95,6 +95,8 @@
    * column need >= 360 px of plot. The phone hero (~300 px heat, ~200 px of
    * plot) gets none; the caption carries the story there. */
   const MARKS_MIN_W = 360;
+  /* a mark's plate keeps this many px from either dashed hybrid-band line */
+  const MARK_LINE_GAP = 2;
   const FINAL_GAP = 12;
   function layout(model, W, H, padL = PAD.L) {
     const n = model.cols.length;
@@ -325,12 +327,20 @@
     let drawnMarks = 0;
     if (Array.isArray(o.marks) && o.marks.length && W - lay.padL - PAD.R >= MARKS_MIN_W) {
       const MARK_INK = "#e8e6e1";
+      /* rows by the band's geometry (critic r1 #8: a label sat on a dashed
+       * line). The plate (y - 10 to y + 3, 13 px) is centred in the lineage 1
+       * zone (heatTop to the first dashed line), the lineage 2 zone (second
+       * line to heatBot), or 16 px above the band's middle; every plate must
+       * clear both lines by MARK_LINE_GAP or the mark is dropped. */
+      const [line1, line2] = [HYB_FIRST, HYB_LAST + 1].map((b) => lay.heatTop + b * lay.rowH);
       const rowY = {
-        top: lay.heatTop + 26, // below the "lineage 1" gutter row's baseline
-        mid: (lay.heatTop + lay.heatBot) / 2 - 16, // above the "hybrid band" gutter label
-        bottom: lay.heatBot - 18,
+        top: (lay.heatTop + line1) / 2 - 6.5 + 10,
+        mid: (lay.heatTop + lay.heatBot) / 2 - 16,
+        bottom: (line2 + lay.heatBot) / 2 - 6.5 + 10,
       };
-      /* the plate plated() draws for (s, x, y, align) */
+      const clearsLines = (r) =>
+        [line1, line2].every((L) => r.y + r.h <= L - MARK_LINE_GAP || r.y >= L + MARK_LINE_GAP);
+      /* a mark's plate for (s, x, y, align): plated()'s rect, 2 px round the text */
       const plateOf = (s, x, y, align) => {
         const m = widthOf(ctx, s);
         const w = m === null ? 6.2 * s.length : m;
@@ -357,7 +367,7 @@
           y += 14;
           r = plateOf(mk.text, x, y, align);
         }
-        if (placed.some((p) => hit(r, p.r)) || !inHeat(r)) continue;
+        if (placed.some((p) => hit(r, p.r)) || !inHeat(r) || !clearsLines(r)) continue;
         placed.push({ mk, tx, x, y, align, r });
       }
       /* the labels after this block (the hatch key) draw in the ink left
@@ -374,8 +384,17 @@
         ctx.stroke();
       }
       ctx.globalAlpha = 1;
-      ctx.fillStyle = MARK_INK;
-      for (const p of placed) plated(p.mk.text, p.x, p.y, p.align);
+      /* the label on a solid light plate with dark text (critic r1 #9: a
+       * background-coloured plate let the stall hatch run up to the glyphs,
+       * so the label read as part of the hatch) */
+      for (const p of placed) {
+        ctx.fillStyle = MARK_INK;
+        ctx.fillRect(p.r.x, p.r.y, p.r.w, p.r.h);
+        ctx.fillStyle = PLATE;
+        ctx.textAlign = p.align;
+        ctx.fillText(p.mk.text, p.x, p.y);
+        ctx.textAlign = "left";
+      }
       ctx.fillStyle = fill0;
       ctx.strokeStyle = stroke0;
       drawnMarks = placed.length;
@@ -463,14 +482,15 @@
     const caption = {
       HELD: "Yes — they stayed two kinds: the last plants' ancestry is still split between the two lineages.",
       FUSED: "No — they blended: the last plants' ancestry mixes both lineages, and the split between them has collapsed.",
-      "one lost": lost && `No — lineage ${lost} was lost: the last plants' ancestry is over 85% lineage ${3 - lost}.`,
+      /* a no-break space in "lineage\u00a0N", so the digit never wraps alone */
+      "one lost": lost && `No — lineage\u00a0${lost} was lost: the last plants' ancestry is over 85% lineage\u00a0${3 - lost}.`,
       "BOTH LOST": "No — the population died out: fewer than two plants were left.",
       STALLED: `No — it stalled: ${k} of ${N} generations made no new plants, so the old ones were carried forward. That is not staying two kinds.`,
     }[fate];
     return { answer: fate === "HELD" ? "Yes" : "No", caption, marks: marks.slice(0, 3) };
   }
 
-  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex, story, lostLineage, MARKS_MIN_W };
+  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex, story, lostLineage, MARKS_MIN_W, MARK_LINE_GAP };
   global.AncestryHeat = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
