@@ -1010,6 +1010,11 @@
       /* the run's story (AncestryHeat.story on HEAT and the run's fate), built
        * where HEAT is: the caption and the heat's marks read this one value */
       let STORY = null;
+      /* the example's story, computed once: its caption (clearResult) and its
+       * marks and live text (drawHeat) read this one value, as a run's read STORY */
+      const EX_STORY = window.ExampleHeat
+        ? window.AncestryHeat.story(window.ExampleHeat.model, window.ExampleHeat.fate)
+        : null;
       /* ⚠️ A COPY, not DEFAULT_BEE itself. The two bee sliders set the run's
        * parameter object; writing through to the module's own object would
        * change the bee for every other consumer of the bundle in the page. */
@@ -2891,7 +2896,6 @@
         }
         const X = window.ExampleHeat;
         if (X) {
-          const XS = A.story(X.model, X.fate);
           A.drawHeat(heatC, X.model, {
             W: HEAT_W,
             H: HEAT_H,
@@ -2900,10 +2904,10 @@
             /* names its source (critic r2 M7): the field and the thumbnails
              * beside it are the sliders, this is not */
             title: `example run: level ${X.config.level}, seed ${X.config.seed} — press Run for yours`,
-            marks: XS.marks,
+            marks: EX_STORY.marks,
           });
           $("heatLive").textContent =
-            `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own. ` + XS.caption;
+            `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own. ` + EX_STORY.caption;
           return;
         }
         A.drawEmpty(
@@ -2994,7 +2998,7 @@
         $("sFate").textContent = X ? `example: ${X.fate}` : "—";
         $("sFate").style.color = X ? "var(--ink-2)" : "";
         $("sFateSub").textContent = X
-          ? "example run's answer: " + window.AncestryHeat.story(X.model, X.fate).caption
+          ? "example run's answer: " + EX_STORY.caption
           : "fate (the run's last offspring)";
         $("statsHint").hidden = false;
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])

@@ -59,10 +59,63 @@ test("a run's caption is its fate's, and the hint hides", () => {
   assert.equal($(CTRL, "statsHint").hidden, true);
 });
 
+const pickLevel = (p, lv) => {
+  const sel = $(p, "level");
+  sel.value = String(lv);
+  sel.onchange({ target: sel });
+};
+
 test("a level change after a run restores the example's caption and the hint", () => {
-  const p = runPage({ level: 2, seed: 3, thenLevel: 3 });
+  const p = runPage({ level: 2, seed: 3 });
+  /* control: the run happened — no error, a fate of its own, a heat model */
+  assert.equal(p.error, null, `the run errored: ${p.status}`);
+  assert.ok(["HELD", "FUSED", "one lost", "BOTH LOST", "STALLED"].includes(p.fate), `run fate ${p.fate}`);
+  assert.ok(p.page.Sandbox.heat(), "the run built a heat model");
+  assert.equal($(p, "statsHint").hidden, true, "control: the run hid the hint");
+  assert.doesNotMatch($(p, "sFateSub").textContent, /^example run's answer: /, "control: the run's own caption");
+  pickLevel(p, 3);
   assert.match($(p, "sFateSub").textContent, /^example run's answer: /);
   assert.equal($(p, "statsHint").hidden, false);
+});
+
+/* the page wires story()'s marks into the heat (fix round 1): a spy on
+ * AncestryHeat.drawHeat records the options each redraw passes */
+const spyHeat = (p) => {
+  const A = p.page.AncestryHeat;
+  const seen = [];
+  const orig = A.drawHeat;
+  A.drawHeat = (ctx, m, o) => (seen.push({ m, o }), orig(ctx, m, o));
+  return { seen, restore: () => (A.drawHeat = orig) };
+};
+
+test("the example heat is drawn with the example's story marks", () => {
+  const p = runPage({ noRun: true });
+  const A = p.page.AncestryHeat;
+  const X = p.page.ExampleHeat;
+  const want = A.story(X.model, X.fate).marks;
+  assert.ok(want.length > 0, "control: the example's story has marks");
+  const spy = spyHeat(p);
+  pickLevel(p, 3); // clearResult redraws the example heat
+  spy.restore();
+  assert.ok(spy.seen.length >= 1, "control: the level change redrew the heat");
+  const last = spy.seen.at(-1);
+  assert.equal(last.m, X.model, "control: the example model was drawn");
+  assert.deepEqual(last.o.marks, want);
+});
+
+test("a run's heat is drawn with its story's marks", () => {
+  const H = STALL.page.Sandbox.heat();
+  assert.ok(H, "control: the stall run built a heat model");
+  const want = STALL.page.AncestryHeat.story(H, "STALLED").marks;
+  assert.ok(want.length > 0, "control: the stall story has marks");
+  const spy = spyHeat(STALL);
+  const scrub = $(STALL, "scrub");
+  scrub.oninput({ target: scrub });
+  spy.restore();
+  assert.ok(spy.seen.length >= 1, "control: a scrub redrew the heat");
+  const last = spy.seen.at(-1);
+  assert.equal(last.m, H, "control: the run's model was drawn");
+  assert.deepEqual(last.o.marks, want);
 });
 
 test("the heat's live text carries the caption", () => {
