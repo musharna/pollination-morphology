@@ -435,8 +435,11 @@
       <header>
         <h1>Two lineages, one bee — do they stay two kinds?</h1>
         <p class="lede">
-          Pick a level and press Run: the heatmap shows, generation by
-          generation, whether the two founding lineages stay apart or blend.
+          In nature, two orchids can share one bee and still never
+          cross-pollinate, when one puts its pollen on the bee's back and the
+          other on its belly. Here two flower lineages start with their pollen
+          in different places on the bee. Press Run and watch the generations:
+          do they stay two kinds, or blend into one?
         </p>
         <details id="about">
           <summary>about this page</summary>
@@ -641,6 +644,7 @@
             disabled
             aria-label="generation"
           />
+          <p id="statsHint" class="note">These fill in when you press Run.</p>
           <div class="stats">
             <div class="stat">
               <b id="sGen">—</b><span>generation</span>
@@ -1003,6 +1007,9 @@
         return r.changed;
       }
       let HEAT = null; // the heat model last built for the current run, or null
+      /* the run's story (AncestryHeat.story on HEAT and the run's fate), built
+       * where HEAT is: the caption and the heat's marks read this one value */
+      let STORY = null;
       /* ⚠️ A COPY, not DEFAULT_BEE itself. The two bee sliders set the run's
        * parameter object; writing through to the module's own object would
        * change the bee for every other consumer of the bundle in the page. */
@@ -2820,10 +2827,10 @@
           ? "bout not drawn: the sliced season does not log one (sim/ibm.js:1432-1438)"
           : "";
         $("sFate").textContent = R.fate;
-        /* STALLED is not read off offspring: fateOf returns it when the run's
-         * stall flag is set, any generation with recruits === 0 (critic r4 #1) */
-        $("sFateSub").textContent =
-          R.fate === "STALLED" ? "fate (a generation recruited no offspring)" : "fate (the run's last offspring)";
+        /* the page's question answered for this run, in story()'s authored
+         * caption; the fate itself is the engine's (fateOf) */
+        $("sFateSub").textContent = STORY.caption;
+        $("statsHint").hidden = true;
         $("sFate").style.color = R.fate === "HELD" ? "var(--ok)" : "var(--bad)";
         $("sFateBand").textContent =
           stallWhy(R) +
@@ -2871,17 +2878,20 @@
             H: HEAT_H,
             cursor: frame,
             fate: RESULT ? RESULT.fate : null,
+            marks: STORY ? STORY.marks : [],
           });
           const fin = HEAT.cols[HEAT.cols.length - 1];
           const k = HEAT.cols.filter((c) => c.stalled).length;
           $("heatLive").textContent =
             `Ancestry over ${HEAT.cols.length - 1} generations and the final offspring. ` +
             `Final: ${fin.n} plants, ${fin.hyb} hybrids, fate ${RESULT ? RESULT.fate : "—"}. ` +
-            `Stalled generations: ${k || "none"} of ${HEAT.cols.length - 1}. Showing generation ${frame}.`;
+            `Stalled generations: ${k || "none"} of ${HEAT.cols.length - 1}. Showing generation ${frame}.` +
+            (STORY ? " " + STORY.caption : "");
           return;
         }
         const X = window.ExampleHeat;
         if (X) {
+          const XS = A.story(X.model, X.fate);
           A.drawHeat(heatC, X.model, {
             W: HEAT_W,
             H: HEAT_H,
@@ -2890,8 +2900,10 @@
             /* names its source (critic r2 M7): the field and the thumbnails
              * beside it are the sliders, this is not */
             title: `example run: level ${X.config.level}, seed ${X.config.seed} — press Run for yours`,
+            marks: XS.marks,
           });
-          $("heatLive").textContent = `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own.`;
+          $("heatLive").textContent =
+            `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own. ` + XS.caption;
           return;
         }
         A.drawEmpty(
@@ -2981,7 +2993,10 @@
         const X = window.ExampleHeat;
         $("sFate").textContent = X ? `example: ${X.fate}` : "—";
         $("sFate").style.color = X ? "var(--ink-2)" : "";
-        $("sFateSub").textContent = "fate (the run's last offspring)";
+        $("sFateSub").textContent = X
+          ? "example run's answer: " + window.AncestryHeat.story(X.model, X.fate).caption
+          : "fate (the run's last offspring)";
+        $("statsHint").hidden = false;
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])
           $(id).textContent = "";
         if (X)
@@ -3000,6 +3015,7 @@
           $(k + "Text").textContent = "run to read this card";
         }
         HEAT = null;
+        STORY = null;
         drawHeat();
         showWin();
       }
@@ -3022,6 +3038,7 @@
               $("thumbLive").textContent = "lineage 1 and lineage 2 redrawn: this run's founders";
             showSepBand(realisedSeparation());
             HEAT = window.AncestryHeat.heatModel(R.gens, R.final, R.v0);
+            STORY = window.AncestryHeat.story(HEAT, R.fate);
             showResult(R);
             showWin();
             $("scrub").max = GENS.length - 1;

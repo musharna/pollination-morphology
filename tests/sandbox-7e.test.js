@@ -219,10 +219,12 @@ test("fix 1: the stall sentence counts k of N, words k < N and k = N apart, and 
   assert.equal(f("FUSED", 0, 35, ["", ""]), "", "a fate other than STALLED has no stall sentence");
 });
 
-/* critic r4 #1: STALLED is not read off offspring */
+/* critic r4 #1: STALLED is not read off offspring. Since the sandbox intro
+ * (2026-09-27) the subtitle is the fate's story() caption, which says so */
 test("fix 1: the fate's subtitle names what STALLED is read on", () => {
-  assert.equal($(STALL, "sFateSub").textContent, "fate (a generation recruited no offspring)");
-  assert.equal($(CTRL, "sFateSub").textContent, "fate (the run's last offspring)", "control: FUSED");
+  assert.match($(STALL, "sFateSub").textContent, /^No — it stalled: 35 of 35 generations made no new plants/);
+  assert.equal($(CTRL, "sFateSub").textContent,
+    "No — they blended: the last plants' ancestry mixes both lineages, and the split between them has collapsed.", "control: FUSED");
 });
 
 /* critic r4 #3: the no-ratio case has a verb and says what "both" is */
