@@ -3,9 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>
-      The field — a population of flowers, one bee, and a split that fails
-    </title>
+    <title>Two lineages, one bee — do they stay two kinds? — pollination sandbox</title>
     <style>
       :root {
         --bg: #16181c;
@@ -416,11 +414,6 @@
       }
       #sFateBand {
         display: block;
-      }
-      /* the backing store follows this displayed size x devicePixelRatio (sizeHeat) */
-      #heat {
-        width: 100%;
-        height: auto;
       }
       .keyRow {
         display: flex;
@@ -910,6 +903,9 @@
       const I = window.IBM,
         P = window.Placement,
         E = window.Evolve;
+      /* #sSepBand's own words, read once from the markup (one source) so the
+       * "not measured" case can hand them back */
+      const SEP_BAND = (document.getElementById("sSepBand").textContent || "").replace(/\s+/g, " ").trim();
       const $ = (id) => document.getElementById(id);
       const cv = $("field"),
         ctx = cv.getContext("2d");
@@ -1912,9 +1908,8 @@
        * the two cards' flowers compare in size, then the projected flower is
        * centred on its own bounding box — a fixed aim point cut the lobes off
        * a long tube and left a short one in a corner. Only a flower too big for
-       * the card at that distance is shrunk to fit (THUMB_FIT.k < 1). */
+       * the card at that distance is shrunk to fit (centreItems' k < 1). */
       const THUMB_CAM = { yaw: 0.5, pitch: 0.62, dist: 20 };
-      const THUMB_FIT = [1, 1];
       function centreItems(its, w, h, m) {
         let x0 = Infinity,
           y0 = Infinity,
@@ -1948,25 +1943,34 @@
        * target d was founded from foundTwoLineages' two genomes, not the
        * sliders — on these levels the sliders are one genome twice, which drew
        * "the same flower in two colours" beside two different founders on the
-       * body map. While that run is shown and its key holds, the cards draw
-       * its founders; otherwise (no run, a hand-set run, a stale key) the
-       * sliders. */
-      const thumbSource = () =>
-        RESULT && RESULT.useD && RESULT.founders && runKeyNow(true) === RUN_KEY ? "run" : "sliders";
+       * body map. While that run is shown the cards draw its founders, whose
+       * genomes do not depend on the bee (final review I1: a bee change used
+       * to flip them to the sliders beside the run's heat); otherwise (no
+       * run, a hand-set run) the sliders. */
+      const thumbSource = () => (RESULT && RESULT.useD && RESULT.founders ? "run" : "sliders");
+      /* "— changed since the run": a target-d run's bee has moved (its key is
+       * the bee), or a hand-set run's lineage genome no longer matches the one
+       * recorded at Run (RUN_KEY's first element), so the card shows a flower
+       * that did not found the shown run */
+      const STALE_NOTE = " — changed since the run";
+      function thumbStale(li) {
+        if (!RESULT || RUN_KEY === null) return false;
+        if (RESULT.useD) return runKeyNow(true) !== RUN_KEY;
+        return JSON.stringify(JSON.parse(RUN_KEY)[0][li]) !== JSON.stringify(LINEAGE[li]);
+      }
       const THUMB_DRAWN = [null, null];
       function renderThumb(li) {
         const fromRun = thumbSource() === "run";
         const genome = fromRun ? RESULT.founders[li] : LINEAGE[li];
         THUMB_DRAWN[li] = genome;
         const n = li + 1;
+        const note = thumbStale(li) ? STALE_NOTE : "";
         /* the founder heading captions the thumbnail only; the sliders carry
          * their own label (critic r2 M3: the heading sat above the sliders) */
-        $("thumbCap" + n).textContent = fromRun
-          ? `lineage ${n} — this run's founder (founded at target d)`
-          : `lineage ${n} — from the sliders`;
-        $("genesLab" + n).textContent = fromRun
-          ? `hand-set lineage ${n} (sliders) — did not found this run`
-          : `hand-set lineage ${n} (sliders)`;
+        $("thumbCap" + n).textContent =
+          (fromRun ? `lineage ${n} — this run's founder (founded at target d)` : `lineage ${n} — from the sliders`) + note;
+        $("genesLab" + n).textContent =
+          (fromRun ? `hand-set lineage ${n} (sliders) — did not found this run` : `hand-set lineage ${n} (sliders)`) + note;
         thumbEl[li].setAttribute(
           "aria-label",
           fromRun
@@ -1996,7 +2000,7 @@
           camTarget[1] = top - 0.45 * f.axisLen;
           camTarget[2] = 0;
           drawFlower(f, b, ancHex(li));
-          THUMB_FIT[li] = centreItems(items, VIEW.w, VIEW.h, 8);
+          centreItems(items, VIEW.w, VIEW.h, 8);
           flush();
         } finally {
           yaw = saved.yaw;
@@ -2103,8 +2107,10 @@
        * ancestry <= 0.15, lineage 2 at >= 0.85, mixed between */
       function finalLabels(R) {
         const fin = R.final.map((i) => (i.anc === undefined ? 0 : i.anc));
-        const lo = fin.filter((a) => a <= 0.15).length,
-          hi = fin.filter((a) => a >= 0.85).length;
+        /* the engine's own hybrid band (SandboxRun.isHybrid), not a copy */
+        const H = window.SandboxRun.isHybrid;
+        const lo = fin.filter((a) => !H(a) && a < 0.5).length,
+          hi = fin.filter((a) => !H(a) && a >= 0.5).length;
         return { lo, hi, mid: fin.length - lo - hi };
       }
       /* the fate word, and for "one lost" which lineage is gone (critic r2
@@ -2363,6 +2369,9 @@
           useD,
           founders: main.founders,
           phenology: !!options.phenology,
+          /* the run's own sampling size, so a later statement about the run
+           * (stallWhy's contacts) samples as the run did, not at the default */
+          siteN,
         };
       }
 
@@ -2773,8 +2782,8 @@
       function stallWhy(R) {
         if (R.fate !== "STALLED") return "";
         let miss = ["", ""];
-        if (!R.useD) {
-          const opts = sandboxOpts();
+        if (!R.useD && R.stalledGens === GENS.length) {
+          const opts = sandboxOpts({ siteN: R.siteN });
           miss = [0, 1].map((li) => {
             const c = contactsOf(li, opts);
             return !c.onA && !c.onS
@@ -2789,13 +2798,17 @@
         return stallSentence(R.fate, R.stalledGens, GENS.length, miss);
       }
       /* the words alone, from the fate, the count and each lineage's missing
-       * part ("" for none): pure, so a test can drive every branch (7e fix 1) */
+       * part ("" for none): pure, so a test can drive every branch (7e fix 1).
+       * A part "never" touches only if NO generation recruited (k === N):
+       * with k < N some generation did, so the sentence names no cause
+       * (final review I2). */
       function stallSentence(fate, k, N, miss) {
         if (fate !== "STALLED") return "";
         let t =
           `no offspring were recruited in ${k} of ${N} generations, so the variance below is ` +
           (k === N ? "the founders' carried forward" : "carried forward unchanged through them") +
           ", not a hold";
+        if (k !== N) return t + " · ";
         if (miss[0] && miss[0] === miss[1]) t += ` — the ${miss[0]}`;
         else miss.forEach((m, li) => m && (t += ` — lineage ${li + 1}'s ${m}`));
         return t + " · ";
@@ -2820,7 +2833,7 @@
         /* no "fused or lost at 0.000" (critic r3 #7): the HELD line is the
          * only threshold; FUSED and one lost are told apart by the mean */
         $("sAncBand").textContent =
-          `ancestry variance: founding ${R.v0.toFixed(4)}; HELD line ${(0.4 * R.v0).toFixed(4)} (0.4 × founding, the engine's variance test)`;
+          `ancestry variance: founding ${R.v0.toFixed(4)}; HELD line ${HEAT.heldLine.toFixed(4)} (0.4 × founding, the engine's variance test)`;
         const cfgLine = (c) =>
           `N ${c.n}, ${c.gens} generations, siteN ${c.siteN}`;
         const C = window.SandboxRun.CONFIGS;
@@ -2900,7 +2913,13 @@
          * to N - 1, so the last reads "34 of 34" beside "35 generations" */
         $("sGen").textContent = `${g} of ${GENS.length - 1}`;
         $("sGenBand").textContent = `${GENS.length} generations, numbered 0–${GENS.length - 1}`;
-        $("sSep").textContent = G.sep.toFixed(2);
+        /* twoClusterSeparation returns null below 6 placed plants
+         * (sim/ibm.js: `if (pts.length < 6) return null`), which the loop
+         * stores as 0 (population-run.js: `res.cluster ? ... : 0`); the same
+         * condition, read off this generation's placements, prints "—" */
+        const sepMeasured = G.places.filter(Boolean).length >= 6;
+        $("sSep").textContent = sepMeasured ? G.sep.toFixed(2) : "—";
+        $("sSepBand").textContent = sepMeasured ? SEP_BAND : "not measured (fewer than 6 placements)";
         $("sAnc").textContent = G.ancVar.toFixed(4);
         const w = RESULT ? RESULT.fate : "—";
         const hyb =
@@ -2951,6 +2970,7 @@
         $("scrub").disabled = true;
         $("play").disabled = true;
         for (const id of ["sGen", "sSep", "sAnc", "sHyb", "sGap"]) $(id).textContent = "—";
+        $("sSepBand").textContent = SEP_BAND;
         $("sGenBand").textContent = "";
         $("fieldLive").textContent = "No run yet. Set the inputs and press Run.";
         draw(performance.now());

@@ -58,6 +58,8 @@ const hatchSegs = (calls) =>
 test("#1: a STALLED run's fate band opens with why, naming the part that misses the bee", () => {
   assert.equal(STALL.fate, "STALLED", "control: the fixture stalls");
   assert.equal(STALL.stalledGens, 35, "control: every generation stalled (the harness still parses the count)");
+  /* final review I2: the contacts are sampled at the run's own siteN */
+  assert.equal(STALL.page.Sandbox.result().siteN, 160, "the run records its siteN");
   const band = $(STALL, "sFateBand").textContent;
   assert.ok(band.startsWith(
     "no offspring were recruited in 35 of 35 generations, so the variance below is the founders' carried forward, not a hold — the stigma never touches the bee · "),
@@ -204,8 +206,12 @@ test("#10: the level-5 bout note is written once, by #fieldCaption", () => {
 test("fix 1: the stall sentence counts k of N, words k < N and k = N apart, and omits a missing-part suffix it lacks", () => {
   const f = STALL.page.Sandbox.stallSentence;
   assert.equal(typeof f, "function", "the page exposes Sandbox.stallSentence");
+  /* final review I2: with k < N some generation recruited, so no part
+   * "never" touches — the sentence names no cause even when one is passed */
   assert.equal(f("STALLED", 3, 35, ["stigma never touches the bee", ""]),
-    "no offspring were recruited in 3 of 35 generations, so the variance below is carried forward unchanged through them, not a hold — lineage 1's stigma never touches the bee · ");
+    "no offspring were recruited in 3 of 35 generations, so the variance below is carried forward unchanged through them, not a hold · ");
+  assert.equal(f("STALLED", 35, 35, ["stigma never touches the bee", ""]),
+    "no offspring were recruited in 35 of 35 generations, so the variance below is the founders' carried forward, not a hold — lineage 1's stigma never touches the bee · ");
   assert.equal(f("STALLED", 35, 35, ["stigma never touches the bee", "stigma never touches the bee"]),
     "no offspring were recruited in 35 of 35 generations, so the variance below is the founders' carried forward, not a hold — the stigma never touches the bee · ");
   assert.equal(f("STALLED", 12, 24, ["", ""]),
@@ -252,4 +258,38 @@ test("fix 1: the founder labels are drawn over the plant dots, on plates", () =>
     const [px, py, pw, ph] = plate.a;
     assert.ok(px < lx && px + pw > lx && py < ly - 8 && py + ph > ly + 2, `plate [${plate.a}] misses the label at ${lx}, ${ly}`);
   }
+});
+
+/* ---- final review minors ------------------------------------------------ */
+
+/* m4: below 6 placed plants twoClusterSeparation returns null and the loop
+ * stores 0; the tile prints "—" and the band says why. The shown run's
+ * generation 1 has its placements emptied (the page reads GENS, which is
+ * the run's own gens array), then shown by the scrubber. */
+test("m4: cluster separation with fewer than 6 placements reads '—', not measured", () => {
+  const p = runPage({ level: 2, seed: 3 });
+  const R = p.page.Sandbox.result();
+  const scrub = $(p, "scrub");
+  const showGen = (g) => {
+    scrub.value = String(g);
+    scrub.oninput({ target: scrub });
+  };
+  showGen(0);
+  assert.match($(p, "sSep").textContent, /^\d+\.\d\d$/, "control: a measured generation");
+  const saved = R.gens[1].places;
+  R.gens[1].places = saved.map((x, i) => (i < 5 ? x : null));
+  try {
+    showGen(1);
+    assert.equal($(p, "sSep").textContent, "—");
+    assert.equal($(p, "sSepBand").textContent, "not measured (fewer than 6 placements)");
+    showGen(0);
+    assert.notEqual($(p, "sSepBand").textContent, "not measured (fewer than 6 placements)", "the band returns");
+  } finally {
+    R.gens[1].places = saved;
+  }
+});
+
+test("m5: the page title names the hero's question", () => {
+  const h1 = /<h1>([^<]+)<\/h1>/.exec(SRC)[1];
+  assert.equal(/<title>([^<]+)<\/title>/.exec(SRC)[1], `${h1} — pollination sandbox`);
 });

@@ -56,18 +56,47 @@ test("a hand-set run and no run: the thumbnails draw the sliders", () => {
   assert.equal(q.page.Sandbox.thumbSource(), "sliders");
 });
 
-test("target-d run, then a bee change: back to the sliders; restoring the bee: the run", () => {
+/* Final review I1: a target-d run's founders do not depend on the bee, so a
+ * bee change keeps them on the cards (the heat still shows that run) and
+ * says the shapes changed; a hand-set run's cards are the sliders, so a gene
+ * change says the drawn flower did not found the shown run. Seen failing on
+ * BASE 24a4511 (the cards flipped to the sliders; no note). */
+test("target-d run, then a bee change: still the run's founders, noted as changed; restoring the bee clears it", () => {
   const p = runPage({ level: 2, seed: 3 });
   const S = p.page.Sandbox;
+  const doc = p.page.document;
+  const R = S.result();
   assert.equal(S.thumbSource(), "run"); // control
+  assert.equal(doc.getElementById("thumbCap1").textContent, "lineage 1 — this run's founder (founded at target d)", "a fresh run has no note");
   const reach = S.bee().reach;
   S.setBee({ reach: reach + 0.1 });
-  assert.equal(S.bodyLayers().overlay, "hidden: shapes changed since the run");
-  assert.equal(S.thumbSource(), "sliders");
-  assert.deepEqual(plain(S.thumbGenome(0)), plain(S.lineage(0)));
-  assert.equal(p.page.document.getElementById("thumbCap1").textContent, "lineage 1 — from the sliders");
+  assert.equal(S.bodyLayers().overlay, "hidden: shapes changed since the run", "control: the bee moved");
+  assert.equal(S.thumbSource(), "run");
+  assert.deepEqual(plain(S.thumbGenome(0)), plain(R.founders[0]));
+  for (const i of [1, 2]) {
+    assert.equal(doc.getElementById("thumbCap" + i).textContent,
+      `lineage ${i} — this run's founder (founded at target d) — changed since the run`);
+    assert.equal(doc.getElementById("genesLab" + i).textContent,
+      `hand-set lineage ${i} (sliders) — did not found this run — changed since the run`);
+  }
   S.setBee({ reach });
   assert.equal(S.thumbSource(), "run");
+  assert.equal(doc.getElementById("thumbCap1").textContent, "lineage 1 — this run's founder (founded at target d)");
+});
+
+test("hand-set run, then a gene change: the sliders, noted as changed on that lineage only", () => {
+  const p = runPage({ seed: 3 });
+  const S = p.page.Sandbox;
+  const doc = p.page.document;
+  assert.equal(doc.getElementById("thumbCap1").textContent, "lineage 1 — from the sliders", "a fresh run has no note");
+  const g0 = { ...S.lineage(0) };
+  S.setLineage(0, { ...g0, antherT: g0.antherT - 0.05 });
+  assert.equal(S.thumbSource(), "sliders");
+  assert.equal(doc.getElementById("thumbCap1").textContent, "lineage 1 — from the sliders — changed since the run");
+  assert.equal(doc.getElementById("genesLab1").textContent, "hand-set lineage 1 (sliders) — changed since the run");
+  assert.equal(doc.getElementById("thumbCap2").textContent, "lineage 2 — from the sliders", "control: lineage 2 unchanged");
+  S.setLineage(0, g0);
+  assert.equal(doc.getElementById("thumbCap1").textContent, "lineage 1 — from the sliders");
 });
 
 test("#sTarget shows on level 1 only; #sReal names the sliders", () => {
