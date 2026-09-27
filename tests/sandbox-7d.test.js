@@ -10,7 +10,8 @@
  *  - M6: the body map has a key, written from what the draw drew.
  *  - M7: on load the heat is titled "example run", the thumbnails "from the
  *    sliders"; after Run the heat has no example title.
- *  - M10: the win line reads "result: <fate> — only HELD wins" and names the
+ *  - M10: the win line reads "not won — <fate>; only HELD wins" (3c: was
+ *    "result: <fate> — ...", which stuttered after "win:") and names the
  *    lost lineage; #sFate stays the bare fate word.
  *  - minor: one generation count ("34 of 34", "35 generations, numbered 0–34").
  * Seen failing on BASE e0ac728 (every test below; see the task-7d report).
@@ -35,7 +36,7 @@ test("M10: the win line names the fate and the lost lineage; #sFate is the bare 
   assert.equal(lin2, 0, "control: lineage 2 has no plant left in the final offspring");
   assert.equal($(L2, "sFate").textContent, "one lost");
   assert.equal($(L2, "levelWin").getAttribute("data-state"), "lost");
-  assert.equal($(L2, "levelWin").textContent, "result: one lost (lineage 2 gone) — only HELD wins");
+  assert.equal($(L2, "levelWin").textContent, "not won — one lost (lineage 2 lost); only HELD wins");
 });
 
 /* Fix round 1 (I1): the engine calls "one lost" on the final MEAN ancestry
@@ -66,7 +67,7 @@ test("I1: the lost lineage is read off the final mean, as the engine decides it"
       assert.equal(I.fateOf(R.final, R.v0, false, false), "one lost", `control: the engine calls ${ancs.slice(-2)} one lost`);
       S.setBee(S.bee());
       assert.equal(p.page.document.getElementById("levelWin").textContent,
-        `result: one lost (lineage ${gone} gone) — only HELD wins`, `final: ${ancs.filter((x) => x === 0).length} at 0, ${ancs.filter((x) => x === 1).length} at 1`);
+        `not won — one lost (lineage ${gone} lost); only HELD wins`, `final: ${ancs.filter((x) => x === 0).length} at 0, ${ancs.filter((x) => x === 1).length} at 1`);
     }
   } finally {
     R.final = saved;

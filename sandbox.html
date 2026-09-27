@@ -415,6 +415,15 @@
       #sFateBand {
         display: block;
       }
+      /* the answer is what the eye lands on (critic r1 #4): main ink, and
+       * larger than the 12px detail band below it */
+      .verdict #sFateSub {
+        display: block;
+        font-size: 15px;
+        line-height: 1.35;
+        color: var(--ink);
+        margin: 2px 0 4px;
+      }
       .keyRow {
         display: flex;
         justify-content: space-between;
@@ -435,8 +444,11 @@
       <header>
         <h1>Two lineages, one bee — do they stay two kinds?</h1>
         <p class="lede">
-          Pick a level and press Run: the heatmap shows, generation by
-          generation, whether the two founding lineages stay apart or blend.
+          In nature, two orchids can share one bee and still never
+          cross-pollinate, when one puts its pollen on the bee's back and the
+          other on its belly. Here two flower lineages start with their pollen
+          in different places on the bee. Press Run and watch the generations:
+          do they stay two kinds, or blend into one?
         </p>
         <details id="about">
           <summary>about this page</summary>
@@ -480,8 +492,13 @@
           >
         </div>
         <p id="levelBrief" class="note"></p>
-        <p id="levelOpts" class="band"></p>
-        <p id="levelNote" class="note"></p>
+        <!-- the level's detail, collapsed (critic r1 #3): its options and its
+             known-win note; hidden when the level has neither -->
+        <details id="levelMore" hidden>
+          <summary>about this level</summary>
+          <p id="levelOpts" class="band"></p>
+          <p id="levelNote" class="note"></p>
+        </details>
         <details id="advanced">
           <summary>Advanced: population, founding, mating, options</summary>
           <div class="row">
@@ -641,6 +658,7 @@
             disabled
             aria-label="generation"
           />
+          <p id="statsHint" class="note">These fill in when you press Run.</p>
           <div class="stats">
             <div class="stat">
               <b id="sGen">—</b><span>generation</span>
@@ -923,14 +941,18 @@
        * aspect itself is the logical size, at dpr 1. `changed` is true when the
        * logical size, the dpr or the backing store moved, so a resize redraws
        * only then (no ResizeObserver loop). */
-      function fitCanvas(el, c, aspectW, aspectH) {
+      /* `minH` (the heat only, 3c): a logical-height floor, so a phone-width
+       * heat is taller than its aspect and its variance strip is not crushed.
+       * The canvas CSS is `height: auto`, so the displayed box follows the
+       * backing store's aspect. */
+      function fitCanvas(el, c, aspectW, aspectH, minH = 0) {
         const cw = el.clientWidth;
         let w = aspectW,
           h = aspectH,
           dpr = 1;
         if (cw > 0) {
           w = cw;
-          h = Math.round((w * aspectH) / aspectW);
+          h = Math.max(minH, Math.round((w * aspectH) / aspectW));
           dpr = window.devicePixelRatio || 1;
         }
         const bw = Math.round(w * dpr),
@@ -951,8 +973,11 @@
       let HEAT_W = 760,
         HEAT_H = 420,
         HEAT_DPR = 1;
+      const HEAT_MIN_H = 300;
       function sizeHeat() {
-        const r = fitCanvas(heatEl, heatC, 760, 420);
+        /* critic r2 MAJOR 1: at 320 px the aspect gave 177 px and a ~25 px
+         * variance strip; 300 px keeps the strip >= 50 px */
+        const r = fitCanvas(heatEl, heatC, 760, 420, HEAT_MIN_H);
         HEAT_W = r.w;
         HEAT_H = r.h;
         HEAT_DPR = r.dpr;
@@ -1003,6 +1028,14 @@
         return r.changed;
       }
       let HEAT = null; // the heat model last built for the current run, or null
+      /* the run's story (AncestryHeat.story on HEAT and the run's fate), built
+       * where HEAT is: the caption and the heat's marks read this one value */
+      let STORY = null;
+      /* the example's story, computed once: its caption (clearResult) and its
+       * marks and live text (drawHeat) read this one value, as a run's read STORY */
+      const EX_STORY = window.ExampleHeat
+        ? window.AncestryHeat.story(window.ExampleHeat.model, window.ExampleHeat.fate)
+        : null;
       /* ⚠️ A COPY, not DEFAULT_BEE itself. The two bee sliders set the run's
        * parameter object; writing through to the module's own object would
        * change the bee for every other consumer of the bundle in the page. */
@@ -2113,13 +2146,13 @@
           hi = fin.filter((a) => !H(a) && a >= 0.5).length;
         return { lo, hi, mid: fin.length - lo - hi };
       }
-      /* the fate word, and for "one lost" which lineage is gone (critic r2
-       * M10). The engine calls "one lost" on the final offspring's MEAN
+      /* the fate word, and for "one lost" which lineage is lost (critic r2
+       * M10; "lost", not "gone": a straggler can survive, final review I1). The engine calls "one lost" on the final offspring's MEAN
        * ancestry, outside the hybrid band (sim/ibm.js fateOf: m < 0.15 or
        * m > 0.85), not on label counts: 29 plants at 0 and one at 1 is "one
        * lost" with both labels non-empty. So the side is read off the same
        * mean: given "one lost", below 0.5 the tracer went to lineage 1's end
-       * (lineage 2 gone), above it to lineage 2's. No threshold is restated;
+       * (lineage 2 lost), above it to lineage 2's. No threshold is restated;
        * a mean inside the band means page and engine disagree, and says so. */
       function fateWords(R) {
         if (R.fate !== "one lost") return R.fate;
@@ -2127,8 +2160,18 @@
         const m = a.reduce((s, x) => s + x, 0) / a.length;
         if (window.SandboxRun.isHybrid(m))
           throw new Error(`fate "one lost" but the final mean ancestry ${m} is inside the hybrid band`);
-        return `one lost (lineage ${m < 0.5 ? 2 : 1} gone)`;
+        return `one lost (lineage ${m < 0.5 ? 2 : 1} lost)`;
       }
+      /* a level's note as the page prints it, authored here where the level's
+       * own text (population-run.js noKnownWin) carries a repo path: the path
+       * goes to the element's title, the words stay (critic r1 #2, #3).
+       * tests/sandbox-critic1.test.js checks it against noKnownWin. */
+      const LEVEL_NOTE = {
+        2: {
+          text: "No win from placement alone (the sliders, no option) is known here: HELD 0 of 5 at every target d from 0.5 to 8 (N 30, 35 generations, siteN 160). If you find one, note the seed and settings.",
+          source: "docs/2026-08-04-secondary-contact.md:36-40",
+        },
+      };
       function showWin() {
         const d = realisedSeparation();
         const st = window.SandboxRun.levelWin(LEVEL, {
@@ -2145,11 +2188,14 @@
                 ? `won: sliders' separation ${d.toFixed(3)}, at or above ${LEVEL.target}`
                 : "won: HELD"
               : st === "lost"
-                ? `result: ${fateWords(RESULT)} — only HELD wins`
+                ? `not won — ${fateWords(RESULT)}; only HELD wins`
                 : LEVEL.noRun
                   ? `not yet: sliders' separation ${d === null ? "—" : d.toFixed(3)}, target ${LEVEL.target}`
                   : "run to play this level; only HELD wins";
-        let note = LEVEL.noKnownWin || "";
+        const own = LEVEL_NOTE[LEVEL.id];
+        let note = own ? own.text : LEVEL.noKnownWin || "";
+        if (own) $("levelNote").setAttribute("title", own.source);
+        else $("levelNote").removeAttribute("title");
         if (note && st === "lost")
           note +=
             ` This run: seed ${$("seed").value}, N ${$("n").value}, ` +
@@ -2157,6 +2203,11 @@
             ($("useD").checked ? `, found at target d ${$("d").value}` : "") +
             `, ${$("mode").value === "random" ? "random mating" : "placement-mediated"}.`;
         $("levelNote").textContent = note;
+        showLevelMore();
+      }
+      /* "about this level" is shown only when it holds something */
+      function showLevelMore() {
+        $("levelMore").hidden = !($("levelOpts").textContent || $("levelNote").textContent);
       }
       /* ============================================================ M3b: the
        * option controls. The option object is READ from the controls at Run
@@ -2256,6 +2307,7 @@
         $("levelOpts").textContent = L.options
           ? `This level's option: ${L.options}. Loaded into the option controls below.`
           : "";
+        showLevelMore();
         refreshSandbox();
       }
 
@@ -2814,22 +2866,44 @@
         return t + " · ";
       }
 
+      /* #fieldCaption, authored per case (critic r1 #1, #2; 3b fix round 1):
+       * a STALLED run's field shows plants carried forward, which looks like
+       * HELD unless it says so. Every generation stalled (k = N): they are
+       * the founders. Only some (k < N): step() handed back that
+       * generation's parents, not the founders (as stallSentence words it).
+       * The level-5 note keeps its source as hover provenance. */
+      function fieldCaptionFor(fate, k, N, phenology) {
+        if (fate === "STALLED")
+          return k === N
+            ? { text: "No new plants were made: these are the first generation's plants, carried forward unchanged.", title: null }
+            : { text: "Some generations made no new plants; in those, the plants were carried forward unchanged.", title: null };
+        if (phenology)
+          return {
+            text: "No bee path shown: this level's flowering-season model doesn't record one.",
+            title: "sim/ibm.js:1432-1438: the sliced season logs no bout",
+          };
+        return { text: "", title: null };
+      }
+
       function showResult(R) {
         const { lo, hi, mid } = finalLabels(R);
-        $("fieldCaption").textContent = R.phenology
-          ? "bout not drawn: the sliced season does not log one (sim/ibm.js:1432-1438)"
-          : "";
+        const fc = $("fieldCaption");
+        const cap = fieldCaptionFor(R.fate, R.stalledGens, GENS.length, !!R.phenology);
+        fc.textContent = cap.text;
+        if (cap.title) fc.setAttribute("title", cap.title);
+        else fc.removeAttribute("title");
         $("sFate").textContent = R.fate;
-        /* STALLED is not read off offspring: fateOf returns it when the run's
-         * stall flag is set, any generation with recruits === 0 (critic r4 #1) */
-        $("sFateSub").textContent =
-          R.fate === "STALLED" ? "fate (a generation recruited no offspring)" : "fate (the run's last offspring)";
+        /* the page's question answered for this run, in story()'s authored
+         * caption; the fate itself is the engine's (fateOf) */
+        $("sFateSub").textContent = STORY.caption;
+        $("statsHint").hidden = true;
         $("sFate").style.color = R.fate === "HELD" ? "var(--ok)" : "var(--bad)";
         $("sFateBand").textContent =
           stallWhy(R) +
           `stalled generations: ${R.stalledGens || "none"} of ${GENS.length}` +
           ` · labels: ${lo} lineage 1, ${hi} lineage 2, ${mid} mixed` +
-          ` · HELD needs every generation to recruit AND ancestry variance above 0.4 × founding (sim/ibm.js fateOf)`;
+          ` · HELD needs every generation to recruit AND ancestry variance above 0.4 × founding`;
+        $("sFateBand").setAttribute("title", "sim/ibm.js fateOf");
         /* no "fused or lost at 0.000" (critic r3 #7): the HELD line is the
          * only threshold; FUSED and one lost are told apart by the mean */
         $("sAncBand").textContent =
@@ -2871,13 +2945,15 @@
             H: HEAT_H,
             cursor: frame,
             fate: RESULT ? RESULT.fate : null,
+            marks: STORY ? STORY.marks : [],
           });
           const fin = HEAT.cols[HEAT.cols.length - 1];
           const k = HEAT.cols.filter((c) => c.stalled).length;
           $("heatLive").textContent =
             `Ancestry over ${HEAT.cols.length - 1} generations and the final offspring. ` +
             `Final: ${fin.n} plants, ${fin.hyb} hybrids, fate ${RESULT ? RESULT.fate : "—"}. ` +
-            `Stalled generations: ${k || "none"} of ${HEAT.cols.length - 1}. Showing generation ${frame}.`;
+            `Stalled generations: ${k || "none"} of ${HEAT.cols.length - 1}. Showing generation ${frame}.` +
+            (STORY ? " " + STORY.caption : "");
           return;
         }
         const X = window.ExampleHeat;
@@ -2890,8 +2966,10 @@
             /* names its source (critic r2 M7): the field and the thumbnails
              * beside it are the sliders, this is not */
             title: `example run: level ${X.config.level}, seed ${X.config.seed} — press Run for yours`,
+            marks: EX_STORY.marks,
           });
-          $("heatLive").textContent = `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own.`;
+          $("heatLive").textContent =
+            `Example run, level ${X.config.level} seed ${X.config.seed}: fate ${X.fate}. Press Run for your own. ` + EX_STORY.caption;
           return;
         }
         A.drawEmpty(
@@ -2976,17 +3054,20 @@
         draw(performance.now());
         drawBodyMap();
         $("fieldCaption").textContent = "";
+        $("fieldCaption").removeAttribute("title");
         /* no run: the headline names the example the heat shows, in the
          * muted ink, never the fate colour (it is not this visitor's run) */
         const X = window.ExampleHeat;
         $("sFate").textContent = X ? `example: ${X.fate}` : "—";
         $("sFate").style.color = X ? "var(--ink-2)" : "";
-        $("sFateSub").textContent = "fate (the run's last offspring)";
+        $("sFateSub").textContent = X
+          ? "example run's answer: " + EX_STORY.caption
+          : "fate (the run's last offspring)";
+        $("statsHint").hidden = false;
         for (const id of ["sFateBand", "sHybBand", "sGapBand", "sAncBand"])
           $(id).textContent = "";
-        if (X)
-          $("sFateBand").textContent =
-            `an example run (level ${X.config.level}, seed ${X.config.seed}) — press Run for yours`;
+        /* no example line here: the heat's title names the example (critic r1 #7) */
+        $("sFateBand").removeAttribute("title");
         for (const k of [
           "card1",
           "card2",
@@ -3000,6 +3081,7 @@
           $(k + "Text").textContent = "run to read this card";
         }
         HEAT = null;
+        STORY = null;
         drawHeat();
         showWin();
       }
@@ -3022,6 +3104,7 @@
               $("thumbLive").textContent = "lineage 1 and lineage 2 redrawn: this run's founders";
             showSepBand(realisedSeparation());
             HEAT = window.AncestryHeat.heatModel(R.gens, R.final, R.v0);
+            STORY = window.AncestryHeat.story(HEAT, R.fate);
             showResult(R);
             showWin();
             $("scrub").max = GENS.length - 1;
@@ -3135,6 +3218,10 @@
         heatSize: () => ({ W: HEAT_W, H: HEAT_H, dpr: HEAT_DPR, backing: [heatEl.width, heatEl.height] }),
         result: () => RESULT,
         stallSentence,
+        fieldCaptionFor,
+        /* re-fit every canvas to its displayed size, as a resize does (node's
+         * fake DOM has no ResizeObserver or resize event) */
+        refit: () => refitAll(),
         bodyLayers: () => ({ ...BODY_LAYERS, founders: [...BODY_LAYERS.founders] }),
         thumbSource,
         thumbGenome: (li) => (THUMB_DRAWN[li] ? { ...THUMB_DRAWN[li] } : null),

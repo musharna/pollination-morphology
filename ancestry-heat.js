@@ -87,6 +87,16 @@
     AXIS_DY = 7,
     KEY_DY = 16; // the HELD key's baseline below stripBot, inside PAD.B (24)
   const GUTTER_X = 6;
+  /* story marks (sandbox intro, 2026-09-27) are drawn only when the plot,
+   * W - padL - PAD.R, is at least this wide. Measured in headless Chromium
+   * (default launch, 2026-09-27), 11px system-ui: "stalled: no new plants"
+   * 121.1 px is the widest mark ("lineage 1/2 gone" 81.8, "first hybrids"
+   * 65.7); two marks side by side plus their ticks, offsets and the final
+   * column need >= 360 px of plot. The phone hero (~300 px heat, ~200 px of
+   * plot) gets none; the caption carries the story there. */
+  const MARKS_MIN_W = 360;
+  /* a mark's plate keeps this many px from either dashed hybrid-band line */
+  const MARK_LINE_GAP = 2;
   const FINAL_GAP = 12;
   function layout(model, W, H, padL = PAD.L) {
     const n = model.cols.length;
@@ -309,6 +319,86 @@
       const est = (s, w) => (w === null ? 6.2 * s.length : w);
       if (gx - est(gN, wN) > lay.xOf(0) + est(gen0, w0) + 8) plated(gN, gx, ay, "right");
     }
+    /* story marks: a tick at the column's centre down the heat, and a plated
+     * label beside it in the mark's row. Placed first, all of them, so every
+     * tick is drawn under every label. A label that would overlap one already
+     * placed moves down 14 px once; if it still overlaps, or leaves the heat,
+     * the mark (tick and label) is dropped. */
+    let drawnMarks = 0;
+    if (Array.isArray(o.marks) && o.marks.length && W - lay.padL - PAD.R >= MARKS_MIN_W) {
+      const MARK_INK = "#e8e6e1";
+      /* rows by the band's geometry (critic r1 #8: a label sat on a dashed
+       * line). The plate (y - 10 to y + 3, 13 px) is centred in the lineage 1
+       * zone (heatTop to the first dashed line), the lineage 2 zone (second
+       * line to heatBot), or 16 px above the band's middle; every plate must
+       * clear both lines by MARK_LINE_GAP or the mark is dropped. */
+      const [line1, line2] = [HYB_FIRST, HYB_LAST + 1].map((b) => lay.heatTop + b * lay.rowH);
+      const rowY = {
+        top: (lay.heatTop + line1) / 2 - 6.5 + 10,
+        mid: (lay.heatTop + lay.heatBot) / 2 - 16,
+        bottom: (line2 + lay.heatBot) / 2 - 6.5 + 10,
+      };
+      const clearsLines = (r) =>
+        [line1, line2].every((L) => r.y + r.h <= L - MARK_LINE_GAP || r.y >= L + MARK_LINE_GAP);
+      /* a mark's plate for (s, x, y, align): plated()'s rect, 2 px round the text */
+      const plateOf = (s, x, y, align) => {
+        const m = widthOf(ctx, s);
+        const w = m === null ? 6.2 * s.length : m;
+        return { x: (align === "right" ? x - w : x) - 2, y: y - 10, w: w + 4, h: 13 };
+      };
+      const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      const inHeat = (r) => r.x >= lay.padL && r.x + r.w <= W - PAD.R && r.y >= lay.heatTop && r.y + r.h <= lay.heatBot;
+      const placed = [];
+      for (const mk of o.marks) {
+        if (!(mk.col >= 0 && mk.col < model.cols.length) || !(mk.row in rowY))
+          throw new Error(`drawHeat: bad mark ${JSON.stringify(mk)}`);
+        const tx = Math.round(lay.xOf(mk.col) + lay.colW / 2) + 0.5;
+        let x = tx + 4,
+          align = "left",
+          y = rowY[mk.row];
+        const r0 = plateOf(mk.text, x, y, align);
+        if (r0.x + r0.w - 2 > sepX - 4) {
+          /* the label's right edge would pass the separator: hang it left */
+          x = tx - 4;
+          align = "right";
+        }
+        let r = plateOf(mk.text, x, y, align);
+        if (placed.some((p) => hit(r, p.r))) {
+          y += 14;
+          r = plateOf(mk.text, x, y, align);
+        }
+        if (placed.some((p) => hit(r, p.r)) || !inHeat(r) || !clearsLines(r)) continue;
+        placed.push({ mk, tx, x, y, align, r });
+      }
+      /* the labels after this block (the hatch key) draw in the ink left
+       * here, so the block hands back the fill and stroke it found */
+      const fill0 = ctx.fillStyle,
+        stroke0 = ctx.strokeStyle;
+      ctx.strokeStyle = MARK_INK;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.6;
+      for (const p of placed) {
+        ctx.beginPath();
+        ctx.moveTo(p.tx, lay.heatTop);
+        ctx.lineTo(p.tx, lay.heatBot);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      /* the label on a solid light plate with dark text (critic r1 #9: a
+       * background-coloured plate let the stall hatch run up to the glyphs,
+       * so the label read as part of the hatch) */
+      for (const p of placed) {
+        ctx.fillStyle = MARK_INK;
+        ctx.fillRect(p.r.x, p.r.y, p.r.w, p.r.h);
+        ctx.fillStyle = PLATE;
+        ctx.textAlign = p.align;
+        ctx.fillText(p.mk.text, p.x, p.y);
+        ctx.textAlign = "left";
+      }
+      ctx.fillStyle = fill0;
+      ctx.strokeStyle = stroke0;
+      drawnMarks = placed.length;
+    }
     /* the hatch key, in the gap between the heat and the strip (the cursor
      * is not drawn there), right-aligned to end before the separator: away
      * from the "lineage 2" gutter label it must not read as a caption of */
@@ -348,9 +438,59 @@
     ctx.fillStyle = INK2;
     if (dwEst <= room) ctx.fillText(dotText, lay.padL, ky);
     else if (room >= 0.6 * dwEst) ctx.fillText(dotText, lay.padL, ky, room);
+    return { marks: drawnMarks };
   }
 
-  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex };
+  /* ---- the run's story (sandbox intro, 2026-09-27). The page's question is
+   * "do they stay two kinds?"; the engine's fate answers it (only HELD is a
+   * yes) and this explains the answer in authored words, one sentence per
+   * fate, plus up to three marks on the plot. It never re-decides the fate.
+   * Pure lineage = outside the hybrid band: bins [0, HYB_FIRST) are lineage
+   * 1, (HYB_LAST, BINS) lineage 2 (the band's endpoints are outside it). */
+  const FATES = ["HELD", "FUSED", "one lost", "BOTH LOST", "STALLED"];
+  const pure = (c, li) =>
+    (li === 1 ? c.counts.slice(0, HYB_FIRST) : c.counts.slice(HYB_LAST + 1)).reduce((s, k) => s + k, 0);
+  /* which lineage "one lost" lost: the engine reads the final MEAN (fateOf:
+   * m < 0.15 or m > 0.85); the model keeps bins, so the mean is taken at bin
+   * centres. For a "one lost" run the true mean is at least 0.35 from 0.5 and
+   * a bin centre is within 0.025 of its members, so the side cannot flip. */
+  function lostLineage(model) {
+    const fin = model.cols[model.cols.length - 1];
+    if (!fin || !fin.n) throw new Error("lostLineage: the final column is empty");
+    const m = fin.counts.reduce((s, k, b) => s + k * ((b + 0.5) / BINS), 0) / fin.n;
+    return m < 0.5 ? 2 : 1;
+  }
+  function story(model, fate) {
+    if (!FATES.includes(fate)) throw new Error(`story: unknown fate ${JSON.stringify(fate)}`);
+    const cols = model.cols;
+    const N = cols.filter((c) => !c.final).length;
+    const k = cols.filter((c) => c.stalled).length;
+    const marks = [];
+    const s = cols.findIndex((c) => c.stalled);
+    if (s >= 0) marks.push({ col: s, row: "mid", text: "stalled: no new plants" });
+    let lost = null;
+    if (fate === "one lost") {
+      lost = lostLineage(model);
+      /* the first column from which the lost lineage has no pure plant, to
+       * the end; a straggler in the final column means it is not gone */
+      let i = cols.length;
+      while (i > 0 && pure(cols[i - 1], lost) === 0) i--;
+      if (i < cols.length) marks.push({ col: i, row: lost === 1 ? "top" : "bottom", text: `lineage ${lost} gone` });
+    }
+    const h = cols.findIndex((c) => c.hyb > 0);
+    if (h >= 0) marks.push({ col: h, row: "mid", text: "first hybrids" });
+    const caption = {
+      HELD: "Yes — they stayed two kinds: the last plants' ancestry is still split between the two lineages.",
+      FUSED: "No — they blended: the last plants' ancestry mixes both lineages, and the split between them has collapsed.",
+      /* a no-break space in "lineage\u00a0N", so the digit never wraps alone */
+      "one lost": lost && `No — lineage\u00a0${lost} was lost: the last plants' ancestry is over 85% lineage\u00a0${3 - lost}.`,
+      "BOTH LOST": "No — the population died out: fewer than two plants were left.",
+      STALLED: `No — it stalled: ${k} of ${N} generations made no new plants, so the old ones were carried forward. That is not staying two kinds.`,
+    }[fate];
+    return { answer: fate === "HELD" ? "Yes" : "No", caption, marks: marks.slice(0, 3) };
+  }
+
+  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex, story, lostLineage, MARKS_MIN_W, MARK_LINE_GAP };
   global.AncestryHeat = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

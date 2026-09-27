@@ -71,7 +71,9 @@ test("#1: a STALLED run's fate band opens with why, naming the part that misses 
 test("#1: the HELD rule states both halves wherever it is stated", () => {
   for (const p of [STALL, CTRL]) {
     const band = $(p, "sFateBand").textContent;
-    assert.match(band, /HELD needs every generation to recruit AND ancestry variance above 0\.4 × founding \(sim\/ibm\.js fateOf\)/);
+    /* 3b: the source is the band's title (hover), not its text */
+    assert.match(band, /HELD needs every generation to recruit AND ancestry variance above 0\.4 × founding$/);
+    assert.equal($(p, "sFateBand").getAttribute("title"), "sim/ibm.js fateOf");
   }
 });
 
@@ -194,9 +196,10 @@ test("#3: the cluster band says the split is by placement, not lineage", () => {
 });
 
 test("#10: the level-5 bout note is written once, by #fieldCaption", () => {
-  const n = SRC.split("the sliced season does not log one").length - 1;
+  const n = SRC.split("doesn't record one").length - 1;
   assert.equal(n, 1, `the bout note appears ${n} times in the page source`);
-  assert.match(SRC, /"bout not drawn: the sliced season does not log one \(sim\/ibm\.js:1432-1438\)"/, "control: the one kept");
+  /* 3b: plain words; the source line is the element's title */
+  assert.match(SRC, /"No bee path shown: this level's flowering-season model doesn't record one\."/, "control: the one kept");
 });
 
 /* ---- fix round 1 (review + critic r4) ---------------------------------- */
@@ -219,10 +222,12 @@ test("fix 1: the stall sentence counts k of N, words k < N and k = N apart, and 
   assert.equal(f("FUSED", 0, 35, ["", ""]), "", "a fate other than STALLED has no stall sentence");
 });
 
-/* critic r4 #1: STALLED is not read off offspring */
+/* critic r4 #1: STALLED is not read off offspring. Since the sandbox intro
+ * (2026-09-27) the subtitle is the fate's story() caption, which says so */
 test("fix 1: the fate's subtitle names what STALLED is read on", () => {
-  assert.equal($(STALL, "sFateSub").textContent, "fate (a generation recruited no offspring)");
-  assert.equal($(CTRL, "sFateSub").textContent, "fate (the run's last offspring)", "control: FUSED");
+  assert.match($(STALL, "sFateSub").textContent, /^No — it stalled: 35 of 35 generations made no new plants/);
+  assert.equal($(CTRL, "sFateSub").textContent,
+    "No — they blended: the last plants' ancestry mixes both lineages, and the split between them has collapsed.", "control: FUSED");
 });
 
 /* critic r4 #3: the no-ratio case has a verb and says what "both" is */

@@ -41,7 +41,7 @@ test("Play at the end replays from generation 0", () => {
   d.getElementById("play").onclick(); // pause: stop the interval
 });
 
-test("before any run: #sFate is 'example: <fate>' in muted ink, the band names the example", () => {
+test("before any run: #sFate is 'example: <fate>' in muted ink, the band is empty (the heat's title names the example)", () => {
   const p = runPage({ noRun: true });
   const d = p.page.document;
   const X = p.page.ExampleHeat;
@@ -49,8 +49,8 @@ test("before any run: #sFate is 'example: <fate>' in muted ink, the band names t
   const f = d.getElementById("sFate");
   assert.equal(f.textContent, `example: ${X.fate}`);
   assert.equal(f.style.color, "var(--ink-2)");
-  assert.equal(d.getElementById("sFateBand").textContent,
-    `an example run (level ${X.config.level}, seed ${X.config.seed}) — press Run for yours`);
+  /* 3b (critic r1 #7): the line repeated the heat's title; the band is empty on load */
+  assert.equal(d.getElementById("sFateBand").textContent, "");
   // a level change after a run (clearResult) restores it; control: the run replaced it
   const q = runPage({ level: 2, seed: 3 });
   assert.equal(q.fate, q.page.Sandbox.result().fate, "control: after a run #sFate is the fate word");
