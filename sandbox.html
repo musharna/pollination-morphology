@@ -941,14 +941,18 @@
        * aspect itself is the logical size, at dpr 1. `changed` is true when the
        * logical size, the dpr or the backing store moved, so a resize redraws
        * only then (no ResizeObserver loop). */
-      function fitCanvas(el, c, aspectW, aspectH) {
+      /* `minH` (the heat only, 3c): a logical-height floor, so a phone-width
+       * heat is taller than its aspect and its variance strip is not crushed.
+       * The canvas CSS is `height: auto`, so the displayed box follows the
+       * backing store's aspect. */
+      function fitCanvas(el, c, aspectW, aspectH, minH = 0) {
         const cw = el.clientWidth;
         let w = aspectW,
           h = aspectH,
           dpr = 1;
         if (cw > 0) {
           w = cw;
-          h = Math.round((w * aspectH) / aspectW);
+          h = Math.max(minH, Math.round((w * aspectH) / aspectW));
           dpr = window.devicePixelRatio || 1;
         }
         const bw = Math.round(w * dpr),
@@ -969,8 +973,11 @@
       let HEAT_W = 760,
         HEAT_H = 420,
         HEAT_DPR = 1;
+      const HEAT_MIN_H = 300;
       function sizeHeat() {
-        const r = fitCanvas(heatEl, heatC, 760, 420);
+        /* critic r2 MAJOR 1: at 320 px the aspect gave 177 px and a ~25 px
+         * variance strip; 300 px keeps the strip >= 50 px */
+        const r = fitCanvas(heatEl, heatC, 760, 420, HEAT_MIN_H);
         HEAT_W = r.w;
         HEAT_H = r.h;
         HEAT_DPR = r.dpr;
@@ -2181,7 +2188,7 @@
                 ? `won: sliders' separation ${d.toFixed(3)}, at or above ${LEVEL.target}`
                 : "won: HELD"
               : st === "lost"
-                ? `result: ${fateWords(RESULT)} — only HELD wins`
+                ? `not won — ${fateWords(RESULT)}; only HELD wins`
                 : LEVEL.noRun
                   ? `not yet: sliders' separation ${d === null ? "—" : d.toFixed(3)}, target ${LEVEL.target}`
                   : "run to play this level; only HELD wins";
@@ -3212,6 +3219,9 @@
         result: () => RESULT,
         stallSentence,
         fieldCaptionFor,
+        /* re-fit every canvas to its displayed size, as a resize does (node's
+         * fake DOM has no ResizeObserver or resize event) */
+        refit: () => refitAll(),
         bodyLayers: () => ({ ...BODY_LAYERS, founders: [...BODY_LAYERS.founders] }),
         thumbSource,
         thumbGenome: (li) => (THUMB_DRAWN[li] ? { ...THUMB_DRAWN[li] } : null),

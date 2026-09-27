@@ -249,6 +249,31 @@ def heat_dpr_checks(browser, name, failures):
     return f"DPR2 backing/clientWidth #heat {a['bw']}/{a['cw']} at 1400, {b['bw']}/{b['cw']} at 900; {o}"
 
 
+# 3c (critic r2 MAJOR 1): at a phone viewport (390 px, DPR 2) the heat has a
+# 300 px logical-height floor, and its DISPLAYED CSS height follows (the
+# canvas is height: auto). Want >= 290 px displayed, a heat narrower than the
+# desktop hero (control: the phone layout, where the aspect alone would give
+# ~180 px), and no page errors. Seen failing on the pre-3c build (~183 px).
+def phone_heat_check(browser, name, failures):
+    ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2)
+    page = ctx.new_page()
+    errs = []
+    page.on("pageerror", lambda e: errs.append(str(e)))
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    page.wait_for_timeout(500)
+    m = page.evaluate("""() => { const r = document.getElementById('heat').getBoundingClientRect();
+      return { w: r.width, h: r.height, S: window.Sandbox.heatSize() }; }""")
+    ctx.close()
+    at = f"{name}: phone 390x844 DPR 2"
+    if not 0 < m["w"] < 420:
+        failures.append(f"{at}: control - #heat displayed {m['w']:.0f} px wide, want a phone-width heat (< 420)")
+    if m["h"] < 290:
+        failures.append(f"{at}: #heat displayed {m['h']:.0f} px tall (logical {m['S']}), want >= 290")
+    if errs:
+        failures.append(f"{at}: {len(errs)} uncaught exception(s): {errs[:3]}")
+    return f"phone heat {m['w']:.0f}x{m['h']:.0f}"
+
+
 HEAT_STATE = """() => [document.getElementById('heatLive').textContent,
   window.Sandbox.heat() === null]"""
 
@@ -1453,6 +1478,7 @@ with sync_playwright() as p:
             note += "; M3a " + ", ".join(m3a_checks(browser, name))
             note += "; M3b " + ", ".join(m3b_checks(browser, name))
             note += "; " + heat_dpr_checks(browser, name, failures)
+            note += "; " + phone_heat_check(browser, name, failures)
             note += "; " + sweep_checks(browser, name)
 
         if errors:
