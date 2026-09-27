@@ -350,7 +350,55 @@
     else if (room >= 0.6 * dwEst) ctx.fillText(dotText, lay.padL, ky, room);
   }
 
-  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex };
+  /* ---- the run's story (sandbox intro, 2026-09-27). The page's question is
+   * "do they stay two kinds?"; the engine's fate answers it (only HELD is a
+   * yes) and this explains the answer in authored words, one sentence per
+   * fate, plus up to three marks on the plot. It never re-decides the fate.
+   * Pure lineage = outside the hybrid band: bins [0, HYB_FIRST) are lineage
+   * 1, (HYB_LAST, BINS) lineage 2 (the band's endpoints are outside it). */
+  const FATES = ["HELD", "FUSED", "one lost", "BOTH LOST", "STALLED"];
+  const pure = (c, li) =>
+    (li === 1 ? c.counts.slice(0, HYB_FIRST) : c.counts.slice(HYB_LAST + 1)).reduce((s, k) => s + k, 0);
+  /* which lineage "one lost" lost: the engine reads the final MEAN (fateOf:
+   * m < 0.15 or m > 0.85); the model keeps bins, so the mean is taken at bin
+   * centres. For a "one lost" run the true mean is at least 0.35 from 0.5 and
+   * a bin centre is within 0.025 of its members, so the side cannot flip. */
+  function lostLineage(model) {
+    const fin = model.cols[model.cols.length - 1];
+    if (!fin || !fin.n) throw new Error("lostLineage: the final column is empty");
+    const m = fin.counts.reduce((s, k, b) => s + k * ((b + 0.5) / BINS), 0) / fin.n;
+    return m < 0.5 ? 2 : 1;
+  }
+  function story(model, fate) {
+    if (!FATES.includes(fate)) throw new Error(`story: unknown fate ${JSON.stringify(fate)}`);
+    const cols = model.cols;
+    const N = cols.filter((c) => !c.final).length;
+    const k = cols.filter((c) => c.stalled).length;
+    const marks = [];
+    const s = cols.findIndex((c) => c.stalled);
+    if (s >= 0) marks.push({ col: s, row: "mid", text: "stalled: no new plants" });
+    let lost = null;
+    if (fate === "one lost") {
+      lost = lostLineage(model);
+      /* the first column from which the lost lineage has no pure plant, to
+       * the end; a straggler in the final column means it is not gone */
+      let i = cols.length;
+      while (i > 0 && pure(cols[i - 1], lost) === 0) i--;
+      if (i < cols.length) marks.push({ col: i, row: lost === 1 ? "top" : "bottom", text: `lineage ${lost} gone` });
+    }
+    const h = cols.findIndex((c) => c.hyb > 0);
+    if (h >= 0) marks.push({ col: h, row: "mid", text: "first hybrids" });
+    const caption = {
+      HELD: "Yes — they stayed two kinds: the last plants' ancestry is still split between the two lineages.",
+      FUSED: "No — they blended: the last plants' ancestry mixes both lineages, and the split between them has collapsed.",
+      "one lost": lost && `No — lineage ${lost} was lost: the last plants' ancestry is over 85% lineage ${3 - lost}.`,
+      "BOTH LOST": "No — the population died out: fewer than two plants were left.",
+      STALLED: `No — it stalled: ${k} of ${N} generations made no new plants, so the old ones were carried forward. That is not staying two kinds.`,
+    }[fate];
+    return { answer: fate === "HELD" ? "Yes" : "No", caption, marks: marks.slice(0, 3) };
+  }
+
+  const api = { BINS, binOf, heatModel, layout, colAt, drawHeat, drawEmpty, ancHex, story, lostLineage };
   global.AncestryHeat = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
