@@ -360,6 +360,10 @@
         if (placed.some((p) => hit(r, p.r)) || !inHeat(r)) continue;
         placed.push({ mk, tx, x, y, align, r });
       }
+      /* the labels after this block (the hatch key) draw in the ink left
+       * here, so the block hands back the fill and stroke it found */
+      const fill0 = ctx.fillStyle,
+        stroke0 = ctx.strokeStyle;
       ctx.strokeStyle = MARK_INK;
       ctx.lineWidth = 1;
       ctx.globalAlpha = 0.6;
@@ -372,6 +376,8 @@
       ctx.globalAlpha = 1;
       ctx.fillStyle = MARK_INK;
       for (const p of placed) plated(p.mk.text, p.x, p.y, p.align);
+      ctx.fillStyle = fill0;
+      ctx.strokeStyle = stroke0;
       drawnMarks = placed.length;
     }
     /* the hatch key, in the gap between the heat and the strip (the cursor

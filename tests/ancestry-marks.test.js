@@ -6,6 +6,10 @@
  */
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const H = require("../ancestry-heat.js");
 globalThis.window = globalThis;
 require("../example-heat.js");
@@ -19,7 +23,8 @@ const recorder = () => {
     get: (t, k) => {
       if (k === "measureText") return (s) => ({ width: 6.2 * String(s).length });
       if (k in t) return t[k];
-      return (...args) => calls.push({ fn: k, args, textAlign: t.textAlign, fillStyle: t.fillStyle, lineWidth: t.lineWidth });
+      return (...args) => calls.push({ fn: k, args, textAlign: t.textAlign, fillStyle: t.fillStyle, strokeStyle: t.strokeStyle,
+        lineWidth: t.lineWidth, globalAlpha: t.globalAlpha });
     },
     set: (t, k, v) => ((t[k] = v), true),
   });
@@ -104,12 +109,103 @@ test("narrow heat: no marks, returns 0; no label runs past the canvas", () => {
   }
 });
 
-test("no o.marks: drawHeat draws exactly what it drew before (same fillText list)", () => {
-  const a = recorder(), b = recorder();
-  const outA = H.drawHeat(a.ctx, X.model, { W: 566, H: 420, cursor: -1, fate: X.fate });
-  const outB = H.drawHeat(b.ctx, X.model, { W: 566, H: 420, cursor: -1, fate: X.fate, marks: [] });
-  assert.deepEqual(outA, { marks: 0 });
-  assert.deepEqual(outB, { marks: 0 });
-  assert.deepEqual(texts(a.calls), texts(b.calls));
-  assert.deepEqual(plates(a.calls), plates(b.calls));
+/* a STALLED synthetic model: stall at col 1, first hybrids at col 2 */
+const stallModel = () => ({ bins: 20, v0: 0.25, heldLine: 0.1, cols: [
+  col(0, 15, 0, 15), col(1, 15, 0, 15, { stalled: true }), col(2, 14, 2, 14), col(3, 14, 2, 14),
+  col(4, 14, 2, 14), col(5, 14, 2, 14, { final: true }),
+] });
+/* a plain 12-generation model with no stalls, for hand-made marks */
+const plainModel = () => ({ bins: 20, v0: 0.25, heldLine: 0.1,
+  cols: Array.from({ length: 13 }, (_, g) => col(g, 15, 0, 15, { final: g === 12 })) });
+
+/* the drawHeat from before the marks existed (plan commit 903b849), loaded
+ * from git into a temp file for the call-list comparison */
+const baselineDrawHeat = () => {
+  const src = execFileSync("git", ["show", "903b849:ancestry-heat.js"], { cwd: path.join(__dirname, ".."), encoding: "utf8" });
+  const f = path.join(os.tmpdir(), `ancestry-heat-903b849-${process.pid}-${Date.now()}.js`);
+  const had = globalThis.AncestryHeat;
+  fs.writeFileSync(f, src);
+  try {
+    return require(f).drawHeat;
+  } finally {
+    fs.unlinkSync(f);
+    globalThis.AncestryHeat = had;
+  }
+};
+const callList = (calls) => calls.map((c) => ({ fn: c.fn, args: c.args, fillStyle: c.fillStyle, strokeStyle: c.strokeStyle }));
+
+test("no o.marks: drawHeat makes exactly the calls the pre-marks drawHeat (903b849) made", () => {
+  const old = baselineDrawHeat();
+  assert.notEqual(old, H.drawHeat, "control: the baseline is a different function");
+  const cases = [
+    [X.model, { W: 566, H: 420, cursor: 3, fate: X.fate, title: "an example run" }],
+    [stallModel(), { W: 566, H: 420, cursor: -1, fate: "STALLED" }],
+    [X.model, { W: 300, H: 420, cursor: -1, fate: X.fate }],
+  ];
+  for (const [model, o] of cases) {
+    const a = recorder(), b = recorder(), c = recorder();
+    old(a.ctx, model, o);
+    assert.deepEqual(H.drawHeat(b.ctx, model, o), { marks: 0 });
+    assert.deepEqual(H.drawHeat(c.ctx, model, { ...o, marks: [] }), { marks: 0 });
+    assert.ok(a.calls.length > 50, "control: the baseline drew something");
+    assert.deepEqual(callList(b.calls), callList(a.calls));
+    assert.deepEqual(callList(c.calls), callList(a.calls));
+  }
+});
+
+test("marks leave the hatch key in its own ink (INK2), as without marks", () => {
+  const model = stallModel();
+  const marks = H.story(model, "STALLED").marks;
+  const r = recorder();
+  const out = H.drawHeat(r.ctx, model, { W: 566, H: 420, cursor: -1, fate: "STALLED", marks });
+  assert.ok(out.marks >= 1, "control: a mark was drawn");
+  const key = r.calls.filter((c) => c.fn === "fillText" && String(c.args[0]).startsWith("hatched:"));
+  assert.equal(key.length, 1, "control: the hatch key is drawn");
+  assert.equal(key[0].fillStyle, "#9aa0a8");
+});
+
+test("a mark whose slot and moved-down slot are both taken is dropped, and not counted", () => {
+  const marks = [
+    { col: 4, row: "mid", text: "first hybrids" },
+    { col: 4, row: "mid", text: "lineage 1 gone" },
+    { col: 4, row: "mid", text: "stalled: no new plants" },
+  ];
+  const r = recorder();
+  const out = H.drawHeat(r.ctx, plainModel(), { W: 566, H: 420, cursor: -1, marks });
+  assert.equal(out.marks, 2);
+  const t = texts(r.calls);
+  assert.ok(t.includes("first hybrids") && t.includes("lineage 1 gone"), "the first two are drawn");
+  assert.ok(!t.includes("stalled: no new plants"), "the third is dropped");
+});
+
+test("a second mark on the same slot moves down 14 px", () => {
+  const marks = [
+    { col: 4, row: "top", text: "first hybrids" },
+    { col: 4, row: "top", text: "lineage 1 gone" },
+  ];
+  const r = recorder();
+  const out = H.drawHeat(r.ctx, plainModel(), { W: 566, H: 420, cursor: -1, marks });
+  assert.equal(out.marks, 2);
+  const [p1, p2] = markPlates(r.calls, marks);
+  assert.equal(p2.y, p1.y + 14);
+  assert.ok(!overlap(p1, p2));
+});
+
+test("a mark near the separator hangs left of its tick (right-aligned)", () => {
+  const model = plainModel();
+  const lay = H.layout(model, 566, 420);
+  const c = model.cols.length - 2; // the last generation, just before the separator
+  const marks = [{ col: c, row: "top", text: "stalled: no new plants" }];
+  const r = recorder();
+  assert.equal(H.drawHeat(r.ctx, model, { W: 566, H: 420, cursor: -1, marks }).marks, 1);
+  const tx = Math.round(lay.xOf(c) + lay.colW / 2) + 0.5;
+  const ft = r.calls.find((k) => k.fn === "fillText" && k.args[0] === marks[0].text);
+  assert.equal(ft.textAlign, "right");
+  const [p] = markPlates(r.calls, marks);
+  assert.ok(p.x + p.w <= tx - 4 + 2 + 1e-9, `plate ends at ${p.x + p.w}, tick at ${tx}`);
+  assert.ok(p.x >= lay.padL);
+  /* positive control: the same mark mid-plot is left-aligned */
+  const r2 = recorder();
+  H.drawHeat(r2.ctx, model, { W: 566, H: 420, cursor: -1, marks: [{ ...marks[0], col: 2 }] });
+  assert.equal(r2.calls.find((k) => k.fn === "fillText" && k.args[0] === marks[0].text).textAlign, "left");
 });
