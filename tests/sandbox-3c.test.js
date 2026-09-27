@@ -43,5 +43,5 @@ test("MINOR 6: the lost win line reads 'not won — <fate>; only HELD wins'", ()
   const p = runPage({ level: 2, seed: 3 });
   assert.equal(p.error, null);
   assert.equal(p.win, "lost", "control: the run lost");
-  assert.equal(p.winText, "not won — one lost (lineage 2 gone); only HELD wins");
+  assert.equal(p.winText, "not won — one lost (lineage 2 lost); only HELD wins");
 });

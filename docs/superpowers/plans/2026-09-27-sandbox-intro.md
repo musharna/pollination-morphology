@@ -20,7 +20,7 @@
 - The 3D view and the stat tiles get nothing new except the "fill in when you press Run" hint.
 - Marks must fit at phone width or not be drawn; the caption is always shown.
 - Headless browsers: default Playwright launch only — never `--enable-gpu`, d3d12 or vulkan.
-- No file under the repo may contain `/home/mjarnold`, `/mnt/c/Users/a2b32` or `claude.ai/code/session_` (leak-guard).
+- No tracked file may contain the private paths or session URLs that `.github/workflows/leak-guard.yml` blocks.
 
 ## Review Focus
 

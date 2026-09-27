@@ -2146,13 +2146,13 @@
           hi = fin.filter((a) => !H(a) && a >= 0.5).length;
         return { lo, hi, mid: fin.length - lo - hi };
       }
-      /* the fate word, and for "one lost" which lineage is gone (critic r2
-       * M10). The engine calls "one lost" on the final offspring's MEAN
+      /* the fate word, and for "one lost" which lineage is lost (critic r2
+       * M10; "lost", not "gone": a straggler can survive, final review I1). The engine calls "one lost" on the final offspring's MEAN
        * ancestry, outside the hybrid band (sim/ibm.js fateOf: m < 0.15 or
        * m > 0.85), not on label counts: 29 plants at 0 and one at 1 is "one
        * lost" with both labels non-empty. So the side is read off the same
        * mean: given "one lost", below 0.5 the tracer went to lineage 1's end
-       * (lineage 2 gone), above it to lineage 2's. No threshold is restated;
+       * (lineage 2 lost), above it to lineage 2's. No threshold is restated;
        * a mean inside the band means page and engine disagree, and says so. */
       function fateWords(R) {
         if (R.fate !== "one lost") return R.fate;
@@ -2160,7 +2160,7 @@
         const m = a.reduce((s, x) => s + x, 0) / a.length;
         if (window.SandboxRun.isHybrid(m))
           throw new Error(`fate "one lost" but the final mean ancestry ${m} is inside the hybrid band`);
-        return `one lost (lineage ${m < 0.5 ? 2 : 1} gone)`;
+        return `one lost (lineage ${m < 0.5 ? 2 : 1} lost)`;
       }
       /* a level's note as the page prints it, authored here where the level's
        * own text (population-run.js noKnownWin) carries a repo path: the path
