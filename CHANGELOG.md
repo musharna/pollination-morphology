@@ -20,6 +20,16 @@ public release; the full research history is in `docs/ROADMAP.md`, which is cano
   An independent visual critic reviewed four rounds of screenshots until one passed; a blind
   10-second test named the test and the fate on both the old and the new page, so it shows no
   measured legibility gain (`docs/superpowers/briefs/2026-09-25-visual-blind-test.md`).
+- The sandbox introduces itself (`docs/superpowers/plans/2026-09-27-sandbox-intro.md`). The header
+  states the premise (two orchids sharing a bee, pollen on its back or its belly) and the question.
+  Every result, and the example on load, gets a plain answer under the fate word, one authored
+  sentence per fate (`AncestryHeat.story`), and up to three marks on the heatmap ("lineage 2 gone",
+  "first hybrids", "stalled: no new plants"); a STALLED run's 3D view says the plants were carried
+  forward. Source-file references moved from visible text into hover titles, level notes collapsed
+  into "about this level", and the heat has a 300 px height floor at phone width. A visual critic
+  passed on round 3. A 12-reader cold test (current vs new page, load and stall) found every reader
+  right on both pages, so it shows no measured gain; only new-page readers (6/6 vs 0/6) named why
+  the kinds might stay apart. Merged on the user's decision.
 - A work-count gate for the simulation (`tools/work-count.js`, `tests/work-count.test.js`):
   the smoke's seeded runs (level 2 seed 1, and level 5's width-locus object at seed 3, both
   founded at target d 8, at the page configuration) must make exactly the committed number of
