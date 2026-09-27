@@ -90,12 +90,19 @@
       .toys {
         display: grid;
         gap: 14px;
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
       }
-      @media (min-width: 680px) {
+      @media (max-width: 699px) {
         .toys {
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: 1fr;
         }
+      }
+      a.toy img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        margin-bottom: 12px;
       }
       a.toy {
         display: block;
@@ -185,6 +192,13 @@
       <h2>Play with it</h2>
       <div class="toys">
         <a class="toy" href="sandbox.html">
+          <img
+            src="assets/sandbox-tile.jpg"
+            width="640"
+            height="264"
+            alt="The sandbox after a run: the ancestry heatmap beside the flower field"
+            loading="lazy"
+          />
           <span class="name">sandbox.html</span>
           <span class="what"
             >The sandbox: place two lineages' pollen on the bee, run a community over
@@ -192,6 +206,13 @@
           >
         </a>
         <a class="toy" href="visit.html">
+          <img
+            src="assets/visit-tile.jpg"
+            width="640"
+            height="315"
+            alt="The visit: one bee inside flower A, its pollen drawn on its body, beside flower B"
+            loading="lazy"
+          />
           <span class="name">visit.html</span>
           <span class="what"
             >Watch one bee load pollen in one flower and fail to deliver it to the

@@ -111,21 +111,20 @@ function runPage(settings) {
   }
   const fateBand = text("sFateBand") || "";
   const hybBand = text("sHybBand") || "";
-  const stalled = /(\d+) of (\d+) generations recruited nothing/.exec(fateBand);
-  const hyb = /hybrids among the parents in (\d+) of (\d+) generations/.exec(
-    hybBand,
-  );
-  const ratio = /receipt ratio (\S+)/.exec(hybBand);
-  const realised = /realised separation (\S+)/.exec(text("status") || "");
+  const stalled = /stalled generations: (none|\d+) of (\d+)/.exec(fateBand);
+  const hyb = /generations with any hybrid: (\d+) of (\d+)/.exec(hybBand);
+  /* "receipt ratio: not measured — ..." when no generation held both (7e fix 1) */
+  const ratio = /receipt ratio(?:: (not measured)| (\S+))/.exec(hybBand);
+  const realised = /founders' separation (\S+)/.exec(text("status") || "");
   return {
     status: text("status"),
     error: doc.getElementById("status").getAttribute("data-error"),
     fate: text("sFate"),
-    stalledGens: stalled ? +stalled[1] : null,
+    stalledGens: !stalled ? null : stalled[1] === "none" ? 0 : +stalled[1],
     gensRun: stalled ? +stalled[2] : null,
     hybGens: hyb ? +hyb[1] : null,
     hybOf: hyb ? +hyb[2] : null,
-    ratio: !ratio ? null : ratio[1] === "no" ? null : ratio[1],
+    ratio: !ratio || ratio[1] ? null : ratio[2],
     realised: realised ? realised[1] : null,
     useD: doc.getElementById("useD").checked,
     d: doc.getElementById("d").value,

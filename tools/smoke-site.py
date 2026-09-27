@@ -95,7 +95,7 @@ def sample(page, settle, gap):
 # quantity on the null side AND grey on cards 1 and 4 - grey wins), and the
 # STALLED fixture with its 0.80 / 0.85 controls. tests/sandbox-m2-*.test.js
 # assert the same in the fake DOM; this is the real-browser control on them.
-M2_RUN = """async (s) => {
+M2_RUN = r"""async (s) => {
   const $ = (id) => document.getElementById(id);
   if (s.lineages) {
     const E = window.Evolve;
@@ -114,9 +114,9 @@ M2_RUN = """async (s) => {
   while ($("status").textContent === "running…" && performance.now() - t0 < 90000)
     await new Promise((r) => setTimeout(r, 100));
   const band = $("sFateBand").textContent, hb = $("sHybBand").textContent;
-  const st = /(\d+) of (\d+) generations recruited nothing/.exec(band);
-  const hy = /hybrids among the parents in (\d+) of (\d+) generations/.exec(hb);
-  const ra = /receipt ratio (\S+)/.exec(hb);
+  const st = /stalled generations: (none|\d+) of (\d+)/.exec(band);
+  const hy = /generations with any hybrid: (\d+) of (\d+)/.exec(hb);
+  const ra = /receipt ratio(?:: (not measured)| (\S+))/.exec(hb);
   const cards = {};
   for (const c of ["card1", "card2", "card3", "card4", "card5", "card6"])
     cards[c] = $(c) ? $(c).getAttribute("data-state") : null;
@@ -124,17 +124,631 @@ M2_RUN = """async (s) => {
     status: $("status").textContent,
     error: $("status").getAttribute("data-error"),
     fate: $("sFate").textContent,
-    stalled: st ? +st[1] : null,
+    stalled: !st ? null : st[1] === "none" ? 0 : +st[1],
     hyb: hy ? +hy[1] : null,
-    ratio: ra ? ra[1] : null,
+    ratio: !ra ? null : ra[1] ? "no" : ra[2],
     cards,
   };
 }"""
 
 
+# ------------------------------------------------------------ the heatmap (#heat)
+# The heat grid's OPAQUE pixel count (alpha 255, inside the grid rows from
+# AncestryHeat.layout) is compared with a BASELINE: AncestryHeat.drawEmpty with
+# the page's placeholder message, drawn on an offscreen canvas at the page's own
+# logical size and devicePixelRatio (Sandbox.heatSize()), so the counts compare. (A
+# distinct-colour count cannot fail here: anti-aliased placeholder text alone
+# saturates it on a transparent canvas. The baseline is offscreen because #heat
+# shows the labelled example on load, so #heat itself has no empty state.)
+# On load, before #run: > 5x baseline, #heatLive says "Example run", and
+# Sandbox.heat() is null (it is an example, not a run). After #run: > 5x
+# baseline, Sandbox.heat() non-null, #heatLive no longer the example. Then a
+# REAL mouse click on column 5's centre - computed from AncestryHeat.layout on
+# the page's own model, scaled to the canvas's content box - moves the scrubber to generation 5.
+# Task 7b: a run ENDS on its last generation, so before the click #scrub reads
+# its own max and #sGen reads "<max> of <max>" (seen failing on 97eebb6, which showed
+# generation 0); that is also the click's positive control, a scrubber already
+# at 5 cannot pass it (max is never 5 here).
+HEAT_INK = """(off) => {
+  let c = document.getElementById('heat');
+  if (!c) return -1;
+  const S = window.Sandbox.heatSize(), W = S.W, H = S.H, dpr = S.dpr;
+  if (off) {
+    c = document.createElement('canvas');
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const g = c.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    window.AncestryHeat.drawEmpty(g, W, H,
+      "press Run: each column will be one generation's plants, sorted by ancestry");
+  }
+  /* layout is in logical px; getImageData reads backing px, so scale by dpr */
+  const lay = window.AncestryHeat.layout({ cols: [{ final: false }] }, W, H);
+  const x0 = Math.round(lay.xOf(0) * dpr), y0 = Math.round(lay.heatTop * dpr),
+    y1 = Math.round(lay.heatBot * dpr);
+  const d = c.getContext('2d').getImageData(x0, y0, c.width - x0, y1 - y0).data;
+  let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] === 255) n++;
+  return n;
+}"""
+
+HEAT_COL5 = """() => {
+  const c = document.getElementById('heat');
+  c.scrollIntoView({ block: 'center' });
+  const H = window.Sandbox.heat();
+  if (!H) return null;
+  const S = window.Sandbox.heatSize();
+  const lay = window.AncestryHeat.layout(H, S.W, S.H);
+  const r = c.getBoundingClientRect();
+  const k = c.clientWidth / S.W;
+  return {
+    x: r.left + c.clientLeft + (lay.xOf(5) + lay.colW / 2) * k,
+    y: r.top + c.clientTop + c.clientHeight / 2,
+  };
+}"""
+
+
+# The heat's backing store follows its displayed size x devicePixelRatio. In a
+# device_scale_factor=2 context at 1400x900: canvas.width == round(2 x
+# clientWidth) (within 1 px), Sandbox.heatSize().W == clientWidth, and the heat
+# is displayed >= 500 px wide (positive control: it is on screen, so a 0-wide
+# canvas cannot pass). Then the viewport goes to 900x900, which stacks the hero:
+# clientWidth must change (control: the resize happened) and the backing width
+# must follow the new clientWidth x 2.
+HEAT_DPR = """() => {
+  const c = document.getElementById('heat');
+  const S = window.Sandbox && window.Sandbox.heatSize ? window.Sandbox.heatSize() : null;
+  const other = Object.fromEntries(['field', 'bodyMap'].map((id) => {
+    const e = document.getElementById(id);
+    return [id, { cw: e.clientWidth, bw: e.width }];
+  }));
+  return { cw: c.clientWidth, bw: c.width, bh: c.height, shown: c.getBoundingClientRect().width,
+           dpr: window.devicePixelRatio, S, other };
+}"""
+
+
+def heat_dpr_checks(browser, name, failures):
+    ctx = browser.new_context(viewport={"width": 1400, "height": 900}, device_scale_factor=2)
+    page = ctx.new_page()
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    seen = []
+    for vw in (1400, 900):
+        if vw != 1400:
+            page.set_viewport_size({"width": vw, "height": 900})
+            try:  # a ResizeObserver callback is async: wait for it, then measure regardless
+                page.wait_for_function(
+                    "(w0) => document.getElementById('heat').clientWidth !== w0 && "
+                    "Math.abs(document.getElementById('heat').width - "
+                    "2 * document.getElementById('heat').clientWidth) <= 1",
+                    arg=seen[0]["cw"], timeout=3000)
+            except Exception:  # noqa: BLE001
+                pass
+        m = page.evaluate(HEAT_DPR)
+        seen.append(m)
+        at = f"{name}: DPR 2 at {vw}x900"
+        if m["dpr"] != 2:
+            failures.append(f"{at}: devicePixelRatio {m['dpr']}, want 2 (the context is wrong)")
+        if abs(m["bw"] - round(2 * m["cw"])) > 1:
+            failures.append(f"{at}: #heat backing width {m['bw']} vs clientWidth {m['cw']} - want {round(2 * m['cw'])}")
+        # Task 5 (A1): the field and the body map follow the same rule
+        for cid, o in m["other"].items():
+            if o["cw"] < 200 or abs(o["bw"] - round(2 * o["cw"])) > 1:
+                failures.append(f"{at}: #{cid} backing width {o['bw']} vs clientWidth {o['cw']} - want {round(2 * o['cw'])} (and displayed >= 200 px)")
+        if not m["S"] or m["S"]["W"] != m["cw"]:
+            failures.append(f"{at}: Sandbox.heatSize() {m['S']!r} - want W == clientWidth {m['cw']}")
+        elif abs(m["bh"] - round(2 * m["S"]["H"])) > 1:
+            failures.append(f"{at}: #heat backing height {m['bh']} vs logical H {m['S']['H']} - want {round(2 * m['S']['H'])}")
+    if seen[0]["shown"] < 500:
+        failures.append(f"{name}: control - #heat displayed {seen[0]['shown']:.0f} px wide at 1400x900, want >= 500")
+    if seen[1]["cw"] == seen[0]["cw"]:
+        failures.append(f"{name}: control - #heat clientWidth {seen[0]['cw']} did not change at 900x900 (no resize)")
+    ctx.close()
+    a, b = seen
+    o = "; ".join(f"#{k} {v['bw']}/{v['cw']} at 1400, {b['other'][k]['bw']}/{b['other'][k]['cw']} at 900"
+                  for k, v in a["other"].items())
+    return f"DPR2 backing/clientWidth #heat {a['bw']}/{a['cw']} at 1400, {b['bw']}/{b['cw']} at 900; {o}"
+
+
+HEAT_STATE = """() => [document.getElementById('heatLive').textContent,
+  window.Sandbox.heat() === null]"""
+
+# First screen at 1400x900, on load, before any scroll: the run controls, the
+# verdict and both views are above the fold, and the Advanced drawer is shut.
+# Positive control: #selfcheck (the page's last element) is measured BELOW the
+# fold, so a probe that read every top as 0 cannot pass.
+FIRST_SCREEN = """() => {
+  const top = (id) => { const e = document.getElementById(id);
+    return e ? Math.round(e.getBoundingClientRect().top) : null; };
+  const adv = document.getElementById('advanced');
+  return { tops: Object.fromEntries(['run', 'level', 'sFate', 'heat', 'field', 'selfcheck']
+             .map((id) => [id, top(id)])),
+           advOpen: adv ? adv.open : null, scrollY: window.scrollY };
+}"""
+
+
+def first_screen_checks(page, name, failures):
+    fs = page.evaluate(FIRST_SCREEN)
+    t = fs["tops"]
+    for k in ["run", "level", "sFate", "heat", "field"]:
+        if t[k] is None or t[k] >= 900:
+            failures.append(f"{name}: #{k} top {t[k]} on load at 1400x900 - not on the first screen")
+    if t["selfcheck"] is None or t["selfcheck"] < 900:
+        failures.append(f"{name}: control - #selfcheck top {t['selfcheck']}, want below the fold (>= 900)")
+    if fs["advOpen"] is not False:
+        failures.append(f"{name}: #advanced open is {fs['advOpen']!r} on load, want False (a closed drawer)")
+    return f"first screen tops {t}, advanced open {fs['advOpen']}"
+
+
+# ------------------------------------------- Task 5: thumbnails and the body map
+# A thumbnail is drawn when more than 5% of its pixels differ from its own
+# top-left corner pixel by more than 24 in any channel (a distinct-colour count
+# saturates on anti-aliasing and could not fail, Task 2). Moving g1_axisLen to
+# its max must change #thumb1 and leave #thumb2 byte-identical (control: the
+# other card is untouched). Seen failing with renderThumb returning at once.
+THUMB_INK = """(id) => {
+  const c = document.getElementById(id);
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4)
+    for (let k = 0; k < 4; k++) if (Math.abs(d[i + k] - d[k]) > 24) { n++; break; }
+  return n / (c.width * c.height);
+}"""
+# FNV-1a over the canvas's backing pixels: equal iff (up to hash collision) identical
+CANVAS_SIG = """(id) => {
+  const c = document.getElementById(id);
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let h = 2166136261;
+  for (let i = 0; i < d.length; i++) h = Math.imul(h ^ d[i], 16777619) >>> 0;
+  return h;
+}"""
+SET_INPUT = """([id, v]) => {
+  const e = document.getElementById(id);
+  const was = e.value;
+  e.value = v === null ? e.max : String(v);
+  e.dispatchEvent(new Event('input'));
+  return was;
+}"""
+
+
+def thumb_checks(page, name, failures):
+    ink = [page.evaluate(THUMB_INK, f"thumb{i}") for i in (1, 2)]
+    for i, f in zip((1, 2), ink):
+        if not f > 0.05:
+            failures.append(f"{name}: #thumb{i} has {f:.1%} of pixels off its corner colour on load (need > 5%)")
+    s1, s2 = page.evaluate(CANVAS_SIG, "thumb1"), page.evaluate(CANVAS_SIG, "thumb2")
+    g1 = page.evaluate("() => window.Sandbox.lineage(0)")
+    page.evaluate(SET_INPUT, ["g1_axisLen", None])
+    t1, t2 = page.evaluate(CANVAS_SIG, "thumb1"), page.evaluate(CANVAS_SIG, "thumb2")
+    # exact restore (a range input snaps a written value to its step)
+    page.evaluate("(g) => window.Sandbox.setLineage(0, g)", g1)
+    if t1 == s1:
+        failures.append(f"{name}: g1_axisLen to its max left #thumb1 unchanged")
+    if t2 != s2:
+        failures.append(f"{name}: g1_axisLen changed #thumb2 (control: only lineage 1's card may redraw)")
+    return f"thumbs {ink[0]:.1%}/{ink[1]:.1%} off-corner, axisLen max -> thumb1 {'changed' if t1 != s1 else 'SAME'}, thumb2 {'same' if t2 == s2 else 'CHANGED'}"
+
+
+# After a run: #bodyMap differs between scrub 0 and scrub 10 (the shown
+# generation is drawn). Then the camera restore: redraw the field at the shown
+# generation (an input on #scrub at its own value), sample; move a gene slider
+# (renderThumb swaps the camera and render target), redraw the same way,
+# sample again - identical. The field camera is first dragged off its default
+# yaw/pitch with a real pointer drag (the thumbnail camera shares the patch's
+# yaw 0.5 / pitch 0.62, so a missing yaw/pitch restore is invisible at the
+# defaults); control: the drag changed the field. Positive control: before the thumb render the field
+# shows the scene (> 20% of its pixels off its corner colour) - without it, a
+# field already broken by the load-time thumbnail renders compares equal to
+# itself. Seen failing with renderThumb's `finally` removed.
+# Heat labels fit at the displayed width (Task 5b). CanvasRenderingContext2D
+# fillText is wrapped to record every label drawn on #heat - {text, x, y, w =
+# measureText (capped at a maxWidth), align}; a clearRect on #heat starts a new
+# draw, so only the last draw is kept - while the heat redraws, then unwrapped.
+# The example (on load, whose "final: one lost" and title are the long labels)
+# is redrawn by a resize; the run's heat (after #run) by an 'input' on #scrub
+# and by a resize. At 1400x900 and at 700x900: every label lies within [0, W];
+# no gutter label (drawn left of the plot) ends past lay.padL - 4; no two
+# labels on one baseline overlap. Positive control: the labels named in
+# HEAT_LABEL_NEED were recorded, so an empty recording cannot pass. (BASE's
+# layout has no padL; its plot origin xOf(0) is the same number.)
+HEAT_REC_ON = """() => {
+  const c = document.getElementById('heat');
+  const P = CanvasRenderingContext2D.prototype;
+  const R = (window.__heatRec = { rec: [], fillText: P.fillText, clearRect: P.clearRect });
+  P.clearRect = function () {
+    if (this.canvas === c) R.rec = [];
+    return R.clearRect.apply(this, arguments);
+  };
+  P.fillText = function (text, x, y, maxW) {
+    if (this.canvas === c) {
+      let w = this.measureText(text).width;
+      if (maxW !== undefined) w = Math.min(w, maxW);
+      R.rec.push({ text: String(text), x, y, w, align: this.textAlign });
+    }
+    return R.fillText.apply(this, arguments);
+  };
+}"""
+HEAT_REC_OFF = """() => {
+  const P = CanvasRenderingContext2D.prototype, R = window.__heatRec;
+  P.fillText = R.fillText;
+  P.clearRect = R.clearRect;
+  delete window.__heatRec;
+  const S = window.Sandbox.heatSize();
+  const model = window.Sandbox.heat() || window.ExampleHeat.model;
+  const lay = window.AncestryHeat.layout(model, S.W, S.H);
+  return { rec: R.rec, W: S.W, padL: lay.padL === undefined ? lay.xOf(0) : lay.padL };
+}"""
+HEAT_LABEL_NEED = ("generation 0", "final", "HELD line", "hybrid band")
+
+
+def _heat_resize(page, vw, failures, at):
+    w0 = page.evaluate("() => document.getElementById('heat').clientWidth")
+    page.set_viewport_size({"width": vw, "height": 900})
+    try:  # the ResizeObserver refit is async
+        page.wait_for_function(
+            "(w0) => document.getElementById('heat').clientWidth !== w0", arg=w0, timeout=3000)
+    except Exception:  # noqa: BLE001
+        failures.append(f"{at}: control - #heat clientWidth stayed {w0} at {vw}x900 (no resize)")
+    page.wait_for_timeout(300)
+
+
+def _heat_label_assert(m, at, need, failures):
+    W, padL = m["W"], m["padL"]
+    got = [t["text"] for t in m["rec"]]
+    for n in need:
+        if not any(t.startswith(n) for t in got):
+            failures.append(f"{at}: control - no {n!r} label recorded (got {got[:8]})")
+    spans = []
+    for t in m["rec"]:
+        x0 = t["x"] - t["w"] if t["align"] == "right" else t["x"] - t["w"] / 2 if t["align"] == "center" else t["x"]
+        spans.append((round(t["y"], 1), x0, x0 + t["w"], t["text"]))
+    for y, x0, x1, text in spans:
+        if x0 < -0.5 or x1 > W + 0.5:
+            failures.append(f"{at}: {text!r} spans [{x0:.1f}, {x1:.1f}], outside [0, {W}]")
+        if x0 < padL and x1 > padL - 4:
+            failures.append(f"{at}: gutter label {text!r} ends at {x1:.1f}, past padL {padL} - 4")
+    for y in sorted({sp[0] for sp in spans}):
+        row = sorted((sp for sp in spans if sp[0] == y), key=lambda sp: sp[1])
+        for a, b in zip(row, row[1:]):
+            if b[1] < a[2]:
+                failures.append(f"{at}: {a[3]!r} [{a[1]:.1f}, {a[2]:.1f}] overlaps {b[3]!r} [{b[1]:.1f}, {b[2]:.1f}] on y={y}")
+    gut = max((sp[2] for sp in spans if sp[1] < padL), default=0)
+    return f"W {W} {len(spans)} labels gutter<={gut:.1f}/padL {padL}"
+
+
+def heat_label_checks(page, name, failures, example):
+    """example=True: before #run (the example, title included), redrawn by resizes.
+    example=False: after #run, redrawn by an 'input' on #scrub, then by a resize."""
+    tag = "example" if example else "run"
+    need = HEAT_LABEL_NEED + (("example run:",) if example else ())
+    notes = []
+    if example:
+        for vw in (700, 1400):
+            page.evaluate(HEAT_REC_ON)
+            _heat_resize(page, vw, failures, f"{name}: heat labels ({tag})")
+            notes.append(f"{vw}: " + _heat_label_assert(
+                page.evaluate(HEAT_REC_OFF), f"{name}: heat labels ({tag}) at {vw}x900", need, failures))
+    else:
+        page.evaluate(HEAT_REC_ON)
+        page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+        m = page.evaluate(HEAT_REC_OFF)
+        notes.append("1400: " + _heat_label_assert(m, f"{name}: heat labels ({tag}) at 1400x900", need, failures))
+        # Task 7d (M7): after Run the heat's title is not the example's
+        ex = [t["text"] for t in m["rec"] if t["text"].startswith("example")]
+        if ex:
+            failures.append(f"{name}: after #run the heat still draws an example title: {ex}")
+        page.evaluate(HEAT_REC_ON)
+        _heat_resize(page, 700, failures, f"{name}: heat labels ({tag})")
+        notes.append("700: " + _heat_label_assert(
+            page.evaluate(HEAT_REC_OFF), f"{name}: heat labels ({tag}) at 700x900", need, failures))
+        _heat_resize(page, 1400, failures, f"{name}: heat labels ({tag}) restore")
+    return f"heat labels {tag} " + "; ".join(notes)
+
+
+def run_view_checks(page, name, failures):
+    page.evaluate(SET_INPUT, ["scrub", 0])
+    b0 = page.evaluate(CANVAS_SIG, "bodyMap")
+    page.evaluate(SET_INPUT, ["scrub", 10])
+    b10 = page.evaluate(CANVAS_SIG, "bodyMap")
+    if b0 == b10:
+        failures.append(f"{name}: #bodyMap identical at scrub 0 and scrub 10 - the shown generation is not drawn")
+    g = page.evaluate("() => document.getElementById('scrub').value")
+    page.evaluate(SET_INPUT, ["scrub", g])
+    pre_drag = page.evaluate(CANVAS_SIG, "field")
+    page.evaluate("() => document.getElementById('field').scrollIntoView({ block: 'center' })")
+    bb = page.locator("#field").bounding_box()
+    cx, cy = bb["x"] + bb["width"] / 2, bb["y"] + bb["height"] / 2
+    page.mouse.move(cx, cy)
+    page.mouse.down()
+    page.mouse.move(cx + 80, cy + 40, steps=8)
+    page.mouse.up()
+    page.evaluate(SET_INPUT, ["scrub", g])
+    f0 = page.evaluate(CANVAS_SIG, "field")
+    if f0 == pre_drag:
+        failures.append(f"{name}: control - a pointer drag on #field left it unchanged (the camera did not move off its default)")
+    fink = page.evaluate(THUMB_INK, "field")
+    if not fink > 0.2:
+        failures.append(f"{name}: control - #field has {fink:.1%} of pixels off its corner colour at the shown generation (need > 20%: the scene is not drawn)")
+    g2 = page.evaluate("() => window.Sandbox.lineage(1)")
+    page.evaluate(SET_INPUT, ["g2_mouthR", None])
+    page.evaluate(SET_INPUT, ["scrub", g])
+    f1 = page.evaluate(CANVAS_SIG, "field")
+    page.evaluate("(g) => window.Sandbox.setLineage(1, g)", g2)
+    if f0 != f1:
+        failures.append(f"{name}: #field changed after a thumbnail render at the same generation - the camera or render target was not restored")
+    return f"bodyMap scrub0 vs 10 {'differ' if b0 != b10 else 'SAME'}, field {fink:.1%} off-corner, field across a thumb render {'identical' if f0 == f1 else 'CHANGED'}"
+
+
+# Task 7b, before #run: the headline names the example (#sFate starts
+# "example:", the heat's own example fate after it), and the 3D field shows the
+# sliders' two founders - THUMB_INK on #field > 2% (0 on 97eebb6, an empty box).
+# The field's caption sits on a plate: fillRect/fillText on #field are recorded
+# around one redraw (Sandbox.setLineage with the lineage's own genome, which
+# redraws the founders), and the last fillRect before the caption's first line
+# must be a dark translucent plate covering that line. Positive control: the
+# caption was recorded. Seen failing on a mutant with the plate's fillRect removed.
+HERO_LOAD = """() => [document.getElementById('sFate').textContent,
+  window.ExampleHeat ? window.ExampleHeat.fate : null]"""
+FIELD_CAPTION_REC = """() => {
+  const c = document.getElementById('field');
+  const P = CanvasRenderingContext2D.prototype, ft = P.fillText, fr = P.fillRect;
+  const rec = [];
+  P.fillText = function (t, x, y) {
+    if (this.canvas === c) rec.push({ k: 'text', t: String(t), x, y, w: this.measureText(t).width });
+    return ft.apply(this, arguments);
+  };
+  P.fillRect = function (x, y, w, h) {
+    if (this.canvas === c) rec.push({ k: 'rect', x, y, w, h, fill: String(this.fillStyle) });
+    return fr.apply(this, arguments);
+  };
+  try { window.Sandbox.setLineage(0, window.Sandbox.lineage(0)); }
+  finally { P.fillText = ft; P.fillRect = fr; }
+  const i = rec.findIndex((r) => r.k === 'text' && r.t.startsWith('the two founders'));
+  const plate = i < 0 ? null : rec.slice(0, i).reverse().find((r) => r.k === 'rect');
+  return { text: i < 0 ? null : rec[i], plate };
+}"""
+
+
+def hero_load_checks(page, name, failures):
+    fate, ex = page.evaluate(HERO_LOAD)
+    src_note = None
+    if not fate.startswith("example:") or fate != f"example: {ex}":
+        failures.append(f"{name}: #sFate on load reads {fate!r}, want 'example: {ex}'")
+    fink = page.evaluate(THUMB_INK, "field")
+    if not fink > 0.02:
+        failures.append(f"{name}: #field has {fink:.2%} of pixels off its corner colour on load (need > 2%: the founders are not drawn)")
+    cap = page.evaluate(FIELD_CAPTION_REC)
+    t, pl = cap["text"], cap["plate"]
+    if not t:
+        failures.append(f"{name}: control - no founders caption recorded on #field on a redraw")
+    elif not pl or not pl["fill"].startswith("rgba(16, 18, 22") or not (
+            pl["x"] <= t["x"] and pl["x"] + pl["w"] >= t["x"] + t["w"]
+            and pl["y"] <= t["y"] - 9 and pl["y"] + pl["h"] >= t["y"] + 2):
+        failures.append(f"{name}: #field caption {t['t']!r} at ({t['x']}, {t['y']}, w {t['w']:.0f}) has no dark plate under it (last rect {pl})")
+    src_note = load_source_checks(page, name, failures, t["t"] if t else None)
+    src_note += ", " + body_key_check(page, f"{name}: load")
+    return f"{src_note}, load #sFate {fate!r}, #field {fink:.1%} off-corner, caption plate {'yes' if t and pl else 'NO'}"
+
+
+# Task 7d (critic r2 M1, M7). On load the field key's "mixed" swatch is the tint
+# the field draws for a fused plant: its computed background equals
+# AncestryHeat.ancHex(0.5) (BASE hard-coded #e8e6e1, a white the field never
+# draws). Positive control: the lineage 1 swatch equals ancHex(0), so a probe
+# that read every background as the same cannot pass. The load state names its
+# sources: both thumbnail captions and the field's canvas caption say "from the
+# sliders" (the heat's "example run" title is in heat_label_checks' need list).
+LOAD_KEY = """() => {
+  const H = window.AncestryHeat.ancHex;
+  const rgb = (h) => `rgb(${[1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(', ')})`;
+  const bg = (id) => { const e = document.getElementById(id); return e ? getComputedStyle(e).backgroundColor : null; };
+  const cap = (id) => { const e = document.getElementById(id); return e ? e.textContent : null; };
+  return { mix: bg('keyMix'), l1: bg('keyL1'), wantMix: rgb(H(0.5)), wantL1: rgb(H(0)),
+           caps: [cap('thumbCap1'), cap('thumbCap2')] };
+}"""
+
+
+def load_source_checks(page, name, failures, field_caption):
+    k = page.evaluate(LOAD_KEY)
+    if k["l1"] != k["wantL1"]:
+        failures.append(f"{name}: control - the lineage 1 key swatch is {k['l1']}, want ancHex(0) {k['wantL1']}")
+    if k["mix"] != k["wantMix"]:
+        failures.append(f"{name}: the field key's mixed swatch is {k['mix']}, the field draws ancHex(0.5) {k['wantMix']}")
+    for i, c in enumerate(k["caps"], 1):
+        if not c or "from the sliders" not in c:
+            failures.append(f"{name}: on load thumbnail {i}'s caption reads {c!r}, want 'from the sliders'")
+    if not field_caption or "from the sliders" not in field_caption:
+        failures.append(f"{name}: on load the field caption reads {field_caption!r}, want 'from the sliders'")
+    return f"key mixed {k['mix']} (ancHex(0.5) {k['wantMix']}), captions {k['caps']}"
+
+
+# Task 7d (critic r2 M4). After a run the hybrid tile is this generation's
+# share and says so; the band counts generations. The tile must parse as
+# "<p>% of plants" and equal the shown generation's hybrid share (recomputed
+# from Sandbox.result() with SandboxRun.isHybrid), its label must contain
+# "this generation", and the band must parse as "generations with any hybrid:
+# k of N" with N the run's generation count. Positive control: the run has
+# generations (N > 0), so an empty result cannot pass.
+HYB_TILE = """() => {
+  const $ = (id) => document.getElementById(id);
+  const R = window.Sandbox.result();
+  const g = +$('scrub').value;
+  const G = R ? R.gens[g] : null;
+  return { tile: $('sHyb').textContent, label: $('sHyb').nextElementSibling.textContent,
+           band: $('sHybBand').textContent, n: R ? R.gens.length : 0,
+           share: G ? 100 * G.anc.filter(window.SandboxRun.isHybrid).length / G.anc.length : null };
+}"""
+
+
+def hyb_tile_check(page, at):
+    h = page.evaluate(HYB_TILE)
+    m = re.match(r"^(\d+(?:\.\d)?)% of plants$", h["tile"])
+    b = re.match(r"^generations with any hybrid: (\d+) of (\d+)", h["band"])
+    if not h["n"]:
+        failures.append(f"{at}: control - no run to read the hybrid tile of")
+    if not m or h["share"] is None or abs(float(m.group(1)) - h["share"]) > 0.05:
+        failures.append(f"{at}: #sHyb reads {h['tile']!r}, this generation's hybrid share is {h['share']}")
+    if "this generation" not in h["label"]:
+        failures.append(f"{at}: the hybrid tile's label reads {h['label']!r}, want 'this generation'")
+    if not b or int(b.group(2)) != h["n"] or int(b.group(1)) > h["n"]:
+        failures.append(f"{at}: #sHybBand reads {h['band'][:60]!r}, want 'generations with any hybrid: k of {h['n']}'")
+    return f"hyb tile {h['tile']!r} / band {h['band'][:40]!r}"
+
+
+# Task 7d (critic r2 M6). The body map has a key: every colour the map fills a
+# mark with, and every ring colour it strokes, has a swatch in #bodyLegend (the
+# key is written from the same constants the draw uses). The plants are a
+# continuous tint (ancHex of each plant's ancestry): when the key carries the
+# ancestry ramp entry, a fill equal to ancHex(a) for a plant of the shown
+# generation is covered by it, and only then. fill()/stroke() on
+# #bodyMap are recorded with the fillStyle/strokeStyle current at the call
+# around one redraw (Sandbox.setBee with the bee's own values - it changes
+# nothing, so a shown run stays shown); the ring halo (#101216, the canvas's
+# background) is not a mark. The key must be displayed (height > 0). Positive
+# control: at least one fill recorded. Seen failing on BASE (no key at all).
+BODY_KEY = """() => {
+  const c = document.getElementById('bodyMap');
+  const P = CanvasRenderingContext2D.prototype, f0 = P.fill, s0 = P.stroke;
+  const fill = new Set(), stroke = new Set();
+  P.fill = function () { if (this.canvas === c) fill.add(String(this.fillStyle)); return f0.apply(this, arguments); };
+  P.stroke = function () { if (this.canvas === c) stroke.add(String(this.strokeStyle)); return s0.apply(this, arguments); };
+  try { window.Sandbox.setBee(window.Sandbox.bee()); } finally { P.fill = f0; P.stroke = s0; }
+  const L = document.getElementById('bodyLegend');
+  const dots = L ? Array.from(L.querySelectorAll('i.dot')) : [];
+  const R = window.Sandbox.result();
+  const G = R ? R.gens[+document.getElementById('scrub').value] : null;
+  const ramp = !!(L && L.querySelector('[data-ramp="ancestry"]')) && G
+    ? [...new Set(G.anc.map(window.AncestryHeat.ancHex))] : [];
+  return { fill: [...fill], stroke: [...stroke].filter((s) => s !== '#101216'),
+           key: dots.filter((d) => !d.classList.contains('ring')).map((d) => d.getAttribute('data-colour')),
+           rings: dots.filter((d) => d.classList.contains('ring')).map((d) => d.getAttribute('data-colour')),
+           ramp, shown: !!L && L.getBoundingClientRect().height > 0 };
+}"""
+
+
+def body_key_check(page, at):
+    k = page.evaluate(BODY_KEY)
+    if not k["fill"]:
+        failures.append(f"{at}: control - no filled mark recorded on #bodyMap")
+    miss = [c for c in k["fill"] if c not in k["key"] and c not in k["ramp"]]
+    miss_r = [c for c in k["stroke"] if c not in k["rings"]]
+    if miss or miss_r or not k["shown"]:
+        failures.append(f"{at}: body-map key {k['key']} rings {k['rings']} (shown {k['shown']}) lacks fills {miss}, rings {miss_r}")
+    return f"body key {len(k['key'])}+{len(k['rings'])} swatches cover {len(k['fill'])} fills, {len(k['stroke'])} rings"
+
+
+# Task 7d (T7c re-review). The body map's title row carries a left text (the
+# missing-part note, or the founder-rings title) and, once the bee moves after
+# a run, "run overlay hidden: ..." right-aligned; below ~620 px they met. At a
+# 600 px viewport the bee is moved (reach + 0.1, which hides the overlay) with
+# the Task 5b fillText recorder on #bodyMap; no two recorded label boxes may
+# intersect. Positive controls: the left title text was recorded, and the
+# overlay message is on the page - on the canvas or in #bodyLegend. Seen
+# failing on BASE (both drawn in the title row, overlapping). Fix round 1
+# (m3), the other side: at 1400 px, where the title row has room to spare, the
+# stale overlay note must be drawn ON the canvas title row and not sent to the
+# key line (a page that always falls back fails here; seen failing on a mutant
+# with the fallback forced). Bee and viewport are restored after.
+def _body_stale_draw(page, at, vw, must_resize):
+    """must_resize: the narrow draw's control. At 1400 the page's max width may
+    already hold (a 1280 viewport lays #bodyMap out the same), so no wait."""
+    w0 = page.evaluate("() => document.getElementById('bodyMap').clientWidth")
+    page.set_viewport_size({"width": vw, "height": 900})
+    if must_resize:
+        try:
+            page.wait_for_function("(w0) => document.getElementById('bodyMap').clientWidth !== w0", arg=w0, timeout=3000)
+        except Exception:  # noqa: BLE001
+            failures.append(f"{at}: control - #bodyMap clientWidth stayed {w0} at {vw}x900 (no resize)")
+    page.wait_for_timeout(300)
+    bee = page.evaluate("() => window.Sandbox.bee()")
+    page.evaluate(BODY_REC_ON)
+    page.evaluate("(b) => window.Sandbox.setBee({ reach: b.reach + 0.1 })", bee)
+    m = page.evaluate(BODY_REC_OFF)
+    legend = page.evaluate("() => (document.getElementById('bodyLegend') || {}).textContent || ''")
+    page.evaluate("(b) => window.Sandbox.setBee(b)", bee)
+    return m, legend
+
+
+def body_title_overlap(page, at, left):
+    vp = page.viewport_size or {"width": 1280, "height": 720}
+    wide, wide_legend = _body_stale_draw(page, f"{at} (1400)", 1400, False)
+    m, legend = _body_stale_draw(page, at, 600, True)
+    page.set_viewport_size(vp)
+    page.wait_for_timeout(300)
+    over = "run overlay hidden"
+    on_canvas = [t for t in wide["rec"] if t["text"].startswith(over)]
+    if not on_canvas or on_canvas[0]["y"] > BODY_TITLE_ROW or over in wide_legend:
+        failures.append(f"{at}: at 1400 px (room to spare) the overlay note is not on the canvas title row "
+                        f"(canvas {[(t['text'][:20], t['y']) for t in on_canvas]}, in key line {over in wide_legend})")
+    got = [t["text"] for t in m["rec"]]
+    if not any(left in t for t in got):
+        failures.append(f"{at}: control - no {left!r} title recorded (got {got[:6]})")
+    if not (any(t.startswith(over) for t in got) or over in legend):
+        failures.append(f"{at}: control - the overlay message is neither on the canvas nor in the key")
+    box = []
+    for t in m["rec"]:
+        x0 = t["x"] - t["w"] if t["align"] == "right" else t["x"] - t["w"] / 2 if t["align"] == "center" else t["x"]
+        box.append((x0, t["y"] - 10, x0 + t["w"], t["y"] + 3, t["text"]))
+    for i, a in enumerate(box):
+        for b in box[i + 1:]:
+            if a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]:
+                failures.append(f"{at}: at 600 px {a[4]!r} [{a[0]:.0f}, {a[2]:.0f}] overlaps {b[4]!r} [{b[0]:.0f}, {b[2]:.0f}]")
+    where = "canvas" if any(t.startswith(over) for t in got) else "key line"
+    return f"600px title row W {m['W']}: {len(box)} labels, overlay in {where}"
+
+
+def heat_load_checks(page, name, failures):
+    """Before #run: the labelled example, not a run. Returns (baseline, ink on load)."""
+    base = page.evaluate(HEAT_INK, True)
+    ink = page.evaluate(HEAT_INK, False)
+    live, no_model = page.evaluate(HEAT_STATE)
+    if base <= 0 or ink <= 5 * base:
+        failures.append(
+            f"{name}: #heat grid has {ink} opaque pixels on load vs {base} on the empty "
+            f"placeholder baseline (need > 5x: the example is not drawn)"
+        )
+    if not live.startswith("Example run"):
+        failures.append(f"{name}: #heatLive on load reads {live[:60]!r}, want 'Example run...'")
+    if not no_model:
+        failures.append(f"{name}: Sandbox.heat() is non-null before #run - the example posed as a run")
+    return base, ink
+
+
+def heat_checks(page, name, failures, ink_empty, ink_load):
+    ink = page.evaluate(HEAT_INK, False)
+    if ink_empty <= 0 or ink <= 5 * ink_empty:
+        failures.append(
+            f"{name}: #heat grid has {ink} opaque pixels after #run vs {ink_empty} on the "
+            f"empty placeholder baseline (need > 5x)"
+        )
+    live, _ = page.evaluate(HEAT_STATE)
+    if live.startswith("Example"):
+        failures.append(f"{name}: #heatLive still reads the example after #run: {live[:60]!r}")
+    before, mx, gen = page.evaluate(
+        "() => ['value', 'max'].map((k) => document.getElementById('scrub')[k])"
+        ".concat(document.getElementById('sGen').textContent)")
+    if before != mx or before == "5" or gen != f"{mx} of {mx}":
+        failures.append(f"{name}: after #run #scrub read {before!r} of max {mx!r}, #sGen {gen!r} "
+                        f"(want the last generation, '{mx} of {mx}', and not 5)")
+    pt = page.evaluate(HEAT_COL5)
+    if pt is None:
+        failures.append(f"{name}: Sandbox.heat() is null after #run - nothing to click")
+        return f"heat opaque baseline {ink_empty}, load {ink_load}, run {ink}, no model"
+    page.mouse.click(pt["x"], pt["y"])
+    page.wait_for_timeout(300)
+    after = page.evaluate(
+        "() => [document.getElementById('scrub').value, document.getElementById('sGen').textContent]"
+    )
+    if after[0] != "5" or after[1] != f"5 of {mx}":
+        failures.append(
+            f"{name}: clicked #heat column 5 - #scrub {after[0]!r}, #sGen {after[1]!r} (want 5, '5 of {mx}')"
+        )
+    return f"heat opaque baseline {ink_empty}, load {ink_load}, run {ink}, scrub {before}->{after[0]} on column-5 click"
+
+
 def m2_checks(browser, name):
     notes = []
     page = browser.new_page()
+    errs = []
+    page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(f"{BASE}/{name}", wait_until="load")
     run = lambda s: page.evaluate(M2_RUN, s)  # noqa: E731
     PAGE_CFG = {"n": 18, "gens": 24, "siteN": 90}
@@ -164,6 +778,18 @@ def m2_checks(browser, name):
     if r["fate"] != "STALLED" or r["stalled"] != 35 or r["cards"] != exp:
         failures.append(f"{name}: M2 stall fixture read {r}")
     notes.append(f"stall {r['fate']} {r['stalled']}/35")
+    # Task 7e (critic r3 #1): the stall says why first, and the HELD rule on
+    # screen states both halves (fateOf tests the stall before the variance)
+    band = page.evaluate("() => document.getElementById('sFateBand').textContent")
+    if not band.startswith("no offspring were recruited in 35 of 35 generations"):
+        failures.append(f"{name}: stall #sFateBand does not open with why: {band!r}")
+    if "HELD needs every generation to recruit AND ancestry variance above 0.4 × founding" not in band:
+        failures.append(f"{name}: stall #sFateBand HELD rule lacks 'every generation to recruit': {band!r}")
+    notes.append("stall band why+rule")
+    sweep_state(page, name, "stall", errs, True)
+    sweep_notes["stall"] += ", " + body_marks_inside(page, f"{name}: sweep stall")
+    sweep_notes["stall"] += ", " + body_key_check(page, f"{name}: sweep stall")
+    sweep_notes["stall"] += ", " + body_title_overlap(page, f"{name}: sweep stall", "lineage 1: stigma never touches")
     r = run({**LEVEL, "lineages": 0.80})
     if r["fate"] != "FUSED" or r["stalled"] != 0:
         failures.append(f"{name}: M2 stall control antherT 0.80 read {r}")
@@ -266,7 +892,7 @@ def m3a_checks(browser, name):
 # null blocks (seeds 1-5): cards 2 and 3 under a = 1 and under randomMating
 # (quantity on the null side AND grey), card 5's flat arm (never open). Every
 # run is timed; the slowest is reported against the 60 s budget.
-M3B_RUN = """async (s) => {
+M3B_RUN = r"""async (s) => {
   const $ = (id) => document.getElementById(id);
   const sel = $("level");
   sel.value = String(s.level);
@@ -289,10 +915,10 @@ M3B_RUN = """async (s) => {
     cards[c] = $(c).getAttribute("data-state");
     text[c] = $(c + "Text").textContent;
   }
-  const st = /(\d+) of (\d+) generations recruited nothing/.exec($("sFateBand").textContent);
+  const st = /stalled generations: (none|\d+) of (\d+)/.exec($("sFateBand").textContent);
   return {
     ms: performance.now() - t0, error: $("status").getAttribute("data-error"),
-    fate: $("sFate").textContent, stalled: st ? +st[1] : null, cards, text,
+    fate: $("sFate").textContent, stalled: !st ? null : st[1] === "none" ? 0 : +st[1], cards, text,
     caption: $("fieldCaption").textContent,
   };
 }"""
@@ -316,6 +942,8 @@ def _diff(t):
 def m3b_checks(browser, name):
     notes = []
     page = browser.new_page()
+    errs = []
+    page.on("pageerror", lambda e: errs.append(str(e)))
     page.goto(f"{BASE}/{name}", wait_until="load")
     slowest = [0.0, ""]
 
@@ -335,6 +963,8 @@ def m3b_checks(browser, name):
         got5.append(r["fate"])
         if r["fate"] != fate or r["stalled"] != 0 or "bout not drawn" not in r["caption"]:
             failures.append(f"{name}: M3b level 5 seed {seed} read {r['fate']} stalled {r['stalled']} caption {r['caption']!r}")
+        if seed == 3:
+            sweep_state(page, name, "L5", errs, True)
     notes.append("L5 s1-5 " + "/".join(got5))
     # level 4: q 0.85 seed 8 open; q 1 seed 8 closed; q 0.69 seed 1 closed reversed
     for q, seed, fate, flat, state in ((0.85, 8, "one lost", "HELD", "open"), (1, 8, "one lost", "HELD", "closed"),
@@ -382,10 +1012,256 @@ def m3b_checks(browser, name):
     return notes
 
 
+# ------------------------------------------------------ state sweep (Task 7 Step 1)
+# Level 1 on load (no run), levels 2-6 at seed 3 after #run, and the stall fixture
+# (tests/sandbox-heat.test.js: free sandbox, seed 1, n 30, gens 35, siteN 160,
+# useD off, both lineages E.randomGenome(E.makeRng(4)) with antherT 0.825 - M2's
+# `run({**LEVEL, "lineages": 0.825})`). In every state #heat, #bodyMap, #thumb1
+# and #thumb2 each carry > 2% ink (THUMB_INK: the share of backing pixels off the
+# canvas's top-left corner pixel by > 24 in a channel; a distinct-colour count
+# saturates on anti-aliasing), and the page has raised zero errors. After each run:
+# #sFate == Sandbox.result().fate == the fate in the heat's drawn "final: <fate>"
+# label, recorded by the Task 5b fillText wrapper around one heat redraw (#scrub
+# 0 -> 1); that redraw must also change #heat's pixels - a heat left showing the
+# example (clearResult draws it before every run) keeps its ink, so ink alone
+# cannot see a heat that was never drawn for the run. Positive control: a final
+# label was recorded. The stall fixture is measured on M2's page after M2's own
+# stall run, level 5 seed 3 on M3b's page after its own run: not run twice.
+SWEEP_INK = ("heat", "bodyMap", "thumb1", "thumb2")
+SWEEP_ORDER = ("L1", "L2", "L3", "L4", "L5", "L6", "stall")
+sweep_notes = {}
+SWEEP_LEVEL = """async (s) => {
+  const $ = (id) => document.getElementById(id);
+  const sel = $("level");
+  sel.value = String(s.level);
+  sel.dispatchEvent(new Event("change"));
+  if (!s.run) return { error: null, status: $("status").textContent };
+  $("seed").value = String(s.seed);
+  $("status").textContent = "running…";
+  $("status").removeAttribute("data-error");
+  $("run").click();
+  const t0 = performance.now();
+  while ($("status").textContent === "running…" && performance.now() - t0 < 180000)
+    await new Promise((r) => setTimeout(r, 100));
+  return { error: $("status").getAttribute("data-error"), status: $("status").textContent };
+}"""
+SWEEP_FATE = """() => [document.getElementById('sFate').textContent,
+  window.Sandbox.result() ? window.Sandbox.result().fate : null]"""
+
+
+def sweep_state(page, name, tag, pageerrors, ran):
+    at = f"{name}: sweep {tag}"
+    ink = {c: page.evaluate(THUMB_INK, c) for c in SWEEP_INK}
+    for c, f in ink.items():
+        if not f > 0.02:
+            failures.append(f"{at}: #{c} ink {f:.2%} (need > 2%)")
+    note = " ".join(f"{c} {f:.1%}" for c, f in ink.items())
+    if ran:
+        s0 = page.evaluate(CANVAS_SIG, "heat")
+        page.evaluate(HEAT_REC_ON)
+        page.evaluate(SET_INPUT, ["scrub", 1])
+        rec = page.evaluate(HEAT_REC_OFF)["rec"]
+        s1 = page.evaluate(CANVAS_SIG, "heat")
+        page.evaluate(SET_INPUT, ["scrub", 0])
+        fin = [t["text"] for t in rec if t["text"].startswith("final")]
+        drawn = fin[-1][len("final: "):] if fin and fin[-1].startswith("final: ") else None
+        shown, model = page.evaluate(SWEEP_FATE)
+        if not fin:
+            failures.append(f"{at}: control - no 'final' label recorded on a heat redraw (got {[t['text'] for t in rec][:6]})")
+        if s0 == s1:
+            failures.append(f"{at}: #heat unchanged when #scrub moved 0 -> 1 - the heat is not drawn for the run")
+        if not (shown == model == drawn and model):
+            failures.append(f"{at}: fate disagrees - #sFate {shown!r}, Sandbox.result().fate {model!r}, heat label {fin[-1] if fin else None!r}")
+        note += f", fate {shown}/{model}/{drawn}, heat {'follows' if s0 != s1 else 'STATIC'} on scrub"
+    if pageerrors:
+        failures.append(f"{at}: {len(pageerrors)} page error(s): {pageerrors[:2]}")
+    sweep_notes[tag] = f"{tag} {note}, pageerrors {len(pageerrors)}"
+
+
+# Task 7c. The thumbnails on a run founded at target d draw that run's two
+# founders (foundTwoLineages' gA/gB), not the sliders, which on these levels are
+# one genome twice. The two cards are drawn in different colours, so a whole-pixel
+# signature always differs; THUMB_SHAPE hashes only the alpha channel (the flower's
+# silhouette, colour-independent) - equal for one genome twice. Positive control:
+# both thumbnails carry ink.
+THUMB_SHAPE = """(id) => {
+  const c = document.getElementById(id);
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let h = 2166136261;
+  for (let i = 3; i < d.length; i += 4) h = Math.imul(h ^ d[i], 16777619) >>> 0;
+  return h;
+}"""
+
+
+def thumb_founder_checks(page, at):
+    src = page.evaluate("() => window.Sandbox.thumbSource ? window.Sandbox.thumbSource() : null")
+    a, b = page.evaluate(THUMB_SHAPE, "thumb1"), page.evaluate(THUMB_SHAPE, "thumb2")
+    ink = [page.evaluate(THUMB_INK, f"thumb{i}") for i in (1, 2)]
+    if not all(f > 0.02 for f in ink):
+        failures.append(f"{at}: control - thumbnail ink {ink}")
+    if a == b:
+        failures.append(f"{at}: #thumb1 and #thumb2 draw the same silhouette (thumbSource {src!r}) - not the run's two founders")
+    return f"thumbs {src}, silhouettes {'differ' if a != b else 'SAME'}"
+
+
+# Task 7c. Body-map labels fit (critic r1 findings 12, 13): the Task 5b recorder,
+# mirrored on #bodyMap - fillText wrapped to record {text, x, y, w, align}; a
+# clearRect on #bodyMap starts a new draw. Each label's box is [x0, x0 + w] x
+# [y - 10, y + 3] (12 px font). At 1400x900 and 800x900 after a level-3 run: every
+# box lies inside the canvas's logical W x H, and no two boxes intersect.
+# Positive control: both founder labels, the title and a region label were recorded.
+BODY_REC_ON = HEAT_REC_ON.replace("getElementById('heat')", "getElementById('bodyMap')").replace("__heatRec", "__bodyRec")
+BODY_REC_OFF = """() => {
+  const P = CanvasRenderingContext2D.prototype, R = window.__bodyRec;
+  P.fillText = R.fillText;
+  P.clearRect = R.clearRect;
+  delete window.__bodyRec;
+  const f = document.getElementById('bodyMap')._fit; // fitCanvas's logical size
+  return { rec: R.rec, W: f.w, H: f.h };
+}"""
+BODY_LABEL_NEED = ("lineage 1 founder", "lineage 2 founder", "rings:", "face")
+
+
+def _body_label_assert(m, at, failures):
+    W, H = m["W"], m["H"]
+    got = [t["text"] for t in m["rec"]]
+    for n in BODY_LABEL_NEED:
+        if not any(t.startswith(n) for t in got):
+            failures.append(f"{at}: control - no {n!r} label recorded (got {got[:8]})")
+    box = []
+    for t in m["rec"]:
+        x0 = t["x"] - t["w"] if t["align"] == "right" else t["x"] - t["w"] / 2 if t["align"] == "center" else t["x"]
+        box.append((x0, t["y"] - 10, x0 + t["w"], t["y"] + 3, t["text"]))
+    for x0, y0, x1, y1, text in box:
+        if x0 < -0.5 or x1 > W + 0.5 or y0 < -0.5 or y1 > H + 0.5:
+            failures.append(f"{at}: {text!r} box [{x0:.1f}, {x1:.1f}] x [{y0:.1f}, {y1:.1f}] outside {W}x{H}")
+    for i, a in enumerate(box):
+        for b in box[i + 1:]:
+            if a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]:
+                failures.append(f"{at}: {a[4]!r} overlaps {b[4]!r}")
+    return f"{W}x{H} {len(box)} labels"
+
+
+# Task 7c fix round 1 (M1): no founder ring enters the title row [0, T]. The run's
+# founders are moved to the plot's top and bottom edges (phi = -pi on founder 1,
+# +pi on founder 2, restored after) and the body map redrawn; every ring arc
+# (radius >= 9: the 9 px ring and the 10 px halo; dots are <= 6) is recorded with
+# its lineWidth, and its box top y - r - lineWidth / 2 must be >= T. Positive
+# control: at least four ring arcs recorded (two per founder).
+BODY_TITLE_ROW = 26  # sandbox.html drawBodyMap's T
+RING_REC_ON = """() => {
+  const c = document.getElementById('bodyMap');
+  const P = CanvasRenderingContext2D.prototype;
+  const R = (window.__ringRec = { rec: [], arc: P.arc, clearRect: P.clearRect });
+  P.clearRect = function () {
+    if (this.canvas === c) R.rec = [];
+    return R.clearRect.apply(this, arguments);
+  };
+  P.arc = function (x, y, r) {
+    if (this.canvas === c) R.rec.push({ x, y, r, lw: this.lineWidth });
+    return R.arc.apply(this, arguments);
+  };
+}"""
+RING_REC_OFF = """() => {
+  const P = CanvasRenderingContext2D.prototype, R = window.__ringRec;
+  P.arc = R.arc;
+  P.clearRect = R.clearRect;
+  delete window.__ringRec;
+  return R.rec;
+}"""
+
+
+def ring_title_check(page, at):
+    was = page.evaluate("() => { const R = window.Sandbox.result(); return [R.p1.phi, R.p2.phi]; }")
+    page.evaluate("() => { const R = window.Sandbox.result(); R.p1.phi = -Math.PI; R.p2.phi = Math.PI; }")
+    page.evaluate(RING_REC_ON)
+    page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+    rec = [a for a in page.evaluate(RING_REC_OFF) if a["r"] >= 9]
+    page.evaluate("(w) => { const R = window.Sandbox.result(); R.p1.phi = w[0]; R.p2.phi = w[1]; }", was)
+    page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+    if len(rec) < 4:
+        failures.append(f"{at}: control - {len(rec)} ring arcs recorded (need >= 4)")
+    top = min((a["y"] - a["r"] - a["lw"] / 2 for a in rec), default=None)
+    for a in rec:
+        if a["y"] - a["r"] - a["lw"] / 2 < BODY_TITLE_ROW:
+            failures.append(f"{at}: ring at y {a['y']:.1f} r {a['r']} lw {a['lw']} enters the title row [0, {BODY_TITLE_ROW}]")
+    return f"{len(rec)} rings, top {top if top is None else round(top, 1)} vs title row {BODY_TITLE_ROW}"
+
+
+# Task 7c fix round 1: every mark on the body map is drawn ON the canvas. The
+# stall genome's anther sites sit on the head's forward cap (s = -0.158); a fixed
+# -0.08 left edge put them and the whole population off the plot while the live
+# mirror said "24 plants drawn". Every arc on one redraw (#scrub input) is
+# recorded; each centre must lie in [0, W] x [0, H]. Positive control: at least
+# one arc (the stall state draws two anther clouds, two sites and the plants).
+def body_marks_inside(page, at):
+    page.evaluate(RING_REC_ON)
+    page.evaluate("() => document.getElementById('scrub').dispatchEvent(new Event('input'))")
+    rec = page.evaluate(RING_REC_OFF)
+    f = page.evaluate("() => document.getElementById('bodyMap')._fit")
+    out = [a for a in rec if not (0 <= a["x"] <= f["w"] and 0 <= a["y"] <= f["h"])]
+    if not rec:
+        failures.append(f"{at}: control - no arcs recorded on #bodyMap")
+    if out:
+        failures.append(f"{at}: {len(out)} of {len(rec)} body-map marks off the canvas, e.g. {out[0]}")
+    return f"body marks {len(rec) - len(out)}/{len(rec)} on canvas"
+
+
+def body_label_checks(page, at):
+    notes = []
+    page.evaluate(BODY_REC_ON)
+    page.evaluate(SET_INPUT, ["scrub", None])
+    notes.append("1400 " + _body_label_assert(page.evaluate(BODY_REC_OFF), f"{at} body labels at 1400x900", failures))
+    w0 = page.evaluate("() => document.getElementById('bodyMap').clientWidth")
+    page.evaluate(BODY_REC_ON)
+    page.set_viewport_size({"width": 800, "height": 900})
+    try:  # the ResizeObserver refit is async
+        page.wait_for_function("(w0) => document.getElementById('bodyMap').clientWidth !== w0", arg=w0, timeout=3000)
+    except Exception:  # noqa: BLE001
+        failures.append(f"{at}: control - #bodyMap clientWidth stayed {w0} at 800x900 (no resize)")
+    page.wait_for_timeout(300)
+    notes.append("800 " + _body_label_assert(page.evaluate(BODY_REC_OFF), f"{at} body labels at 800x900", failures))
+    page.set_viewport_size({"width": 1400, "height": 900})
+    page.wait_for_timeout(300)
+    return "; ".join(notes)
+
+
+def sweep_checks(browser, name):
+    """Level 1 loaded, levels 2, 3, 4 and 6 at seed 3 run, on one page."""
+    page = browser.new_page()
+    page.set_viewport_size({"width": 1400, "height": 900})
+    errs = []
+    page.on("pageerror", lambda e: errs.append(str(e)))
+    page.goto(f"{BASE}/{name}", wait_until="load")
+    for lv in (1, 2, 3, 4, 6):
+        r = page.evaluate(SWEEP_LEVEL, {"level": lv, "seed": 3, "run": lv != 1})
+        if r["error"]:
+            failures.append(f"{name}: sweep L{lv} run errored: {r['error']}")
+        sweep_state(page, name, f"L{lv}", errs, lv != 1)
+        if lv == 2:
+            sweep_notes["L2"] += ", " + thumb_founder_checks(page, f"{name}: sweep L2")
+            sweep_notes["L2"] += ", " + hyb_tile_check(page, f"{name}: sweep L2")
+            sweep_notes["L2"] += ", " + body_key_check(page, f"{name}: sweep L2")
+            sweep_notes["L2"] += ", " + body_title_overlap(page, f"{name}: sweep L2", "rings:")
+        if lv == 3:
+            sweep_notes["L3"] += ", " + body_label_checks(page, f"{name}: sweep L3")
+            # the critic's 800 px shot (narrow-l3-full.png): level 3 seed 6, whose
+            # founder label rose into the title
+            r6 = page.evaluate(SWEEP_LEVEL, {"level": 3, "seed": 6, "run": True})
+            if r6["error"]:
+                failures.append(f"{name}: sweep L3 seed 6 run errored: {r6['error']}")
+            sweep_notes["L3"] += ", seed 6 " + body_label_checks(page, f"{name}: sweep L3 seed 6")
+            sweep_notes["L3"] += ", edge " + ring_title_check(page, f"{name}: sweep L3 edge rings")
+    page.close()
+    return "sweep " + "; ".join(sweep_notes.get(t, f"{t} NOT MEASURED") for t in SWEEP_ORDER)
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch()
     for name, mode in SPEC:
         page = browser.new_page()
+        if mode == "click":
+            page.set_viewport_size({"width": 1400, "height": 900})
         errors, pageerrors = [], []
         page.on(
             "console",
@@ -419,7 +1295,29 @@ with sync_playwright() as p:
                 if code != 200:
                     failures.append(f"index.html link '{h}' -> {code}")
                 report.append(f"    link {h:<18} -> {code}")
-            note = f"{len(hrefs)} same-origin links checked"
+            # Every <img> must actually decode: the tiles are lazy, so bring each
+            # into view, wait for it to settle, then require naturalWidth > 0.
+            # Positive control: the page must carry at least one <img>, else an
+            # empty page would pass.
+            page.evaluate(
+                """() => document.querySelectorAll('img').forEach(i => i.scrollIntoView())"""
+            )
+            try:
+                page.wait_for_function(
+                    "() => Array.from(document.images).every(i => i.complete)", timeout=15000
+                )
+            except Exception:  # noqa: BLE001
+                failures.append(f"{name}: an <img> never finished loading within 15 s")
+            imgs = page.evaluate(
+                """() => Array.from(document.images).map(i => [i.getAttribute('src'), i.naturalWidth])"""
+            )
+            if not imgs:
+                failures.append(f"{name}: expected <img> tiles, found none")
+            for src, w in imgs:
+                if not w > 0:
+                    failures.append(f"{name}: <img src='{src}'> did not load (naturalWidth {w})")
+                report.append(f"    img  {src:<24} naturalWidth {w}")
+            note = f"{len(hrefs)} same-origin links checked, {len(imgs)} img checked"
 
         elif mode == "autoplay":
             if uniform:
@@ -447,10 +1345,12 @@ with sync_playwright() as p:
             # assertions are that the computation ran, drew, and armed playback.
             # sandbox.html legitimately shows an EMPTY plot area before #run, so a
             # uniform canvas on load is CORRECT here and is deliberately not
-            # asserted against. What must hold is that #run then draws.
+            # asserted against (except #heat, which shows the labelled example:
+            # heat_load_checks). What must hold is that #run then draws.
             pass
             if changed:
                 failures.append(f"{name}: animated BEFORE #run was clicked ({changed})")
+            fs_note = first_screen_checks(page, name, failures)
 
             # M1 acceptance, asserted in a REAL browser before anything is clicked:
             # eight sliders per lineage whose min/max come from Evolve.GENE_BOUNDS
@@ -496,7 +1396,11 @@ with sync_playwright() as p:
                     f"at load (read {m1['target']!r})"
                 )
 
+            hero_note = hero_load_checks(page, name, failures)
+            thumb_note = thumb_checks(page, name, failures)
+            label_note = heat_label_checks(page, name, failures, True)
             pre = page.evaluate(SHOT)
+            heat_base, heat_load = heat_load_checks(page, name, failures)
             page.click("#run")
             try:
                 page.wait_for_selector("#play:not([disabled])", timeout=60000)
@@ -508,18 +1412,28 @@ with sync_playwright() as p:
             drew = sum(1 for a, b in zip(pre, post) if a != b)
             if completed and drew == 0:
                 failures.append(f"{name}: #run completed but the canvas never changed - nothing was drawn")
+            heat_note = "heat not checked (run incomplete)"
+            view_note = "run views not checked (run incomplete)"
+            if completed:
+                heat_note = heat_checks(page, name, failures, heat_base, heat_load)
+                heat_note += ", " + heat_label_checks(page, name, failures, False)
+                view_note = run_view_checks(page, name, failures)
+                view_note += ", " + hyb_tile_check(page, f"{name}: after #run")
+                view_note += ", " + body_key_check(page, f"{name}: after #run")
             n3, changed3, _ = (0, 0, 0)
             if completed:
                 page.click("#play")
                 n3, changed3, _ = sample(page, 600, 2200)
                 if changed3 == 0:
                     failures.append(f"{name}: clicked #play and NOTHING animated - playback does not run")
-            note = (f"idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
-                    f"#play animating {changed3}/{n3}")
+            note = (f"{fs_note}, idle on load {changed}/{n}, #run drew {drew}/{len(post)} canvas, "
+                    f"{heat_note}, {label_note}, {hero_note}, {thumb_note}, {view_note}, #play animating {changed3}/{n3}")
             m2_notes = m2_checks(browser, name)
             note += "; M2 " + ", ".join(m2_notes)
             note += "; M3a " + ", ".join(m3a_checks(browser, name))
             note += "; M3b " + ", ".join(m3b_checks(browser, name))
+            note += "; " + heat_dpr_checks(browser, name, failures)
+            note += "; " + sweep_checks(browser, name)
 
         if errors:
             failures.append(f"{name}: {len(errors)} console error(s): {errors[:3]}")
@@ -545,6 +1459,6 @@ if failures:
         print("  -", f)
     sys.exit(1)
 print("all entry points: HTTP 200, zero console errors, zero uncaught exceptions.")
-print("visit canvases carry >1 distinct colour; sandbox.html is")
-print("legitimately uniform before #run and is NOT asserted non-blank there --")
-print("what is asserted is that #run draws and #play then animates.")
+print("visit canvases carry >1 distinct colour; sandbox.html's #heat shows the")
+print("labelled example before #run (> 5x the placeholder's opaque pixels); what")
+print("is asserted after that is that #run draws and #play then animates.")

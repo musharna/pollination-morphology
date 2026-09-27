@@ -7,6 +7,19 @@ public release; the full research history is in `docs/ROADMAP.md`, which is cano
 
 ### Added
 
+- The sandbox is rebuilt visual-first (`docs/superpowers/plans/2026-09-25-visual-first-pollen.md`).
+  An ancestry heatmap (`ancestry-heat.js`) is the hero: one column per generation, lineage 1 at the
+  top and lineage 2 at the bottom, then the final offspring the fate is read on, with a variance
+  strip under it carrying the HELD line; stalled generations are hatched in both. The fate word,
+  the heat's final label, the end dot and the win line agree in every state. Before a run the page
+  shows an example run (level 2, seed 3), labelled as one, and draws the two founders from the
+  sliders. Runs founded at target d show their own founders in the lineage thumbnails; the body
+  map has a title row, a key written from its own draw, and marks that stay on the canvas.
+  Canvases are sized to their displayed size × devicePixelRatio. A STALLED run says why, and the
+  HELD rule states both halves (every generation recruits, and variance stays above the line).
+  An independent visual critic reviewed four rounds of screenshots until one passed; a blind
+  10-second test named the test and the fate on both the old and the new page, so it shows no
+  measured legibility gain (`docs/superpowers/briefs/2026-09-25-visual-blind-test.md`).
 - A work-count gate for the simulation (`tools/work-count.js`, `tests/work-count.test.js`):
   the smoke's seeded runs (level 2 seed 1, and level 5's width-locus object at seed 3, both
   founded at target d 8, at the page configuration) must make exactly the committed number of
