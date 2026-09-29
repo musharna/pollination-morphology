@@ -65,7 +65,7 @@ jobs:
       # The browser smoke (northstar M4): every page loads with zero console
       # errors, visit animates, and the sandbox's #run evolves a community in a
       # real Chromium. Until M4 it ran locally only.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
